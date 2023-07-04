@@ -34,6 +34,7 @@ package org.glavo.nanohttpd.protocols.http.response;
  */
 
 public interface Status {
+
     String getDescription();
 
     int getRequestStatus();

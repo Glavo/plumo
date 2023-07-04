@@ -80,25 +80,24 @@ public class Response implements Closeable {
      */
     private InputStream data;
 
-    private long contentLength;
+    private final long contentLength;
 
     /**
      * Headers for the HTTP response. Use addHeader() to add lines. the
      * lowercase map is automatically kept up to date.
      */
-    @SuppressWarnings("serial")
-    private final Map<String, String> header = new HashMap<String, String>() {
+    private final Map<String, String> header = new HashMap<>() {
 
         public String put(String key, String value) {
             lowerCaseHeader.put(key == null ? key : key.toLowerCase(), value);
             return super.put(key, value);
-        };
+        }
     };
 
     /**
      * copy of the header map with all the keys lowercase for faster searching.
      */
-    private final Map<String, String> lowerCaseHeader = new HashMap<String, String>();
+    private final Map<String, String> lowerCaseHeader = new HashMap<>();
 
     /**
      * The request method that spawned this response.
@@ -112,11 +111,11 @@ public class Response implements Closeable {
 
     private boolean keepAlive;
 
-    private List<String> cookieHeaders;
+    private final List<String> cookieHeaders;
 
     private GzipUsage gzipUsage = GzipUsage.DEFAULT;
 
-    private static enum GzipUsage {
+    private enum GzipUsage {
         DEFAULT,
         ALWAYS,
         NEVER;

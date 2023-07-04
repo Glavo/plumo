@@ -56,16 +56,6 @@ public interface HTTPSession {
 
     Method getMethod();
 
-    /**
-     * This method will only return the first value for a given parameter. You
-     * will want to use getParameters if you expect multiple values for a given
-     * key.
-     * 
-     * @deprecated use {@link #getParameters()} instead.
-     */
-    @Deprecated
-    Map<String, String> getParms();
-
     Map<String, List<String>> getParameters();
 
     String getQueryParameterString();

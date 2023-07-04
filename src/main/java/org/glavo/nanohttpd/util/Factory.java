@@ -40,6 +40,7 @@ package org.glavo.nanohttpd.util;
  * @param <T>
  *            The Type of object to create
  */
+@FunctionalInterface
 public interface Factory<T> {
 
     T create();

@@ -41,6 +41,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -192,7 +193,7 @@ public abstract class NanoHTTPD {
 
     public static Map<String, String> mimeTypes() {
         if (MIME_TYPES == null) {
-            MIME_TYPES = new HashMap<String, String>();
+            MIME_TYPES = new HashMap<>();
             loadMimeTypes(MIME_TYPES, "META-INF/nanohttpd/default-mimetypes.properties");
             loadMimeTypes(MIME_TYPES, "META-INF/nanohttpd/mimetypes.properties");
             if (MIME_TYPES.isEmpty()) {
@@ -202,15 +203,12 @@ public abstract class NanoHTTPD {
         return MIME_TYPES;
     }
 
-    @SuppressWarnings({
-        "unchecked",
-        "rawtypes"
-    })
+    @SuppressWarnings("unchecked")
     private static void loadMimeTypes(Map<String, String> result, String resourceName) {
         try {
             Enumeration<URL> resources = NanoHTTPD.class.getClassLoader().getResources(resourceName);
             while (resources.hasMoreElements()) {
-                URL url = (URL) resources.nextElement();
+                URL url = resources.nextElement();
                 Properties properties = new Properties();
                 InputStream stream = null;
                 try {
@@ -221,7 +219,7 @@ public abstract class NanoHTTPD {
                 } finally {
                     safeClose(stream);
                 }
-                result.putAll((Map) properties);
+                result.putAll((Map<String, String>) (Map<?, ?>) properties);
             }
         } catch (IOException e) {
             LOG.log(Level.INFO, "no mime types available at " + resourceName);
@@ -298,18 +296,10 @@ public abstract class NanoHTTPD {
         return mime == null ? "application/octet-stream" : mime;
     }
 
-    public static final void safeClose(Object closeable) {
+    public static void safeClose(Closeable closeable) {
         try {
             if (closeable != null) {
-                if (closeable instanceof Closeable) {
-                    ((Closeable) closeable).close();
-                } else if (closeable instanceof Socket) {
-                    ((Socket) closeable).close();
-                } else if (closeable instanceof ServerSocket) {
-                    ((ServerSocket) closeable).close();
-                } else {
-                    throw new IllegalArgumentException("Unknown object to close");
-                }
+                closeable.close();
             }
         } catch (IOException e) {
             NanoHTTPD.LOG.log(Level.SEVERE, "Could not close", e);
@@ -332,7 +322,7 @@ public abstract class NanoHTTPD {
 
     private Handler<HTTPSession, Response> httpHandler;
 
-    protected List<Handler<HTTPSession, Response>> interceptors = new ArrayList<Handler<HTTPSession, Response>>(4);
+    protected List<Handler<HTTPSession, Response>> interceptors = new ArrayList<>(4);
 
     /**
      * Pluggable strategy for asynchronously executing requests.
@@ -368,14 +358,10 @@ public abstract class NanoHTTPD {
         setTempFileManagerFactory(new DefaultTempFileManagerFactory());
         setAsyncRunner(new DefaultAsyncRunner());
 
-        // creates a default handler that redirects to deprecated serve();
-        this.httpHandler = new Handler<HTTPSession, Response>() {
-
-            @Override
-            public Response handle(HTTPSession input) {
-                return NanoHTTPD.this.serve(input);
-            }
-        };
+        /*
+         * By default, this returns a 404 "Not Found" plain text error response.
+         */
+        this.httpHandler = session -> Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
     }
 
     public void setHTTPHandler(Handler<HTTPSession, Response> handler) {
@@ -448,7 +434,7 @@ public abstract class NanoHTTPD {
      *         <code>List&lt;String&gt;</code> (a list of the values supplied).
      */
     protected static Map<String, List<String>> decodeParameters(String queryString) {
-        Map<String, List<String>> parms = new HashMap<String, List<String>>();
+        Map<String, List<String>> parms = new HashMap<>();
         if (queryString != null) {
             StringTokenizer st = new StringTokenizer(queryString, "&");
             while (st.hasMoreTokens()) {
@@ -456,7 +442,7 @@ public abstract class NanoHTTPD {
                 int sep = e.indexOf('=');
                 String propertyName = sep >= 0 ? decodePercent(e.substring(0, sep)).trim() : decodePercent(e).trim();
                 if (!parms.containsKey(propertyName)) {
-                    parms.put(propertyName, new ArrayList<String>());
+                    parms.put(propertyName, new ArrayList<>());
                 }
                 String propertyValue = sep >= 0 ? decodePercent(e.substring(sep + 1)) : null;
                 if (propertyValue != null) {
@@ -476,13 +462,7 @@ public abstract class NanoHTTPD {
      *         "foo bar"
      */
     public static String decodePercent(String str) {
-        String decoded = null;
-        try {
-            decoded = URLDecoder.decode(str, "UTF8");
-        } catch (UnsupportedEncodingException ignored) {
-            NanoHTTPD.LOG.log(Level.WARNING, "Encoding not supported, ignored", ignored);
-        }
-        return decoded;
+        return URLDecoder.decode(str, StandardCharsets.UTF_8);
     }
 
     public final int getListeningPort() {
@@ -533,21 +513,6 @@ public abstract class NanoHTTPD {
                 return response;
         }
         return httpHandler.handle(session);
-    }
-
-    /**
-     * Override this to customize the server.
-     * <p/>
-     * <p/>
-     * (By default, this returns a 404 "Not Found" plain text error response.)
-     * 
-     * @param session
-     *            The HTTP session
-     * @return HTTP response, see class Response for details
-     */
-    @Deprecated
-    protected Response serve(HTTPSession session) {
-        return Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
     }
 
     /**

@@ -58,10 +58,8 @@ public class DefaultTempFileManager implements TempFileManager {
 
     public DefaultTempFileManager() {
         this.tmpdir = new File(System.getProperty("java.io.tmpdir"));
-        if (!tmpdir.exists()) {
-            tmpdir.mkdirs();
-        }
-        this.tempFiles = new ArrayList<TempFile>();
+        tmpdir.mkdirs();
+        this.tempFiles = new ArrayList<>();
     }
 
     @Override
@@ -69,15 +67,15 @@ public class DefaultTempFileManager implements TempFileManager {
         for (TempFile file : this.tempFiles) {
             try {
                 file.delete();
-            } catch (Exception ignored) {
-                NanoHTTPD.LOG.log(Level.WARNING, "could not delete file ", ignored);
+            } catch (Exception e) {
+                NanoHTTPD.LOG.log(Level.WARNING, "could not delete file ", e);
             }
         }
         this.tempFiles.clear();
     }
 
     @Override
-    public TempFile createTempFile(String filename_hint) throws Exception {
+    public TempFile createTempFile(String filenameHint) throws Exception {
         DefaultTempFile tempFile = new DefaultTempFile(this.tmpdir);
         this.tempFiles.add(tempFile);
         return tempFile;

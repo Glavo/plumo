@@ -43,6 +43,7 @@ package org.glavo.nanohttpd.util;
  * @param <E>
  *            The base Type of exceptions that can be thrown
  */
+@FunctionalInterface
 public interface FactoryThrowing<T, E extends Throwable> {
 
     T create() throws E;

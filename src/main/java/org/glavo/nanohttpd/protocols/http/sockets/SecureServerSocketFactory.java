@@ -46,9 +46,9 @@ import org.glavo.nanohttpd.util.FactoryThrowing;
  */
 public class SecureServerSocketFactory implements FactoryThrowing<ServerSocket, IOException> {
 
-    private SSLServerSocketFactory sslServerSocketFactory;
+    private final SSLServerSocketFactory sslServerSocketFactory;
 
-    private String[] sslProtocols;
+    private final String[] sslProtocols;
 
     public SecureServerSocketFactory(SSLServerSocketFactory sslServerSocketFactory, String[] sslProtocols) {
         this.sslServerSocketFactory = sslServerSocketFactory;
@@ -57,7 +57,7 @@ public class SecureServerSocketFactory implements FactoryThrowing<ServerSocket, 
 
     @Override
     public ServerSocket create() throws IOException {
-        SSLServerSocket ss = null;
+        SSLServerSocket ss;
         ss = (SSLServerSocket) this.sslServerSocketFactory.createServerSocket();
         if (this.sslProtocols != null) {
             ss.setEnabledProtocols(this.sslProtocols);

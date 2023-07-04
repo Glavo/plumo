@@ -122,8 +122,8 @@ public class DefaultHTTPSession implements HTTPSession {
         this.tempFileManager = tempFileManager;
         this.inputStream = new BufferedInputStream(inputStream, DefaultHTTPSession.BUFSIZE);
         this.outputStream = outputStream;
-        this.remoteIp = inetAddress.isLoopbackAddress() || inetAddress.isAnyLocalAddress() ? "127.0.0.1" : inetAddress.getHostAddress().toString();
-        this.headers = new HashMap<String, String>();
+        this.remoteIp = inetAddress.isLoopbackAddress() || inetAddress.isAnyLocalAddress() ? "127.0.0.1" : inetAddress.getHostAddress();
+        this.headers = new HashMap<>();
     }
 
     /**
@@ -198,7 +198,7 @@ public class DefaultHTTPSession implements HTTPSession {
             byte[] partHeaderBuff = new byte[MAX_HEADER_SIZE];
             for (int boundaryIdx = 0; boundaryIdx < boundaryIdxs.length - 1; boundaryIdx++) {
                 fbuf.position(boundaryIdxs[boundaryIdx]);
-                int len = (fbuf.remaining() < MAX_HEADER_SIZE) ? fbuf.remaining() : MAX_HEADER_SIZE;
+                int len = Math.min(fbuf.remaining(), MAX_HEADER_SIZE);
                 fbuf.get(partHeaderBuff, 0, len);
                 BufferedReader in =
                         new BufferedReader(new InputStreamReader(new ByteArrayInputStream(partHeaderBuff, 0, len), Charset.forName(contentType.getEncoding())), len);
@@ -313,8 +313,8 @@ public class DefaultHTTPSession implements HTTPSession {
         while (st.hasMoreTokens()) {
             String e = st.nextToken();
             int sep = e.indexOf('=');
-            String key = null;
-            String value = null;
+            String key;
+            String value;
 
             if (sep >= 0) {
                 key = NanoHTTPD.decodePercent(e.substring(0, sep)).trim();
@@ -324,12 +324,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 value = "";
             }
 
-            List<String> values = p.get(key);
-            if (values == null) {
-                values = new ArrayList<String>();
-                p.put(key, values);
-            }
-
+            List<String> values = p.computeIfAbsent(key, k -> new ArrayList<>());
             values.add(value);
         }
     }
@@ -359,7 +354,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 throw new SocketException("NanoHttpd Shutdown");
             }
             if (read == -1) {
-                // socket was been closed
+                // socket was closed
                 NanoHTTPD.safeClose(this.inputStream);
                 NanoHTTPD.safeClose(this.outputStream);
                 throw new SocketException("NanoHttpd Shutdown");
@@ -378,9 +373,9 @@ public class DefaultHTTPSession implements HTTPSession {
                 this.inputStream.skip(this.splitbyte);
             }
 
-            this.parms = new HashMap<String, List<String>>();
-            if (null == this.headers) {
-                this.headers = new HashMap<String, String>();
+            this.parms = new HashMap<>();
+            if (this.headers == null) {
+                this.headers = new HashMap<>();
             } else {
                 this.headers.clear();
             }
@@ -389,7 +384,7 @@ public class DefaultHTTPSession implements HTTPSession {
             BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(buf, 0, this.rlen)));
 
             // Decode the header into parms and header java properties
-            Map<String, String> pre = new HashMap<String, String>();
+            Map<String, String> pre = new HashMap<>();
             decodeHeader(hin, pre, this.parms, this.headers);
 
             if (null != this.remoteIp) {
@@ -495,7 +490,7 @@ public class DefaultHTTPSession implements HTTPSession {
         int search_window_pos = 0;
         byte[] search_window = new byte[4 * 1024 + boundary.length];
 
-        int first_fill = (b.remaining() < search_window.length) ? b.remaining() : search_window.length;
+        int first_fill = Math.min(b.remaining(), search_window.length);
         b.get(search_window, 0, first_fill);
         int new_bytes = first_fill - boundary.length;
 
@@ -521,7 +516,7 @@ public class DefaultHTTPSession implements HTTPSession {
 
             // Refill search_window
             new_bytes = search_window.length - boundary.length;
-            new_bytes = (b.remaining() < new_bytes) ? b.remaining() : new_bytes;
+            new_bytes = Math.min(b.remaining(), new_bytes);
             b.get(search_window, boundary.length, new_bytes);
         } while (new_bytes > 0);
         return res;
@@ -545,20 +540,6 @@ public class DefaultHTTPSession implements HTTPSession {
     @Override
     public final Method getMethod() {
         return this.method;
-    }
-
-    /**
-     * @deprecated use {@link #getParameters()} instead.
-     */
-    @Override
-    @Deprecated
-    public final Map<String, String> getParms() {
-        Map<String, String> result = new HashMap<String, String>();
-        for (String key : this.parms.keySet()) {
-            result.put(key, this.parms.get(key).get(0));
-        }
-
-        return result;
     }
 
     @Override
@@ -604,7 +585,7 @@ public class DefaultHTTPSession implements HTTPSession {
         try {
             long size = getBodySize();
             ByteArrayOutputStream baos = null;
-            DataOutput requestDataOutput = null;
+            DataOutput requestDataOutput;
 
             // Store the request in memory or a file, depending on size
             if (size < MEMORY_STORE_LIMIT) {
@@ -625,7 +606,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 }
             }
 
-            ByteBuffer fbuf = null;
+            ByteBuffer fbuf;
             if (baos != null) {
                 fbuf = ByteBuffer.wrap(baos.toByteArray(), 0, baos.size());
             } else {
@@ -669,12 +650,12 @@ public class DefaultHTTPSession implements HTTPSession {
      * Retrieves the content of a sent file and saves it to a temporary file.
      * The full path to the saved file is returned.
      */
-    private String saveTmpFile(ByteBuffer b, int offset, int len, String filename_hint) {
+    private String saveTmpFile(ByteBuffer b, int offset, int len, String filenameHint) {
         String path = "";
         if (len > 0) {
             FileOutputStream fileOutputStream = null;
             try {
-                TempFile tempFile = this.tempFileManager.createTempFile(filename_hint);
+                TempFile tempFile = this.tempFileManager.createTempFile(filenameHint);
                 ByteBuffer src = b.duplicate();
                 fileOutputStream = new FileOutputStream(tempFile.getName());
                 FileChannel dest = fileOutputStream.getChannel();

@@ -78,7 +78,7 @@ public class ContentType {
         }
     }
 
-    private String getDetailFromContentHeader(String contentTypeHeader, Pattern pattern, String defaultValue, int group) {
+    private static String getDetailFromContentHeader(String contentTypeHeader, Pattern pattern, String defaultValue, int group) {
         Matcher matcher = pattern.matcher(contentTypeHeader);
         return matcher.find() ? matcher.group(group) : defaultValue;
     }
