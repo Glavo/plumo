@@ -33,10 +33,7 @@ package org.glavo.webdav.nanohttpd.tempfiles;
  * #L%
  */
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -70,7 +67,7 @@ public final class DefaultTempFileManager implements TempFileManager {
     private final Path dir;
     private final Set<PosixFilePermission> filePermissions;
 
-    private final List<TempFile> tempFiles = new ArrayList<>();
+    private final List<Path> tempFiles = new ArrayList<>();
 
     public DefaultTempFileManager() {
         Path dir;
@@ -106,9 +103,9 @@ public final class DefaultTempFileManager implements TempFileManager {
 
     @Override
     public void clear() {
-        for (TempFile file : this.tempFiles) {
+        for (Path file : this.tempFiles) {
             try {
-                file.delete();
+                Files.delete(file);
             } catch (Exception e) {
                 NanoHTTPD.LOG.log(Level.WARNING, "Could not delete temporary file", e);
             }
@@ -147,7 +144,7 @@ public final class DefaultTempFileManager implements TempFileManager {
     }
 
     @Override
-    public TempFile createTempFile(String fileNameHint) throws Exception {
+    public Path createTempFile(String fileNameHint) throws Exception {
         String prefix = null;
         String suffix = null;
 
@@ -161,7 +158,7 @@ public final class DefaultTempFileManager implements TempFileManager {
             }
         }
 
-        Path tmpFile = Files.createTempFile(dir, prefix, suffix);
+        Path tmpFile = Files.createTempFile(dir, prefix, suffix).toAbsolutePath();
 
         // CVE-2022-21230
         if (filePermissions != null) {
@@ -175,8 +172,6 @@ public final class DefaultTempFileManager implements TempFileManager {
             }
         }
 
-        TempFile tf = new DefaultTempFile(tmpFile.toFile());
-        this.tempFiles.add(tf);
-        return tf;
+        return tmpFile;
     }
 }

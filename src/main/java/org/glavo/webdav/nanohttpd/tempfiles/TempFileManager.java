@@ -33,6 +33,8 @@ package org.glavo.webdav.nanohttpd.tempfiles;
  * #L%
  */
 
+import java.nio.file.Path;
+
 /**
  * Temp file manager.
  * <p/>
@@ -45,5 +47,5 @@ public interface TempFileManager {
 
     void clear();
 
-    TempFile createTempFile(String fileNameHint) throws Exception;
+    Path createTempFile(String fileNameHint) throws Exception;
 }

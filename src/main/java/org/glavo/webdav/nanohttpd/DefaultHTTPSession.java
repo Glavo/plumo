@@ -39,7 +39,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -50,8 +49,9 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -66,7 +66,6 @@ import javax.net.ssl.SSLException;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.StandardStatus;
-import org.glavo.webdav.nanohttpd.tempfiles.TempFile;
 import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
 import org.glavo.webdav.nanohttpd.content.ContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
@@ -550,8 +549,8 @@ public class DefaultHTTPSession implements HTTPSession {
 
     private RandomAccessFile getTmpBucket() {
         try {
-            TempFile tempFile = this.tempFileManager.createTempFile(null);
-            return new RandomAccessFile(tempFile.getFile(), "rw");
+            Path tempFile = this.tempFileManager.createTempFile(null);
+            return new RandomAccessFile(tempFile.toFile(), "rw");
         } catch (Exception e) {
             throw new Error(e); // we won't recover, so throw an error
         }
@@ -649,19 +648,18 @@ public class DefaultHTTPSession implements HTTPSession {
     private String saveTmpFile(ByteBuffer b, int offset, int len, String filenameHint) {
         String path = "";
         if (len > 0) {
-            FileOutputStream fileOutputStream = null;
+            FileChannel dest = null;
             try {
-                TempFile tempFile = this.tempFileManager.createTempFile(filenameHint);
+                Path tempFile = this.tempFileManager.createTempFile(filenameHint);
                 ByteBuffer src = b.duplicate();
-                fileOutputStream = new FileOutputStream(tempFile.getFile());
-                FileChannel dest = fileOutputStream.getChannel();
+                dest = FileChannel.open(tempFile, StandardOpenOption.WRITE);
                 src.position(offset).limit(offset + len);
                 dest.write(src.slice());
-                path = tempFile.getFile().getAbsolutePath();
+                path = tempFile.toString();
             } catch (Exception e) { // Catch exception if any
                 throw new Error(e); // we won't recover, so throw an error
             } finally {
-                NanoHTTPD.safeClose(fileOutputStream);
+                NanoHTTPD.safeClose(dest);
             }
         }
         return path;
