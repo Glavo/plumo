@@ -52,8 +52,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
-import org.glavo.webdav.nanohttpd.protocols.http.mime.DefaultMIMETypesProvider;
-import org.glavo.webdav.nanohttpd.protocols.http.mime.MIMETypesProvider;
+import org.glavo.webdav.nanohttpd.protocols.http.mime.DefaultMimeTypesProvider;
+import org.glavo.webdav.nanohttpd.protocols.http.mime.MimeTypesProvider;
 import org.glavo.webdav.nanohttpd.protocols.http.response.Response;
 import org.glavo.webdav.nanohttpd.protocols.http.response.StandardStatus;
 import org.glavo.webdav.nanohttpd.protocols.http.sockets.DefaultServerSocketFactory;
@@ -192,12 +192,12 @@ public abstract class NanoHTTPD {
         if (MIME_TYPES == null) {
             Map<String, String> types = new HashMap<>();
             //noinspection Java9UndeclaredServiceUsage
-            for (MIMETypesProvider provider : ServiceLoader.load(MIMETypesProvider.class)) {
+            for (MimeTypesProvider provider : ServiceLoader.load(MimeTypesProvider.class)) {
                 provider.registerMIMETypes(types);
             }
 
             if (types.isEmpty()) {
-                new DefaultMIMETypesProvider().registerMIMETypes(types);
+                new DefaultMimeTypesProvider().registerMIMETypes(types);
             }
 
             MIME_TYPES = types;

@@ -2,7 +2,7 @@ package org.glavo.webdav.nanohttpd.protocols.http.mime;
 
 import java.util.Map;
 
-public class DefaultMIMETypesProvider implements MIMETypesProvider {
+public class DefaultMimeTypesProvider implements MimeTypesProvider {
     @Override
     public void registerMIMETypes(Map<String, String> types) {
         types.put("css", "text/css");
