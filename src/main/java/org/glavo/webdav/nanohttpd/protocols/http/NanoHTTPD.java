@@ -270,7 +270,7 @@ public abstract class NanoHTTPD {
         int dot = uri.lastIndexOf('.');
         String mime = null;
         if (dot >= 0) {
-            mime = mimeTypes().get(uri.substring(dot + 1).toLowerCase());
+            mime = mimeTypes().get(uri.substring(dot + 1).toLowerCase(Locale.ROOT));
         }
         return mime == null ? "application/octet-stream" : mime;
     }

@@ -89,7 +89,7 @@ public class Response implements Closeable {
     private final Map<String, String> header = new HashMap<>() {
 
         public String put(String key, String value) {
-            lowerCaseHeader.put(key == null ? key : key.toLowerCase(), value);
+            lowerCaseHeader.put(key != null ? key.toLowerCase(Locale.ROOT) : null, value);
             return super.put(key, value);
         }
     };
@@ -202,7 +202,7 @@ public class Response implements Closeable {
     }
 
     public String getHeader(String name) {
-        return this.lowerCaseHeader.get(name.toLowerCase());
+        return this.lowerCaseHeader.get(name.toLowerCase(Locale.ROOT));
     }
 
     public String getMimeType() {

@@ -51,6 +51,7 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -173,7 +174,7 @@ public class DefaultHTTPSession implements HTTPSession {
             while (line != null && !line.trim().isEmpty()) {
                 int p = line.indexOf(':');
                 if (p >= 0) {
-                    headers.put(line.substring(0, p).trim().toLowerCase(Locale.US), line.substring(p + 1).trim());
+                    headers.put(line.substring(0, p).trim().toLowerCase(Locale.ROOT), line.substring(p + 1).trim());
                 }
                 line = in.readLine();
             }
@@ -190,7 +191,7 @@ public class DefaultHTTPSession implements HTTPSession {
     private void decodeMultipartFormData(ContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws NanoHTTPD.ResponseException {
         int pcount = 0;
         try {
-            int[] boundaryIdxs = getBoundaryPositions(fbuf, contentType.getBoundary().getBytes());
+            int[] boundaryIdxs = getBoundaryPositions(fbuf, contentType.getBoundary().getBytes(StandardCharsets.UTF_8));
             if (boundaryIdxs.length < 2) {
                 throw new NanoHTTPD.ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but contains less than two boundary strings.");
             }
@@ -257,18 +258,14 @@ public class DefaultHTTPSession implements HTTPSession {
 
                 fbuf.position(partDataStart);
 
-                List<String> values = parms.get(partName);
-                if (values == null) {
-                    values = new ArrayList<String>();
-                    parms.put(partName, values);
-                }
+                List<String> values = parms.computeIfAbsent(partName, k -> new ArrayList<>());
 
                 if (partContentType == null) {
                     // Read the part into a string
-                    byte[] data_bytes = new byte[partDataEnd - partDataStart];
-                    fbuf.get(data_bytes);
+                    byte[] dataBytes = new byte[partDataEnd - partDataStart];
+                    fbuf.get(dataBytes);
 
-                    values.add(new String(data_bytes, contentType.getEncoding()));
+                    values.add(new String(dataBytes, contentType.getEncoding()));
                 } else {
                     // Read it into a file
                     String path = saveTmpFile(fbuf, partDataStart, partDataEnd - partDataStart, fileName);
@@ -324,8 +321,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 value = "";
             }
 
-            List<String> values = p.computeIfAbsent(key, k -> new ArrayList<>());
-            values.add(value);
+            p.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
         }
     }
 
@@ -381,7 +377,7 @@ public class DefaultHTTPSession implements HTTPSession {
             }
 
             // Create a BufferedReader for parsing the header.
-            BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(buf, 0, this.rlen)));
+            BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(buf, 0, this.rlen), StandardCharsets.UTF_8));
 
             // Decode the header into parms and header java properties
             Map<String, String> pre = new HashMap<>();

@@ -8,18 +8,18 @@ package org.glavo.webdav.nanohttpd.protocols.http.response;
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the nanohttpd nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -36,6 +36,7 @@ package org.glavo.webdav.nanohttpd.protocols.http.response;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Output stream that will automatically send every write to the wrapped
@@ -44,15 +45,16 @@ import java.io.OutputStream;
  */
 public class ChunkedOutputStream extends FilterOutputStream {
 
+    private static final byte[] CRLF = {'\r', '\n'};
+    private static final byte[] FINISH = {'0', '\r', '\n', '\r', '\n'};
+
     public ChunkedOutputStream(OutputStream out) {
         super(out);
     }
 
     @Override
     public void write(int b) throws IOException {
-        byte[] data = {
-            (byte) b
-        };
+        byte[] data = {(byte) b};
         write(data, 0, 1);
     }
 
@@ -65,12 +67,12 @@ public class ChunkedOutputStream extends FilterOutputStream {
     public void write(byte[] b, int off, int len) throws IOException {
         if (len == 0)
             return;
-        out.write(String.format("%x\r\n", len).getBytes());
+        out.write(String.format("%x\r\n", len).getBytes(StandardCharsets.ISO_8859_1));
         out.write(b, off, len);
-        out.write("\r\n".getBytes());
+        out.write(CRLF);
     }
 
     public void finish() throws IOException {
-        out.write("0\r\n\r\n".getBytes());
+        out.write(FINISH);
     }
 }
