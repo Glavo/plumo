@@ -451,7 +451,7 @@ public abstract class NanoHTTPD {
     }
 
     public SocketFactory getServerSocketFactory() {
-        return serverSocketFactory == null ? SocketFactory.getDefault() : serverSocketFactory;
+        return serverSocketFactory == null ? ServerSocket::new : serverSocketFactory;
     }
 
     public void setServerSocketFactory(SocketFactory serverSocketFactory) {
