@@ -33,7 +33,7 @@ package org.glavo.webdav.nanohttpd.tempfiles;
  * #L%
  */
 
-import java.io.OutputStream;
+import java.io.File;
 
 /**
  * A temp file.
@@ -47,7 +47,5 @@ public interface TempFile {
 
     void delete() throws Exception;
 
-    String getName();
-
-    OutputStream open() throws Exception;
+    File getFile();
 }

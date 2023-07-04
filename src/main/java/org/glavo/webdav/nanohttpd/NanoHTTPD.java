@@ -60,6 +60,7 @@ import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.StandardStatus;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
 import org.glavo.webdav.nanohttpd.sockets.SocketFactory;
+import org.glavo.webdav.nanohttpd.tempfiles.DefaultTempFileManager;
 import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
 import org.glavo.webdav.nanohttpd.threading.DefaultAsyncRunner;
 import org.glavo.webdav.nanohttpd.threading.AsyncRunner;
@@ -332,7 +333,7 @@ public abstract class NanoHTTPD {
     public NanoHTTPD(String hostname, int port) {
         this.hostname = hostname;
         this.myPort = port;
-        setTempFileManagerFactory(TempFileManager::createDefault);
+        setTempFileManagerFactory(DefaultTempFileManager::new);
         setAsyncRunner(new DefaultAsyncRunner());
 
         /*

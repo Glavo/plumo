@@ -551,7 +551,7 @@ public class DefaultHTTPSession implements HTTPSession {
     private RandomAccessFile getTmpBucket() {
         try {
             TempFile tempFile = this.tempFileManager.createTempFile(null);
-            return new RandomAccessFile(tempFile.getName(), "rw");
+            return new RandomAccessFile(tempFile.getFile(), "rw");
         } catch (Exception e) {
             throw new Error(e); // we won't recover, so throw an error
         }
@@ -653,11 +653,11 @@ public class DefaultHTTPSession implements HTTPSession {
             try {
                 TempFile tempFile = this.tempFileManager.createTempFile(filenameHint);
                 ByteBuffer src = b.duplicate();
-                fileOutputStream = new FileOutputStream(tempFile.getName());
+                fileOutputStream = new FileOutputStream(tempFile.getFile());
                 FileChannel dest = fileOutputStream.getChannel();
                 src.position(offset).limit(offset + len);
                 dest.write(src.slice());
-                path = tempFile.getName();
+                path = tempFile.getFile().getAbsolutePath();
             } catch (Exception e) { // Catch exception if any
                 throw new Error(e); // we won't recover, so throw an error
             } finally {
