@@ -39,12 +39,10 @@ import java.net.ServerSocket;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 
-import org.glavo.webdav.nanohttpd.util.FactoryThrowing;
-
 /**
  * Creates a new SSLServerSocket
  */
-public class SecureServerSocketFactory implements FactoryThrowing<ServerSocket, IOException> {
+public class SecureServerSocketFactory implements SocketFactory {
 
     private final SSLServerSocketFactory sslServerSocketFactory;
 

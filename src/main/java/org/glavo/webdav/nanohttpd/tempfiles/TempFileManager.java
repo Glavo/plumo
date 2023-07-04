@@ -43,7 +43,11 @@ package org.glavo.webdav.nanohttpd.tempfiles;
  */
 public interface TempFileManager {
 
+    static TempFileManager createDefault() {
+        return new DefaultTempFileManager();
+    }
+
     void clear();
 
-    TempFile createTempFile(String filenameHint) throws Exception;
+    TempFile createTempFile(String fileNameHint) throws Exception;
 }

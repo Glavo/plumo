@@ -48,7 +48,7 @@ import org.glavo.webdav.nanohttpd.NanoHTTPD;
  * directory specified.
  * </p>
  */
-public class DefaultTempFile implements TempFile {
+final class DefaultTempFile implements TempFile {
 
     private final File file;
 

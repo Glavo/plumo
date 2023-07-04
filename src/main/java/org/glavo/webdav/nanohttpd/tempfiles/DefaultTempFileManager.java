@@ -50,7 +50,7 @@ import org.glavo.webdav.nanohttpd.NanoHTTPD;
  * invoked at the end of processing a request).
  * </p>
  */
-public class DefaultTempFileManager implements TempFileManager {
+final class DefaultTempFileManager implements TempFileManager {
 
     private final File tmpdir;
 
@@ -75,7 +75,7 @@ public class DefaultTempFileManager implements TempFileManager {
     }
 
     @Override
-    public TempFile createTempFile(String filenameHint) throws Exception {
+    public TempFile createTempFile(String fileNameHint) throws Exception {
         DefaultTempFile tempFile = new DefaultTempFile(this.tmpdir);
         this.tempFiles.add(tempFile);
         return tempFile;
