@@ -64,22 +64,22 @@ public class ContentType {
 
     public ContentType(String contentTypeHeader) {
         this.contentTypeHeader = contentTypeHeader;
-        String encodingName;
         if (contentTypeHeader != null) {
             contentType = getDetailFromContentHeader(contentTypeHeader, MIME_PATTERN, "", 1);
-            encodingName = getDetailFromContentHeader(contentTypeHeader, CHARSET_PATTERN, null, 2);
+            String encodingName = getDetailFromContentHeader(contentTypeHeader, CHARSET_PATTERN, null, 2);
+            Charset e = null;
+            try {
+                if (encodingName != null) {
+                    e = Charset.forName(encodingName);
+                }
+            } catch (Throwable ignored) {
+                // unknown encoding
+            }
+            this.encoding = e;
         } else {
             contentType = "";
-            encodingName = "UTF-8";
+            encoding = StandardCharsets.UTF_8;
         }
-
-        Charset e = null;
-        try {
-            e = Charset.forName(encodingName);
-        } catch (Throwable ignored) {
-            // unknown encoding
-        }
-        this.encoding = e;
 
         if (MULTIPART_FORM_DATA_HEADER.equalsIgnoreCase(contentType)) {
             boundary = getDetailFromContentHeader(contentTypeHeader, BOUNDARY_PATTERN, null, 2);
