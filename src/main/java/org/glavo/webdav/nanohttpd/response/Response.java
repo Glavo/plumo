@@ -409,17 +409,11 @@ public class Response implements Closeable {
         if (txt == null) {
             return newFixedLengthResponse(status, mimeType, new ByteArrayInputStream(new byte[0]), 0);
         } else {
-            byte[] bytes;
-            try {
-                CharsetEncoder newEncoder = Charset.forName(contentType.getEncoding()).newEncoder();
-                if (!newEncoder.canEncode(txt)) {
-                    contentType = contentType.tryUTF8();
-                }
-                bytes = txt.getBytes(contentType.getEncoding());
-            } catch (UnsupportedEncodingException e) {
-                NanoHTTPD.LOG.log(Level.SEVERE, "encoding problem, responding nothing", e);
-                bytes = new byte[0];
+            CharsetEncoder newEncoder = contentType.getEncoding().newEncoder();
+            if (!newEncoder.canEncode(txt)) {
+                contentType = contentType.tryUTF8();
             }
+            byte[] bytes = txt.getBytes(contentType.getEncoding());
             return newFixedLengthResponse(status, contentType.getContentTypeHeader(), new ByteArrayInputStream(bytes), bytes.length);
         }
     }

@@ -202,7 +202,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 int len = Math.min(fbuf.remaining(), MAX_HEADER_SIZE);
                 fbuf.get(partHeaderBuff, 0, len);
                 BufferedReader in =
-                        new BufferedReader(new InputStreamReader(new ByteArrayInputStream(partHeaderBuff, 0, len), Charset.forName(contentType.getEncoding())), len);
+                        new BufferedReader(new InputStreamReader(new ByteArrayInputStream(partHeaderBuff, 0, len), contentType.getEncoding()), len);
 
                 int headerLines = 0;
                 // First line is boundary string

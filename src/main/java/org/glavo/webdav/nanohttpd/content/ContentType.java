@@ -33,12 +33,12 @@ package org.glavo.webdav.nanohttpd.content;
  * #L%
  */
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ContentType {
-
-    private static final String ASCII_ENCODING = "US-ASCII";
 
     private static final String MULTIPART_FORM_DATA_HEADER = "multipart/form-data";
 
@@ -58,19 +58,29 @@ public class ContentType {
 
     private final String contentType;
 
-    private final String encoding;
+    private final Charset encoding;
 
     private final String boundary;
 
     public ContentType(String contentTypeHeader) {
         this.contentTypeHeader = contentTypeHeader;
+        String encodingName;
         if (contentTypeHeader != null) {
             contentType = getDetailFromContentHeader(contentTypeHeader, MIME_PATTERN, "", 1);
-            encoding = getDetailFromContentHeader(contentTypeHeader, CHARSET_PATTERN, null, 2);
+            encodingName = getDetailFromContentHeader(contentTypeHeader, CHARSET_PATTERN, null, 2);
         } else {
             contentType = "";
-            encoding = "UTF-8";
+            encodingName = "UTF-8";
         }
+
+        Charset e = null;
+        try {
+            e = Charset.forName(encodingName);
+        } catch (Throwable ignored) {
+            // unknown encoding
+        }
+        this.encoding = e;
+
         if (MULTIPART_FORM_DATA_HEADER.equalsIgnoreCase(contentType)) {
             boundary = getDetailFromContentHeader(contentTypeHeader, BOUNDARY_PATTERN, null, 2);
         } else {
@@ -91,8 +101,8 @@ public class ContentType {
         return contentType;
     }
 
-    public String getEncoding() {
-        return encoding == null ? ASCII_ENCODING : encoding;
+    public Charset getEncoding() {
+        return encoding == null ? StandardCharsets.US_ASCII : encoding;
     }
 
     public String getBoundary() {

@@ -43,7 +43,7 @@ import org.glavo.webdav.nanohttpd.response.Response;
 /**
  * Provides rudimentary support for cookies. Doesn't support 'path', 'secure'
  * nor 'httpOnly'. Feel free to improve it and/or add unsupported features. This
- * is old code and it's flawed in many ways.
+ * is old code, and it's flawed in many ways.
  * 
  * @author LordFokas
  */
