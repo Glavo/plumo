@@ -1,4 +1,4 @@
-package org.glavo.nanohttpd.protocols.http;
+package org.glavo.nanohttpd.protocols.http.tempfiles;
 
 /*
  * #%L
@@ -33,60 +33,21 @@ package org.glavo.nanohttpd.protocols.http;
  * #L%
  */
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Map;
-
-import org.glavo.nanohttpd.protocols.http.request.Method;
-import org.glavo.nanohttpd.protocols.http.content.CookieHandler;
+import java.io.OutputStream;
 
 /**
- * Handles one session, i.e. parses the HTTP request and returns the response.
+ * A temp file.
+ * <p/>
+ * <p>
+ * Temp files are responsible for managing the actual temporary storage and
+ * cleaning themselves up when no longer needed.
+ * </p>
  */
-public interface IHTTPSession {
+public interface TempFile {
 
-    void execute() throws IOException;
+    public void delete() throws Exception;
 
-    CookieHandler getCookies();
+    public String getName();
 
-    Map<String, String> getHeaders();
-
-    InputStream getInputStream();
-
-    Method getMethod();
-
-    /**
-     * This method will only return the first value for a given parameter. You
-     * will want to use getParameters if you expect multiple values for a given
-     * key.
-     * 
-     * @deprecated use {@link #getParameters()} instead.
-     */
-    @Deprecated
-    Map<String, String> getParms();
-
-    Map<String, List<String>> getParameters();
-
-    String getQueryParameterString();
-
-    /**
-     * @return the path part of the URL.
-     */
-    String getUri();
-
-    /**
-     * Adds the files in the request body to the files map.
-     * 
-     * @param files
-     *            map to modify
-     */
-    void parseBody(Map<String, String> files) throws IOException, NanoHTTPD.ResponseException;
-
-    /**
-     * Get the remote ip address of the requester.
-     * 
-     * @return the IP address.
-     */
-    String getRemoteIpAddress();
+    public OutputStream open() throws Exception;
 }

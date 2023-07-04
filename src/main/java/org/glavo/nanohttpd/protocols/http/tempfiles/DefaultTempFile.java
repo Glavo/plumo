@@ -48,7 +48,7 @@ import org.glavo.nanohttpd.protocols.http.NanoHTTPD;
  * directory specified.
  * </p>
  */
-public class DefaultTempFile implements ITempFile {
+public class DefaultTempFile implements TempFile {
 
     private final File file;
 

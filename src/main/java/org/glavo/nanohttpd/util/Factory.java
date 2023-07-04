@@ -1,4 +1,4 @@
-package org.glavo.nanohttpd.protocols.http.tempfiles;
+package org.glavo.nanohttpd.util;
 
 /*
  * #%L
@@ -33,21 +33,14 @@ package org.glavo.nanohttpd.protocols.http.tempfiles;
  * #L%
  */
 
-import java.io.OutputStream;
-
 /**
- * A temp file.
- * <p/>
- * <p>
- * Temp files are responsible for managing the actual temporary storage and
- * cleaning themselves up when no longer needed.
- * </p>
+ * Represents a simple factory
+ * 
+ * @author LordFokas
+ * @param <T>
+ *            The Type of object to create
  */
-public interface ITempFile {
+public interface Factory<T> {
 
-    public void delete() throws Exception;
-
-    public String getName();
-
-    public OutputStream open() throws Exception;
+    T create();
 }

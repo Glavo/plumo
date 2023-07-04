@@ -1,4 +1,4 @@
-package org.glavo.nanohttpd.protocols.http.response;
+package org.glavo.nanohttpd.protocols.http.tempfiles;
 
 /*
  * #%L
@@ -33,9 +33,17 @@ package org.glavo.nanohttpd.protocols.http.response;
  * #L%
  */
 
-public interface IStatus {
+/**
+ * Temp file manager.
+ * <p/>
+ * <p>
+ * Temp file managers are created 1-to-1 with incoming requests, to create and
+ * cleanup temporary files created as a result of handling the request.
+ * </p>
+ */
+public interface TempFileManager {
 
-    String getDescription();
+    void clear();
 
-    int getRequestStatus();
+    public TempFile createTempFile(String filename_hint) throws Exception;
 }

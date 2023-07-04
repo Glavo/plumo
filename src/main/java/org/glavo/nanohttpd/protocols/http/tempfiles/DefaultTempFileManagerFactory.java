@@ -33,15 +33,15 @@ package org.glavo.nanohttpd.protocols.http.tempfiles;
  * #L%
  */
 
-import org.glavo.nanohttpd.util.IFactory;
+import org.glavo.nanohttpd.util.Factory;
 
 /**
  * Default strategy for creating and cleaning up temporary files.
  */
-public class DefaultTempFileManagerFactory implements IFactory<ITempFileManager> {
+public class DefaultTempFileManagerFactory implements Factory<TempFileManager> {
 
     @Override
-    public ITempFileManager create() {
+    public TempFileManager create() {
         return new DefaultTempFileManager();
     }
 }

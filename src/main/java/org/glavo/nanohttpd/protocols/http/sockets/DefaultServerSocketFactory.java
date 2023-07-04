@@ -36,12 +36,12 @@ package org.glavo.nanohttpd.protocols.http.sockets;
 import java.io.IOException;
 import java.net.ServerSocket;
 
-import org.glavo.nanohttpd.util.IFactoryThrowing;
+import org.glavo.nanohttpd.util.FactoryThrowing;
 
 /**
  * Creates a normal ServerSocket for TCP connections
  */
-public class DefaultServerSocketFactory implements IFactoryThrowing<ServerSocket, IOException> {
+public class DefaultServerSocketFactory implements FactoryThrowing<ServerSocket, IOException> {
 
     @Override
     public ServerSocket create() throws IOException {

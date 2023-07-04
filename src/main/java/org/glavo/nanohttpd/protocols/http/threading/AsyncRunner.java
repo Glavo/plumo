@@ -38,7 +38,7 @@ import org.glavo.nanohttpd.protocols.http.ClientHandler;
 /**
  * Pluggable strategy for asynchronously executing requests.
  */
-public interface IAsyncRunner {
+public interface AsyncRunner {
 
     void closeAll();
 

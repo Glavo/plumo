@@ -60,16 +60,16 @@ import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 import org.glavo.nanohttpd.protocols.http.response.Response;
-import org.glavo.nanohttpd.protocols.http.response.Status;
+import org.glavo.nanohttpd.protocols.http.response.StandardStatus;
 import org.glavo.nanohttpd.protocols.http.sockets.DefaultServerSocketFactory;
 import org.glavo.nanohttpd.protocols.http.sockets.SecureServerSocketFactory;
 import org.glavo.nanohttpd.protocols.http.tempfiles.DefaultTempFileManagerFactory;
-import org.glavo.nanohttpd.protocols.http.tempfiles.ITempFileManager;
+import org.glavo.nanohttpd.protocols.http.tempfiles.TempFileManager;
 import org.glavo.nanohttpd.protocols.http.threading.DefaultAsyncRunner;
-import org.glavo.nanohttpd.protocols.http.threading.IAsyncRunner;
-import org.glavo.nanohttpd.util.IFactory;
-import org.glavo.nanohttpd.util.IFactoryThrowing;
-import org.glavo.nanohttpd.util.IHandler;
+import org.glavo.nanohttpd.protocols.http.threading.AsyncRunner;
+import org.glavo.nanohttpd.util.Factory;
+import org.glavo.nanohttpd.util.FactoryThrowing;
+import org.glavo.nanohttpd.util.Handler;
 
 /**
  * A simple, tiny, nicely embeddable HTTP server in Java
@@ -140,19 +140,19 @@ public abstract class NanoHTTPD {
 
         private static final long serialVersionUID = 6569838532917408380L;
 
-        private final Status status;
+        private final StandardStatus status;
 
-        public ResponseException(Status status, String message) {
+        public ResponseException(StandardStatus status, String message) {
             super(message);
             this.status = status;
         }
 
-        public ResponseException(Status status, String message, Exception e) {
+        public ResponseException(StandardStatus status, String message, Exception e) {
             super(message, e);
             this.status = status;
         }
 
-        public Status getStatus() {
+        public StandardStatus getStatus() {
             return this.status;
         }
     }
@@ -326,23 +326,23 @@ public abstract class NanoHTTPD {
         return myServerSocket;
     }
 
-    private IFactoryThrowing<ServerSocket, IOException> serverSocketFactory = new DefaultServerSocketFactory();
+    private FactoryThrowing<ServerSocket, IOException> serverSocketFactory = new DefaultServerSocketFactory();
 
     private Thread myThread;
 
-    private IHandler<IHTTPSession, Response> httpHandler;
+    private Handler<HTTPSession, Response> httpHandler;
 
-    protected List<IHandler<IHTTPSession, Response>> interceptors = new ArrayList<IHandler<IHTTPSession, Response>>(4);
+    protected List<Handler<HTTPSession, Response>> interceptors = new ArrayList<Handler<HTTPSession, Response>>(4);
 
     /**
      * Pluggable strategy for asynchronously executing requests.
      */
-    protected IAsyncRunner asyncRunner;
+    protected AsyncRunner asyncRunner;
 
     /**
      * Pluggable strategy for creating and cleaning up temporary files.
      */
-    private IFactory<ITempFileManager> tempFileManagerFactory;
+    private Factory<TempFileManager> tempFileManagerFactory;
 
     /**
      * Constructs an HTTP server on given port.
@@ -369,20 +369,20 @@ public abstract class NanoHTTPD {
         setAsyncRunner(new DefaultAsyncRunner());
 
         // creates a default handler that redirects to deprecated serve();
-        this.httpHandler = new IHandler<IHTTPSession, Response>() {
+        this.httpHandler = new Handler<HTTPSession, Response>() {
 
             @Override
-            public Response handle(IHTTPSession input) {
+            public Response handle(HTTPSession input) {
                 return NanoHTTPD.this.serve(input);
             }
         };
     }
 
-    public void setHTTPHandler(IHandler<IHTTPSession, Response> handler) {
+    public void setHTTPHandler(Handler<HTTPSession, Response> handler) {
         this.httpHandler = handler;
     }
 
-    public void addHTTPInterceptor(IHandler<IHTTPSession, Response> interceptor) {
+    public void addHTTPInterceptor(Handler<HTTPSession, Response> interceptor) {
         interceptors.add(interceptor);
     }
 
@@ -493,11 +493,11 @@ public abstract class NanoHTTPD {
         return wasStarted() && !this.myServerSocket.isClosed() && this.myThread.isAlive();
     }
 
-    public IFactoryThrowing<ServerSocket, IOException> getServerSocketFactory() {
+    public FactoryThrowing<ServerSocket, IOException> getServerSocketFactory() {
         return serverSocketFactory;
     }
 
-    public void setServerSocketFactory(IFactoryThrowing<ServerSocket, IOException> serverSocketFactory) {
+    public void setServerSocketFactory(FactoryThrowing<ServerSocket, IOException> serverSocketFactory) {
         this.serverSocketFactory = serverSocketFactory;
     }
 
@@ -505,7 +505,7 @@ public abstract class NanoHTTPD {
         return hostname;
     }
 
-    public IFactory<ITempFileManager> getTempFileManagerFactory() {
+    public Factory<TempFileManager> getTempFileManagerFactory() {
         return tempFileManagerFactory;
     }
 
@@ -526,8 +526,8 @@ public abstract class NanoHTTPD {
      *            the incoming session
      * @return a response to the incoming session
      */
-    public Response handle(IHTTPSession session) {
-        for (IHandler<IHTTPSession, Response> interceptor : interceptors) {
+    public Response handle(HTTPSession session) {
+        for (Handler<HTTPSession, Response> interceptor : interceptors) {
             Response response = interceptor.handle(session);
             if (response != null)
                 return response;
@@ -546,8 +546,8 @@ public abstract class NanoHTTPD {
      * @return HTTP response, see class Response for details
      */
     @Deprecated
-    protected Response serve(IHTTPSession session) {
-        return Response.newFixedLengthResponse(Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
+    protected Response serve(HTTPSession session) {
+        return Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
     }
 
     /**
@@ -556,7 +556,7 @@ public abstract class NanoHTTPD {
      * @param asyncRunner
      *            new strategy for handling threads.
      */
-    public void setAsyncRunner(IAsyncRunner asyncRunner) {
+    public void setAsyncRunner(AsyncRunner asyncRunner) {
         this.asyncRunner = asyncRunner;
     }
 
@@ -566,7 +566,7 @@ public abstract class NanoHTTPD {
      * @param tempFileManagerFactory
      *            new strategy for handling temp files.
      */
-    public void setTempFileManagerFactory(IFactory<ITempFileManager> tempFileManagerFactory) {
+    public void setTempFileManagerFactory(Factory<TempFileManager> tempFileManagerFactory) {
         this.tempFileManagerFactory = tempFileManagerFactory;
     }
 

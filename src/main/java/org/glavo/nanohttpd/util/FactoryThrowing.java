@@ -34,16 +34,16 @@ package org.glavo.nanohttpd.util;
  */
 
 /**
- * Defines a generic handler that returns an object of type O when given an
- * object of type I.
+ * Represents a factory that can throw an exception instead of actually creating
+ * an object
  * 
  * @author LordFokas
- * @param <I>
- *            The input type.
- * @param <O>
- *            The output type.
+ * @param <T>
+ *            The Type of object to create
+ * @param <E>
+ *            The base Type of exceptions that can be thrown
  */
-public interface IHandler<I, O> {
+public interface FactoryThrowing<T, E extends Throwable> {
 
-    public O handle(I input);
+    T create() throws E;
 }
