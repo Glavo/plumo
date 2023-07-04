@@ -43,13 +43,7 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -60,6 +54,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
+import org.glavo.nanohttpd.protocols.http.mime.DefaultMIMETypesProvider;
+import org.glavo.nanohttpd.protocols.http.mime.MIMETypesProvider;
 import org.glavo.nanohttpd.protocols.http.response.Response;
 import org.glavo.nanohttpd.protocols.http.response.StandardStatus;
 import org.glavo.nanohttpd.protocols.http.sockets.DefaultServerSocketFactory;
@@ -181,6 +177,9 @@ public abstract class NanoHTTPD {
      */
     private static final String QUERY_STRING_PARAMETER = "NanoHttpd.QUERY_STRING";
 
+    private static final Handler<HTTPSession, Response> DEFAULT_HTTP_HANDLE =
+            session -> Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
+
     /**
      * logger to log to.
      */
@@ -189,42 +188,24 @@ public abstract class NanoHTTPD {
     /**
      * Hashtable mapping (String)FILENAME_EXTENSION -> (String)MIME_TYPE
      */
-    protected static Map<String, String> MIME_TYPES;
+    private static Map<String, String> MIME_TYPES;
 
     public static Map<String, String> mimeTypes() {
         if (MIME_TYPES == null) {
-            MIME_TYPES = new HashMap<>();
-            loadMimeTypes(MIME_TYPES, "META-INF/nanohttpd/default-mimetypes.properties");
-            loadMimeTypes(MIME_TYPES, "META-INF/nanohttpd/mimetypes.properties");
-            if (MIME_TYPES.isEmpty()) {
-                LOG.log(Level.WARNING, "no mime types found in the classpath! please provide mimetypes.properties");
+            Map<String, String> types = new HashMap<>();
+            //noinspection Java9UndeclaredServiceUsage
+            for (MIMETypesProvider provider : ServiceLoader.load(MIMETypesProvider.class)) {
+                provider.registerMIMETypes(types);
             }
+
+            if (types.isEmpty()) {
+                new DefaultMIMETypesProvider().registerMIMETypes(types);
+            }
+
+            MIME_TYPES = types;
         }
         return MIME_TYPES;
     }
-
-    @SuppressWarnings("unchecked")
-    private static void loadMimeTypes(Map<String, String> result, String resourceName) {
-        try {
-            Enumeration<URL> resources = NanoHTTPD.class.getClassLoader().getResources(resourceName);
-            while (resources.hasMoreElements()) {
-                URL url = resources.nextElement();
-                Properties properties = new Properties();
-                InputStream stream = null;
-                try {
-                    stream = url.openStream();
-                    properties.load(stream);
-                } catch (IOException e) {
-                    LOG.log(Level.SEVERE, "could not load mimetypes from " + url, e);
-                } finally {
-                    safeClose(stream);
-                }
-                result.putAll((Map<String, String>) (Map<?, ?>) properties);
-            }
-        } catch (IOException e) {
-            LOG.log(Level.INFO, "no mime types available at " + resourceName);
-        }
-    };
 
     /**
      * Creates an SSLSocketFactory for HTTPS. Pass a loaded KeyStore and an
@@ -361,7 +342,7 @@ public abstract class NanoHTTPD {
         /*
          * By default, this returns a 404 "Not Found" plain text error response.
          */
-        this.httpHandler = session -> Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
+        this.httpHandler = DEFAULT_HTTP_HANDLE;
     }
 
     public void setHTTPHandler(Handler<HTTPSession, Response> handler) {
