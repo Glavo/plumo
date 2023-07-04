@@ -1,10 +1,10 @@
-package org.glavo.webdav.nanohttpd.util;
+package org.glavo.webdav.nanohttpd.request;
 
 /*
  * #%L
- * NanoHttpd-Webserver
+ * NanoHttpd-Core
  * %%
- * Copyright (C) 2012 - 2015 nanohttpd
+ * Copyright (C) 2012 - 2016 nanohttpd
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -33,43 +33,39 @@ package org.glavo.webdav.nanohttpd.util;
  * #L%
  */
 
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+/**
+ * HTTP Request methods, with the ability to decode a <code>String</code> back
+ * to its enum value.
+ */
+public enum Method {
+    GET,
+    PUT,
+    POST,
+    DELETE,
+    HEAD,
+    OPTIONS,
+    TRACE,
+    CONNECT,
+    PATCH,
+    PROPFIND,
+    PROPPATCH,
+    MKCOL,
+    MOVE,
+    COPY,
+    LOCK,
+    UNLOCK,
+    NOTIFY,
+    SUBSCRIBE;
 
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
+    public static Method lookup(String method) {
+        if (method == null)
+            return null;
 
-public class ServerRunner {
-
-    /**
-     * logger to log to.
-     */
-    private static final Logger LOG = Logger.getLogger(ServerRunner.class.getName());
-
-    public static void executeInstance(NanoHTTPD server) {
         try {
-            server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-        } catch (IOException ioe) {
-            System.err.println("Couldn't start server:\n" + ioe);
-            System.exit(-1);
-        }
-
-        System.out.println("Server started, Hit Enter to stop.\n");
-
-        try {
-            System.in.read();
-        } catch (Throwable ignored) {
-        }
-
-        server.stop();
-        System.out.println("Server stopped.\n");
-    }
-
-    public static <T extends NanoHTTPD> void run(Class<T> serverClass) {
-        try {
-            executeInstance(serverClass.newInstance());
-        } catch (Exception e) {
-            ServerRunner.LOG.log(Level.SEVERE, "Could not create server", e);
+            return valueOf(method);
+        } catch (IllegalArgumentException e) {
+            // TODO: Log it?
+            return null;
         }
     }
 }

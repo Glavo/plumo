@@ -1,10 +1,10 @@
-package org.glavo.webdav.nanohttpd.util;
+package org.glavo.webdav.nanohttpd.tempfiles;
 
 /*
  * #%L
- * NanoHttpd-Webserver
+ * NanoHttpd-Core
  * %%
- * Copyright (C) 2012 - 2015 nanohttpd
+ * Copyright (C) 2012 - 2016 nanohttpd
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -33,43 +33,47 @@ package org.glavo.webdav.nanohttpd.util;
  * #L%
  */
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.io.OutputStream;
 
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
 
-public class ServerRunner {
+/**
+ * Default strategy for creating and cleaning up temporary files.
+ * <p/>
+ * <p>
+ * By default, files are created by <code>File.createTempFile()</code> in the
+ * directory specified.
+ * </p>
+ */
+public class DefaultTempFile implements TempFile {
 
-    /**
-     * logger to log to.
-     */
-    private static final Logger LOG = Logger.getLogger(ServerRunner.class.getName());
+    private final File file;
 
-    public static void executeInstance(NanoHTTPD server) {
-        try {
-            server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-        } catch (IOException ioe) {
-            System.err.println("Couldn't start server:\n" + ioe);
-            System.exit(-1);
-        }
+    private final OutputStream fstream;
 
-        System.out.println("Server started, Hit Enter to stop.\n");
-
-        try {
-            System.in.read();
-        } catch (Throwable ignored) {
-        }
-
-        server.stop();
-        System.out.println("Server stopped.\n");
+    public DefaultTempFile(File tempdir) throws IOException {
+        this.file = File.createTempFile("NanoHTTPD-", "", tempdir);
+        this.fstream = new FileOutputStream(this.file);
     }
 
-    public static <T extends NanoHTTPD> void run(Class<T> serverClass) {
-        try {
-            executeInstance(serverClass.newInstance());
-        } catch (Exception e) {
-            ServerRunner.LOG.log(Level.SEVERE, "Could not create server", e);
+    @Override
+    public void delete() throws Exception {
+        NanoHTTPD.safeClose(this.fstream);
+        if (!this.file.delete()) {
+            throw new Exception("could not delete temporary file: " + this.file.getAbsolutePath());
         }
+    }
+
+    @Override
+    public String getName() {
+        return this.file.getAbsolutePath();
+    }
+
+    @Override
+    public OutputStream open() throws Exception {
+        return this.fstream;
     }
 }

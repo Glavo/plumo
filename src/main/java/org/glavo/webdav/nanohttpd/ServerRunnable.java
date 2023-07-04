@@ -1,10 +1,10 @@
-package org.glavo.webdav.nanohttpd.util;
+package org.glavo.webdav.nanohttpd;
 
 /*
  * #%L
- * NanoHttpd-Webserver
+ * NanoHttpd-Core
  * %%
- * Copyright (C) 2012 - 2015 nanohttpd
+ * Copyright (C) 2012 - 2016 nanohttpd
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -34,42 +34,57 @@ package org.glavo.webdav.nanohttpd.util;
  */
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
+/**
+ * The runnable that will be used for the main listening thread.
+ */
+public class ServerRunnable implements Runnable {
 
-public class ServerRunner {
+    private final NanoHTTPD httpd;
 
-    /**
-     * logger to log to.
-     */
-    private static final Logger LOG = Logger.getLogger(ServerRunner.class.getName());
+    private final int timeout;
 
-    public static void executeInstance(NanoHTTPD server) {
-        try {
-            server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-        } catch (IOException ioe) {
-            System.err.println("Couldn't start server:\n" + ioe);
-            System.exit(-1);
-        }
+    private IOException bindException;
 
-        System.out.println("Server started, Hit Enter to stop.\n");
+    private boolean hasBinded = false;
 
-        try {
-            System.in.read();
-        } catch (Throwable ignored) {
-        }
-
-        server.stop();
-        System.out.println("Server stopped.\n");
+    public ServerRunnable(NanoHTTPD httpd, int timeout) {
+        this.httpd = httpd;
+        this.timeout = timeout;
     }
 
-    public static <T extends NanoHTTPD> void run(Class<T> serverClass) {
+    @Override
+    public void run() {
         try {
-            executeInstance(serverClass.newInstance());
-        } catch (Exception e) {
-            ServerRunner.LOG.log(Level.SEVERE, "Could not create server", e);
+            httpd.getMyServerSocket().bind(httpd.hostname != null ? new InetSocketAddress(httpd.hostname, httpd.myPort) : new InetSocketAddress(httpd.myPort));
+            hasBinded = true;
+        } catch (IOException e) {
+            this.bindException = e;
+            return;
         }
+        do {
+            try {
+                final Socket finalAccept = httpd.getMyServerSocket().accept();
+                if (this.timeout > 0) {
+                    finalAccept.setSoTimeout(this.timeout);
+                }
+                final InputStream inputStream = finalAccept.getInputStream();
+                httpd.asyncRunner.exec(httpd.createClientHandler(finalAccept, inputStream));
+            } catch (IOException e) {
+                NanoHTTPD.LOG.log(Level.FINE, "Communication with the client broken", e);
+            }
+        } while (!httpd.getMyServerSocket().isClosed());
+    }
+
+    public IOException getBindException() {
+        return bindException;
+    }
+
+    public boolean hasBinded() {
+        return hasBinded;
     }
 }

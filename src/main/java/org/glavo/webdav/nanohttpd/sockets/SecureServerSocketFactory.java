@@ -1,10 +1,10 @@
-package org.glavo.webdav.nanohttpd.util;
+package org.glavo.webdav.nanohttpd.sockets;
 
 /*
  * #%L
- * NanoHttpd-Webserver
+ * NanoHttpd-Core
  * %%
- * Copyright (C) 2012 - 2015 nanohttpd
+ * Copyright (C) 2012 - 2016 nanohttpd
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -34,42 +34,40 @@ package org.glavo.webdav.nanohttpd.util;
  */
 
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.net.ServerSocket;
 
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
 
-public class ServerRunner {
+import org.glavo.webdav.nanohttpd.util.FactoryThrowing;
 
-    /**
-     * logger to log to.
-     */
-    private static final Logger LOG = Logger.getLogger(ServerRunner.class.getName());
+/**
+ * Creates a new SSLServerSocket
+ */
+public class SecureServerSocketFactory implements FactoryThrowing<ServerSocket, IOException> {
 
-    public static void executeInstance(NanoHTTPD server) {
-        try {
-            server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-        } catch (IOException ioe) {
-            System.err.println("Couldn't start server:\n" + ioe);
-            System.exit(-1);
-        }
+    private final SSLServerSocketFactory sslServerSocketFactory;
 
-        System.out.println("Server started, Hit Enter to stop.\n");
+    private final String[] sslProtocols;
 
-        try {
-            System.in.read();
-        } catch (Throwable ignored) {
-        }
-
-        server.stop();
-        System.out.println("Server stopped.\n");
+    public SecureServerSocketFactory(SSLServerSocketFactory sslServerSocketFactory, String[] sslProtocols) {
+        this.sslServerSocketFactory = sslServerSocketFactory;
+        this.sslProtocols = sslProtocols;
     }
 
-    public static <T extends NanoHTTPD> void run(Class<T> serverClass) {
-        try {
-            executeInstance(serverClass.newInstance());
-        } catch (Exception e) {
-            ServerRunner.LOG.log(Level.SEVERE, "Could not create server", e);
+    @Override
+    public ServerSocket create() throws IOException {
+        SSLServerSocket ss;
+        ss = (SSLServerSocket) this.sslServerSocketFactory.createServerSocket();
+        if (this.sslProtocols != null) {
+            ss.setEnabledProtocols(this.sslProtocols);
+        } else {
+            ss.setEnabledProtocols(ss.getSupportedProtocols());
         }
+        ss.setUseClientMode(false);
+        ss.setWantClientAuth(false);
+        ss.setNeedClientAuth(false);
+        return ss;
     }
+
 }

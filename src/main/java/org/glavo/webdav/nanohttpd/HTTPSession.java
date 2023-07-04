@@ -1,10 +1,10 @@
-package org.glavo.webdav.nanohttpd.util;
+package org.glavo.webdav.nanohttpd;
 
 /*
  * #%L
- * NanoHttpd-Webserver
+ * NanoHttpd-Core
  * %%
- * Copyright (C) 2012 - 2015 nanohttpd
+ * Copyright (C) 2012 - 2016 nanohttpd
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -34,42 +34,49 @@ package org.glavo.webdav.nanohttpd.util;
  */
 
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
 
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
+import org.glavo.webdav.nanohttpd.request.Method;
+import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
-public class ServerRunner {
+/**
+ * Handles one session, i.e. parses the HTTP request and returns the response.
+ */
+public interface HTTPSession {
+
+    void execute() throws IOException;
+
+    CookieHandler getCookies();
+
+    Map<String, String> getHeaders();
+
+    InputStream getInputStream();
+
+    Method getMethod();
+
+    Map<String, List<String>> getParameters();
+
+    String getQueryParameterString();
 
     /**
-     * logger to log to.
+     * @return the path part of the URL.
      */
-    private static final Logger LOG = Logger.getLogger(ServerRunner.class.getName());
+    String getUri();
 
-    public static void executeInstance(NanoHTTPD server) {
-        try {
-            server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-        } catch (IOException ioe) {
-            System.err.println("Couldn't start server:\n" + ioe);
-            System.exit(-1);
-        }
+    /**
+     * Adds the files in the request body to the files map.
+     * 
+     * @param files
+     *            map to modify
+     */
+    void parseBody(Map<String, String> files) throws IOException, NanoHTTPD.ResponseException;
 
-        System.out.println("Server started, Hit Enter to stop.\n");
-
-        try {
-            System.in.read();
-        } catch (Throwable ignored) {
-        }
-
-        server.stop();
-        System.out.println("Server stopped.\n");
-    }
-
-    public static <T extends NanoHTTPD> void run(Class<T> serverClass) {
-        try {
-            executeInstance(serverClass.newInstance());
-        } catch (Exception e) {
-            ServerRunner.LOG.log(Level.SEVERE, "Could not create server", e);
-        }
-    }
+    /**
+     * Get the remote ip address of the requester.
+     * 
+     * @return the IP address.
+     */
+    String getRemoteIpAddress();
 }

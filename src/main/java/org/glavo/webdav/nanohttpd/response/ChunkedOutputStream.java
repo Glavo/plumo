@@ -1,25 +1,25 @@
-package org.glavo.webdav.nanohttpd.util;
+package org.glavo.webdav.nanohttpd.response;
 
 /*
  * #%L
- * NanoHttpd-Webserver
+ * NanoHttpd-Core
  * %%
- * Copyright (C) 2012 - 2015 nanohttpd
+ * Copyright (C) 2012 - 2016 nanohttpd
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the nanohttpd nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -33,43 +33,46 @@ package org.glavo.webdav.nanohttpd.util;
  * #L%
  */
 
+import java.io.FilterOutputStream;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
+/**
+ * Output stream that will automatically send every write to the wrapped
+ * OutputStream according to chunked transfer:
+ * http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.6.1
+ */
+public class ChunkedOutputStream extends FilterOutputStream {
 
-public class ServerRunner {
+    private static final byte[] CRLF = {'\r', '\n'};
+    private static final byte[] FINISH = {'0', '\r', '\n', '\r', '\n'};
 
-    /**
-     * logger to log to.
-     */
-    private static final Logger LOG = Logger.getLogger(ServerRunner.class.getName());
-
-    public static void executeInstance(NanoHTTPD server) {
-        try {
-            server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-        } catch (IOException ioe) {
-            System.err.println("Couldn't start server:\n" + ioe);
-            System.exit(-1);
-        }
-
-        System.out.println("Server started, Hit Enter to stop.\n");
-
-        try {
-            System.in.read();
-        } catch (Throwable ignored) {
-        }
-
-        server.stop();
-        System.out.println("Server stopped.\n");
+    public ChunkedOutputStream(OutputStream out) {
+        super(out);
     }
 
-    public static <T extends NanoHTTPD> void run(Class<T> serverClass) {
-        try {
-            executeInstance(serverClass.newInstance());
-        } catch (Exception e) {
-            ServerRunner.LOG.log(Level.SEVERE, "Could not create server", e);
-        }
+    @Override
+    public void write(int b) throws IOException {
+        byte[] data = {(byte) b};
+        write(data, 0, 1);
+    }
+
+    @Override
+    public void write(byte[] b) throws IOException {
+        write(b, 0, b.length);
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+        if (len == 0)
+            return;
+        out.write(String.format("%x\r\n", len).getBytes(StandardCharsets.ISO_8859_1));
+        out.write(b, off, len);
+        out.write(CRLF);
+    }
+
+    public void finish() throws IOException {
+        out.write(FINISH);
     }
 }
