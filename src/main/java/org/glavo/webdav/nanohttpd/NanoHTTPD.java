@@ -42,6 +42,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.*;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -64,7 +65,6 @@ import org.glavo.webdav.nanohttpd.threading.DefaultAsyncRunner;
 import org.glavo.webdav.nanohttpd.threading.AsyncRunner;
 import org.glavo.webdav.nanohttpd.util.Factory;
 import org.glavo.webdav.nanohttpd.util.FactoryThrowing;
-import org.glavo.webdav.nanohttpd.util.Handler;
 
 /**
  * A simple, tiny, nicely embeddable HTTP server in Java
@@ -175,7 +175,7 @@ public abstract class NanoHTTPD {
      */
     private static final String QUERY_STRING_PARAMETER = "NanoHttpd.QUERY_STRING";
 
-    private static final Handler<HTTPSession, Response> DEFAULT_HTTP_HANDLE =
+    private static final Function<HTTPSession, Response> DEFAULT_HTTP_HANDLE =
             session -> Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
 
     /**
@@ -299,9 +299,9 @@ public abstract class NanoHTTPD {
 
     private Thread myThread;
 
-    private Handler<HTTPSession, Response> httpHandler;
+    private Function<HTTPSession, Response> httpHandler;
 
-    protected List<Handler<HTTPSession, Response>> interceptors = new ArrayList<>(4);
+    protected List<Function<HTTPSession, Response>> interceptors = new ArrayList<>(4);
 
     /**
      * Pluggable strategy for asynchronously executing requests.
@@ -343,11 +343,11 @@ public abstract class NanoHTTPD {
         this.httpHandler = DEFAULT_HTTP_HANDLE;
     }
 
-    public void setHTTPHandler(Handler<HTTPSession, Response> handler) {
+    public void setHTTPHandler(Function<HTTPSession, Response> handler) {
         this.httpHandler = handler;
     }
 
-    public void addHTTPInterceptor(Handler<HTTPSession, Response> interceptor) {
+    public void addHTTPInterceptor(Function<HTTPSession, Response> interceptor) {
         interceptors.add(interceptor);
     }
 
@@ -486,12 +486,12 @@ public abstract class NanoHTTPD {
      * @return a response to the incoming session
      */
     public Response handle(HTTPSession session) {
-        for (Handler<HTTPSession, Response> interceptor : interceptors) {
-            Response response = interceptor.handle(session);
+        for (Function<HTTPSession, Response> interceptor : interceptors) {
+            Response response = interceptor.apply(session);
             if (response != null)
                 return response;
         }
-        return httpHandler.handle(session);
+        return httpHandler.apply(session);
     }
 
     /**
