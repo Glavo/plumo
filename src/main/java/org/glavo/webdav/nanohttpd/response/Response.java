@@ -101,10 +101,6 @@ public class Response implements Closeable {
     /**
      * Creates a fixed length response if totalBytes>=0, otherwise chunked.
      */
-    @SuppressWarnings({
-        "rawtypes",
-        "unchecked"
-    })
     protected Response(Status status, String mimeType, InputStream data, long totalBytes) {
         this.status = status;
         this.mimeType = mimeType;
