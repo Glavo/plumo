@@ -44,6 +44,7 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -409,11 +410,11 @@ public class Response implements Closeable {
         if (txt == null) {
             return newFixedLengthResponse(status, mimeType, new ByteArrayInputStream(new byte[0]), 0);
         } else {
-            CharsetEncoder newEncoder = contentType.getEncoding().newEncoder();
-            if (!newEncoder.canEncode(txt)) {
-                contentType = contentType.tryUTF8();
+            Charset encoding = contentType.getEncoding();
+            if (encoding == StandardCharsets.US_ASCII && !encoding.newEncoder().canEncode(txt)) {
+                encoding = StandardCharsets.UTF_8;
             }
-            byte[] bytes = txt.getBytes(contentType.getEncoding());
+            byte[] bytes = txt.getBytes(encoding);
             return newFixedLengthResponse(status, contentType.getContentTypeHeader(), new ByteArrayInputStream(bytes), bytes.length);
         }
     }

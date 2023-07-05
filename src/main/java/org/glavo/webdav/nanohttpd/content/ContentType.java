@@ -112,11 +112,4 @@ public class ContentType {
     public boolean isMultipart() {
         return MULTIPART_FORM_DATA_HEADER.equalsIgnoreCase(contentType);
     }
-
-    public ContentType tryUTF8() {
-        if (encoding == null) {
-            return new ContentType(this.contentTypeHeader + "; charset=UTF-8");
-        }
-        return this;
-    }
 }
