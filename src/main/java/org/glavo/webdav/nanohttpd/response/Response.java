@@ -87,18 +87,7 @@ public class Response implements Closeable {
      * Headers for the HTTP response. Use addHeader() to add lines. the
      * lowercase map is automatically kept up to date.
      */
-    private final Map<String, String> header = new HashMap<>() {
-
-        public String put(String key, String value) {
-            lowerCaseHeader.put(key != null ? key.toLowerCase(Locale.ROOT) : null, value);
-            return super.put(key, value);
-        }
-    };
-
-    /**
-     * copy of the header map with all the keys lowercase for faster searching.
-     */
-    private final Map<String, String> lowerCaseHeader = new HashMap<>();
+    private final Map<String, String> header = new HashMap<>();
 
     /**
      * The request method that spawned this response.
@@ -167,7 +156,7 @@ public class Response implements Closeable {
      * Adds given line to the header.
      */
     public void addHeader(String name, String value) {
-        this.header.put(name, value);
+        this.header.put(name.toLowerCase(Locale.ROOT), value);
     }
 
     /**
@@ -189,7 +178,7 @@ public class Response implements Closeable {
      *         has been sent.
      */
     public boolean isCloseConnection() {
-        return "close".equals(getHeader("connection"));
+        return "close".equals(header.get("connection"));
     }
 
     public InputStream getData() {
@@ -197,7 +186,7 @@ public class Response implements Closeable {
     }
 
     public String getHeader(String name) {
-        return this.lowerCaseHeader.get(name.toLowerCase(Locale.ROOT));
+        return this.header.get(name.toLowerCase(Locale.ROOT));
     }
 
     public String getMimeType() {
@@ -230,30 +219,30 @@ public class Response implements Closeable {
             PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream, new ContentType(this.mimeType).getEncoding())), false);
             pw.append("HTTP/1.1 ").append(this.status.getDescription()).append(" \r\n");
             if (this.mimeType != null) {
-                printHeader(pw, "Content-Type", this.mimeType);
+                printHeader(pw, "content-type", this.mimeType);
             }
-            if (getHeader("date") == null) {
-                printHeader(pw, "Date", gmtFrmt.format(new Date()));
+            if (header.get("date") == null) {
+                printHeader(pw, "date", gmtFrmt.format(new Date()));
             }
             for (Entry<String, String> entry : this.header.entrySet()) {
                 printHeader(pw, entry.getKey(), entry.getValue());
             }
             for (String cookieHeader : this.cookieHeaders) {
-                printHeader(pw, "Set-Cookie", cookieHeader);
+                printHeader(pw, "set-cookie", cookieHeader);
             }
-            if (getHeader("connection") == null) {
-                printHeader(pw, "Connection", (this.keepAlive ? "keep-alive" : "close"));
+            if (header.get("connection") == null) {
+                printHeader(pw, "connection", (this.keepAlive ? "keep-alive" : "close"));
             }
-            if (getHeader("content-length") != null) {
+            if (header.get("content-length") != null) {
                 setUseGzip(false);
             }
             if (useGzipWhenAccepted()) {
-                printHeader(pw, "Content-Encoding", "gzip");
+                printHeader(pw, "content-encoding", "gzip");
                 setChunkedTransfer(true);
             }
             long pending = this.data != null ? this.contentLength : 0;
             if (this.requestMethod != Method.HEAD && this.chunkedTransfer) {
-                printHeader(pw, "Transfer-Encoding", "chunked");
+                printHeader(pw, "transfer-encoding", "chunked");
             } else if (!useGzipWhenAccepted()) {
                 pending = sendContentLengthHeaderIfNotAlreadyPresent(pw, pending);
             }
@@ -267,13 +256,12 @@ public class Response implements Closeable {
         }
     }
 
-    @SuppressWarnings("static-method")
     protected void printHeader(PrintWriter pw, String key, String value) {
         pw.append(key).append(": ").append(value).append("\r\n");
     }
 
     protected long sendContentLengthHeaderIfNotAlreadyPresent(PrintWriter pw, long defaultSize) {
-        String contentLengthString = getHeader("content-length");
+        String contentLengthString = header.get("content-length");
         long size = defaultSize;
         if (contentLengthString != null) {
             try {
@@ -282,7 +270,7 @@ public class Response implements Closeable {
                 NanoHTTPD.LOG.severe("content-length was no number " + contentLengthString);
             }
         }else{
-        	pw.print("Content-Length: " + size + "\r\n");
+        	pw.print("content-length: " + size + "\r\n");
         }
         return size;
     }
