@@ -38,4 +38,8 @@ public interface Status {
     String getDescription();
 
     int getRequestStatus();
+
+    default String getStatusWithDescription() {
+        return getRequestStatus() + " " + getDescription();
+    }
 }

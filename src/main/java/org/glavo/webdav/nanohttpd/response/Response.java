@@ -41,19 +41,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 
@@ -89,6 +81,8 @@ public class Response implements Closeable {
      */
     private final Map<String, String> header = new HashMap<>();
 
+    private final Map<String, List<String>> multiHeader = new HashMap<>();
+
     /**
      * The request method that spawned this response.
      */
@@ -100,8 +94,6 @@ public class Response implements Closeable {
     private boolean chunkedTransfer;
 
     private boolean keepAlive;
-
-    private final List<String> cookieHeaders;
 
     private Boolean gzipUsage;
 
@@ -124,7 +116,6 @@ public class Response implements Closeable {
         }
         this.chunkedTransfer = this.contentLength < 0;
         this.keepAlive = true;
-        this.cookieHeaders = new ArrayList(10);
     }
 
     @Override
@@ -135,28 +126,23 @@ public class Response implements Closeable {
     }
 
     /**
-     * Adds a cookie header to the list. Should not be called manually, this is
-     * an internal utility.
-     */
-    public void addCookieHeader(String cookie) {
-        cookieHeaders.add(cookie);
-    }
-
-    /**
-     * Should not be called manually. This is an internally utility for JUnit
-     * test purposes.
-     *
-     * @return All unloaded cookie headers.
-     */
-    public List<String> getCookieHeaders() {
-        return cookieHeaders;
-    }
-
-    /**
      * Adds given line to the header.
      */
     public void addHeader(String name, String value) {
         this.header.put(name.toLowerCase(Locale.ROOT), value);
+    }
+
+    public List<String> getMultiHeaders(String name) {
+        return multiHeader.computeIfAbsent(name.toLowerCase(Locale.ROOT),
+                n -> new ArrayList<>(4));
+    }
+
+    public void addMultiHeader(String name, String value) {
+        getMultiHeaders(name).add(value);
+    }
+
+    public void addMultiHeaders(String name, String... values) {
+        Collections.addAll(getMultiHeaders(name), values);
     }
 
     /**
@@ -217,7 +203,7 @@ public class Response implements Closeable {
                 throw new Error("sendResponse(): Status can't be null.");
             }
             PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream, new ContentType(this.mimeType).getEncoding())), false);
-            pw.append("HTTP/1.1 ").append(this.status.getDescription()).append(" \r\n");
+            pw.append("HTTP/1.1 ").append(this.status.getStatusWithDescription()).append(" \r\n");
             if (this.mimeType != null) {
                 printHeader(pw, "content-type", this.mimeType);
             }
@@ -227,8 +213,10 @@ public class Response implements Closeable {
             for (Entry<String, String> entry : this.header.entrySet()) {
                 printHeader(pw, entry.getKey(), entry.getValue());
             }
-            for (String cookieHeader : this.cookieHeaders) {
-                printHeader(pw, "set-cookie", cookieHeader);
+            for (Entry<String, List<String>> entry : this.multiHeader.entrySet()) {
+                for (String header : entry.getValue()) {
+                    printHeader(pw, entry.getKey(), header);
+                }
             }
             if (header.get("connection") == null) {
                 printHeader(pw, "connection", (this.keepAlive ? "keep-alive" : "close"));

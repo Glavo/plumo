@@ -101,7 +101,7 @@ public enum StandardStatus implements Status {
 
     @Override
     public String getDescription() {
-        return this.requestStatus + " " + this.description;
+        return this.description;
     }
 
     @Override

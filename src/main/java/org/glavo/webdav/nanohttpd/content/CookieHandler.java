@@ -33,10 +33,7 @@ package org.glavo.webdav.nanohttpd.content;
  * #L%
  */
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 import org.glavo.webdav.nanohttpd.response.Response;
 
@@ -120,8 +117,9 @@ public class CookieHandler implements Iterable<String> {
      *            be added.
      */
     public void unloadQueue(Response response) {
+        List<String> cookieHeaders = response.getMultiHeaders("set-cookie");
         for (Cookie cookie : this.queue) {
-            response.addCookieHeader(cookie.getHTTPHeader());
+            cookieHeaders.add(cookie.getHTTPHeader());
         }
     }
 }
