@@ -49,7 +49,7 @@ import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 
-import org.glavo.webdav.nanohttpd.content.Cookie;
+import org.glavo.webdav.nanohttpd.internal.HttpUtils;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.content.ContentType;
@@ -206,7 +206,7 @@ public class Response implements Closeable {
                 printHeader(pw, "content-type", this.mimeType);
             }
             if (header.get("date") == null) {
-                printHeader(pw, "date", Cookie.HTTP_TIME_FORMATTER.format(Instant.now()));
+                printHeader(pw, "date", HttpUtils.getHttpTime(Instant.now()));
             }
             for (Entry<String, String> entry : this.header.entrySet()) {
                 printHeader(pw, entry.getKey(), entry.getValue());

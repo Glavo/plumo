@@ -105,7 +105,7 @@ public class CookieHandler implements Iterable<String> {
      *            How many days until the cookie expires.
      */
     public void set(String name, String value, int expires) {
-        this.queue.add(new Cookie(name, value, Cookie.getHTTPTime(expires)));
+        this.queue.add(new Cookie(name, value, expires));
     }
 
     /**

@@ -33,10 +33,9 @@ package org.glavo.webdav.nanohttpd.content;
  * #L%
  */
 
+import org.glavo.webdav.nanohttpd.internal.HttpUtils;
+
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 /**
  * A simple cookie representation. This is old code and is flawed in many ways.
@@ -44,14 +43,6 @@ import java.util.Locale;
  * @author LordFokas
  */
 public class Cookie {
-
-    public static final DateTimeFormatter HTTP_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.US).withZone(ZoneOffset.UTC);
-
-    public static String getHTTPTime(int days) {
-        return HTTP_TIME_FORMATTER.format(Instant.now().plusSeconds(Math.multiplyExact(days, 86400L)));
-    }
-
     private final String n, v, e;
 
     public Cookie(String name, String value) {
@@ -61,7 +52,7 @@ public class Cookie {
     public Cookie(String name, String value, int numDays) {
         this.n = name;
         this.v = value;
-        this.e = getHTTPTime(numDays);
+        this.e = HttpUtils.getHttpTime(Instant.now().plusSeconds(Math.multiplyExact(numDays, 86400L)));
     }
 
     public Cookie(String name, String value, String expires) {
