@@ -114,13 +114,7 @@ public class Response implements Closeable {
 
     private final List<String> cookieHeaders;
 
-    private GzipUsage gzipUsage = GzipUsage.DEFAULT;
-
-    private enum GzipUsage {
-        DEFAULT,
-        ALWAYS,
-        NEVER;
-    }
+    private Boolean gzipUsage;
 
     /**
      * Creates a fixed length response if totalBytes>=0, otherwise chunked.
@@ -427,14 +421,14 @@ public class Response implements Closeable {
     }
 
     public Response setUseGzip(boolean useGzip) {
-        gzipUsage = useGzip ? GzipUsage.ALWAYS : GzipUsage.NEVER;
+        gzipUsage = useGzip;
         return this;
     }
 
     // If a Gzip usage has been enforced, use it.
     // Else decide whether to use Gzip.
     public boolean useGzipWhenAccepted() {
-        if (gzipUsage == GzipUsage.DEFAULT) {
+        if (gzipUsage == null) {
             if (getMimeType() == null) {
                 return false;
             }
@@ -443,6 +437,6 @@ public class Response implements Closeable {
             return lowerMimeType.contains("text/") || lowerMimeType.contains("/json");
         }
 
-        return gzipUsage == GzipUsage.ALWAYS;
+        return gzipUsage;
     }
 }
