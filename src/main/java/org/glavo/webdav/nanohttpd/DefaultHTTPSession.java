@@ -65,6 +65,7 @@ import javax.net.ssl.SSLException;
 
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.response.Response;
+import org.glavo.webdav.nanohttpd.response.ResponseException;
 import org.glavo.webdav.nanohttpd.response.StandardStatus;
 import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
 import org.glavo.webdav.nanohttpd.content.ContentType;
@@ -129,7 +130,7 @@ public class DefaultHTTPSession implements HTTPSession {
     /**
      * Decodes the sent headers and loads the data into Key/value pairs
      */
-    private void decodeHeader(BufferedReader in, Map<String, String> pre, Map<String, List<String>> parms, Map<String, String> headers) throws NanoHTTPD.ResponseException {
+    private void decodeHeader(BufferedReader in, Map<String, String> pre, Map<String, List<String>> parms, Map<String, String> headers) throws ResponseException {
         try {
             // Read the request line
             String inLine = in.readLine();
@@ -139,13 +140,13 @@ public class DefaultHTTPSession implements HTTPSession {
 
             StringTokenizer st = new StringTokenizer(inLine);
             if (!st.hasMoreTokens()) {
-                throw new NanoHTTPD.ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Syntax error. Usage: GET /example/file.html");
+                throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Syntax error. Usage: GET /example/file.html");
             }
 
             pre.put("method", st.nextToken());
 
             if (!st.hasMoreTokens()) {
-                throw new NanoHTTPD.ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Missing URI. Usage: GET /example/file.html");
+                throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Missing URI. Usage: GET /example/file.html");
             }
 
             String uri = st.nextToken();
@@ -180,19 +181,19 @@ public class DefaultHTTPSession implements HTTPSession {
 
             pre.put("uri", uri);
         } catch (IOException ioe) {
-            throw new NanoHTTPD.ResponseException(StandardStatus.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage(), ioe);
+            throw new ResponseException(StandardStatus.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage(), ioe);
         }
     }
 
     /**
      * Decodes the Multipart Body data and put it into Key/Value pairs.
      */
-    private void decodeMultipartFormData(ContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws NanoHTTPD.ResponseException {
+    private void decodeMultipartFormData(ContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws ResponseException {
         int pcount = 0;
         try {
             int[] boundaryIdxs = getBoundaryPositions(fbuf, contentType.getBoundary().getBytes(StandardCharsets.UTF_8));
             if (boundaryIdxs.length < 2) {
-                throw new NanoHTTPD.ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but contains less than two boundary strings.");
+                throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but contains less than two boundary strings.");
             }
 
             byte[] partHeaderBuff = new byte[MAX_HEADER_SIZE];
@@ -208,7 +209,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 String mpline = in.readLine();
                 headerLines++;
                 if (mpline == null || !mpline.contains(contentType.getBoundary())) {
-                    throw new NanoHTTPD.ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but chunk does not start with boundary.");
+                    throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but chunk does not start with boundary.");
                 }
 
                 String partName = null, fileName = null, partContentType = null;
@@ -250,7 +251,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 }
                 // Read the part data
                 if (partHeaderLength >= len - 4) {
-                    throw new NanoHTTPD.ResponseException(StandardStatus.INTERNAL_ERROR, "Multipart header size exceeds MAX_HEADER_SIZE.");
+                    throw new ResponseException(StandardStatus.INTERNAL_ERROR, "Multipart header size exceeds MAX_HEADER_SIZE.");
                 }
                 int partDataStart = boundaryIdxs[boundaryIdx] + partHeaderLength;
                 int partDataEnd = boundaryIdxs[boundaryIdx + 1] - 4;
@@ -280,10 +281,10 @@ public class DefaultHTTPSession implements HTTPSession {
                     values.add(fileName);
                 }
             }
-        } catch (NanoHTTPD.ResponseException re) {
+        } catch (ResponseException re) {
             throw re;
         } catch (Exception e) {
-            throw new NanoHTTPD.ResponseException(StandardStatus.INTERNAL_ERROR, e.toString());
+            throw new ResponseException(StandardStatus.INTERNAL_ERROR, e.toString());
         }
     }
 
@@ -389,7 +390,7 @@ public class DefaultHTTPSession implements HTTPSession {
 
             this.method = Method.lookup(pre.get("method"));
             if (this.method == null) {
-                throw new NanoHTTPD.ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Syntax error. HTTP verb " + pre.get("method") + " unhandled.");
+                throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Syntax error. HTTP verb " + pre.get("method") + " unhandled.");
             }
 
             this.uri = pre.get("uri");
@@ -409,7 +410,7 @@ public class DefaultHTTPSession implements HTTPSession {
             // (this.inputStream.totalRead() - pos_before_serve))
 
             if (r == null) {
-                throw new NanoHTTPD.ResponseException(StandardStatus.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
+                throw new ResponseException(StandardStatus.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
             } else {
                 String acceptEncoding = this.headers.get("accept-encoding");
                 this.cookies.unloadQueue(r);
@@ -439,7 +440,7 @@ public class DefaultHTTPSession implements HTTPSession {
             Response resp = Response.newFixedLengthResponse(StandardStatus.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage());
             resp.send(this.outputStream);
             NanoHTTPD.safeClose(this.outputStream);
-        } catch (NanoHTTPD.ResponseException re) {
+        } catch (ResponseException re) {
             Response resp = Response.newFixedLengthResponse(re.getStatus(), NanoHTTPD.MIME_PLAINTEXT, re.getMessage());
             resp.send(this.outputStream);
             NanoHTTPD.safeClose(this.outputStream);
@@ -575,7 +576,7 @@ public class DefaultHTTPSession implements HTTPSession {
     }
 
     @Override
-    public void parseBody(Map<String, String> files) throws IOException, NanoHTTPD.ResponseException {
+    public void parseBody(Map<String, String> files) throws IOException, ResponseException {
         RandomAccessFile randomAccessFile = null;
         try {
             long size = getBodySize();
@@ -616,7 +617,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 if (contentType.isMultipart()) {
                     String boundary = contentType.getBoundary();
                     if (boundary == null) {
-                        throw new NanoHTTPD.ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but boundary missing. Usage: GET /example/file.html");
+                        throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but boundary missing. Usage: GET /example/file.html");
                     }
                     decodeMultipartFormData(contentType, fbuf, this.parms, files);
                 } else {

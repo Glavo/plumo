@@ -40,6 +40,7 @@ import java.util.Map;
 
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
+import org.glavo.webdav.nanohttpd.response.ResponseException;
 
 /**
  * Handles one session, i.e. parses the HTTP request and returns the response.
@@ -71,7 +72,7 @@ public interface HTTPSession {
      * @param files
      *            map to modify
      */
-    void parseBody(Map<String, String> files) throws IOException, NanoHTTPD.ResponseException;
+    void parseBody(Map<String, String> files) throws IOException, ResponseException;
 
     /**
      * Get the remote ip address of the requester.

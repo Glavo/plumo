@@ -58,6 +58,7 @@ import org.glavo.webdav.nanohttpd.mime.DefaultMimeTypesProvider;
 import org.glavo.webdav.nanohttpd.mime.MimeTypesProvider;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.StandardStatus;
+import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
 import org.glavo.webdav.nanohttpd.sockets.SocketFactory;
 import org.glavo.webdav.nanohttpd.tempfiles.DefaultTempFileManager;
@@ -129,27 +130,6 @@ public abstract class NanoHTTPD {
     public static final String CONTENT_DISPOSITION_ATTRIBUTE_REGEX = "[ |\t]*([a-zA-Z]*)[ |\t]*=[ |\t]*['|\"]([^\"^']*)['|\"]";
 
     public static final Pattern CONTENT_DISPOSITION_ATTRIBUTE_PATTERN = Pattern.compile(CONTENT_DISPOSITION_ATTRIBUTE_REGEX);
-
-    public static final class ResponseException extends Exception {
-
-        private static final long serialVersionUID = 6569838532917408380L;
-
-        private final StandardStatus status;
-
-        public ResponseException(StandardStatus status, String message) {
-            super(message);
-            this.status = status;
-        }
-
-        public ResponseException(StandardStatus status, String message, Exception e) {
-            super(message, e);
-            this.status = status;
-        }
-
-        public StandardStatus getStatus() {
-            return this.status;
-        }
-    }
 
     /**
      * Maximum time to wait on Socket.getInputStream().read() (in milliseconds)
