@@ -67,14 +67,17 @@ public final class DefaultTempFileManager implements TempFileManager {
     private final Path dir;
     private final Set<PosixFilePermission> filePermissions;
 
+    private final boolean deleteDir;
     private final List<Path> tempFiles = new ArrayList<>();
 
     public DefaultTempFileManager() {
         Path dir;
         Set<PosixFilePermission> permissions = null;
+        boolean deleteDir = false;
 
         try {
             dir = Files.createTempDirectory("NanoHTTPD-");
+            deleteDir = true;
 
             // CVE-2022-21230
             PosixFileAttributeView view = Files.getFileAttributeView(dir, PosixFileAttributeView.class, EMPTY_LINK_OPTIONS);
@@ -98,6 +101,7 @@ public final class DefaultTempFileManager implements TempFileManager {
         }
 
         this.dir = dir;
+        this.deleteDir = deleteDir;
         this.filePermissions = permissions;
     }
 
@@ -111,6 +115,14 @@ public final class DefaultTempFileManager implements TempFileManager {
             }
         }
         this.tempFiles.clear();
+
+        if (deleteDir) {
+            try {
+                Files.delete(dir);
+            } catch (Exception e) {
+                NanoHTTPD.LOG.log(Level.WARNING, "Could not delete temporary dir", e);
+            }
+        }
     }
 
     private static boolean isSimpleName(String fileName) {
