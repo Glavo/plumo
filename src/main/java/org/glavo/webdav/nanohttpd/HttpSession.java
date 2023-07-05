@@ -45,7 +45,7 @@ import org.glavo.webdav.nanohttpd.response.ResponseException;
 /**
  * Handles one session, i.e. parses the HTTP request and returns the response.
  */
-public interface HTTPSession {
+public interface HttpSession {
 
     void execute() throws IOException;
 

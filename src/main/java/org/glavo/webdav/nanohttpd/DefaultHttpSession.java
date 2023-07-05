@@ -71,7 +71,7 @@ import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
 import org.glavo.webdav.nanohttpd.content.ContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
-public class DefaultHTTPSession implements HTTPSession {
+public class DefaultHttpSession implements HttpSession {
 
     public static final String POST_DATA = "postData";
 
@@ -111,17 +111,17 @@ public class DefaultHTTPSession implements HTTPSession {
 
     private String protocolVersion;
 
-    public DefaultHTTPSession(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
+    public DefaultHttpSession(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
         this.httpd = httpd;
         this.tempFileManager = tempFileManager;
-        this.inputStream = new BufferedInputStream(inputStream, DefaultHTTPSession.BUFSIZE);
+        this.inputStream = new BufferedInputStream(inputStream, DefaultHttpSession.BUFSIZE);
         this.outputStream = outputStream;
     }
 
-    public DefaultHTTPSession(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
+    public DefaultHttpSession(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
         this.httpd = httpd;
         this.tempFileManager = tempFileManager;
-        this.inputStream = new BufferedInputStream(inputStream, DefaultHTTPSession.BUFSIZE);
+        this.inputStream = new BufferedInputStream(inputStream, DefaultHttpSession.BUFSIZE);
         this.outputStream = outputStream;
         this.remoteIp = inetAddress.isLoopbackAddress() || inetAddress.isAnyLocalAddress() ? "127.0.0.1" : inetAddress.getHostAddress();
         this.headers = new HashMap<>();
@@ -334,14 +334,14 @@ public class DefaultHTTPSession implements HTTPSession {
             // Apache's default header limit is 8KB.
             // Do NOT assume that a single read will get the entire header
             // at once!
-            byte[] buf = new byte[DefaultHTTPSession.BUFSIZE];
+            byte[] buf = new byte[DefaultHttpSession.BUFSIZE];
             this.splitbyte = 0;
             this.rlen = 0;
 
             int read = -1;
-            this.inputStream.mark(DefaultHTTPSession.BUFSIZE);
+            this.inputStream.mark(DefaultHttpSession.BUFSIZE);
             try {
-                read = this.inputStream.read(buf, 0, DefaultHTTPSession.BUFSIZE);
+                read = this.inputStream.read(buf, 0, DefaultHttpSession.BUFSIZE);
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {
@@ -361,7 +361,7 @@ public class DefaultHTTPSession implements HTTPSession {
                 if (this.splitbyte > 0) {
                     break;
                 }
-                read = this.inputStream.read(buf, this.rlen, DefaultHTTPSession.BUFSIZE - this.rlen);
+                read = this.inputStream.read(buf, this.rlen, DefaultHttpSession.BUFSIZE - this.rlen);
             }
 
             if (this.splitbyte < this.rlen) {

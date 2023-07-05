@@ -58,7 +58,6 @@ import org.glavo.webdav.nanohttpd.mime.DefaultMimeTypesProvider;
 import org.glavo.webdav.nanohttpd.mime.MimeTypesProvider;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.StandardStatus;
-import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
 import org.glavo.webdav.nanohttpd.sockets.SocketFactory;
 import org.glavo.webdav.nanohttpd.tempfiles.DefaultTempFileManager;
@@ -273,7 +272,7 @@ public class NanoHTTPD {
 
     private Thread thread;
 
-    private Function<HTTPSession, Response> httpHandler;
+    private Function<HttpSession, Response> httpHandler;
 
     /**
      * Pluggable strategy for asynchronously executing requests.
@@ -309,17 +308,17 @@ public class NanoHTTPD {
         setAsyncRunner(new DefaultAsyncRunner());
     }
 
-    public void setHTTPHandler(Function<HTTPSession, Response> handler) {
+    public void setHTTPHandler(Function<HttpSession, Response> handler) {
         this.httpHandler = handler;
     }
 
     @SafeVarargs
-    public final void setHTTPHandler(Function<HTTPSession, Response> defaultHandler, Function<HTTPSession, Response>... interceptors) {
+    public final void setHTTPHandler(Function<HttpSession, Response> defaultHandler, Function<HttpSession, Response>... interceptors) {
         if (interceptors == null || interceptors.length == 0) {
             setHTTPHandler(defaultHandler);
         } else {
             setHTTPHandler(session -> {
-                for (Function<HTTPSession, Response> interceptor : interceptors) {
+                for (Function<HttpSession, Response> interceptor : interceptors) {
                     Response response = interceptor.apply(session);
                     if (response != null) {
                         return response;
@@ -464,7 +463,7 @@ public class NanoHTTPD {
      *            the incoming session
      * @return a response to the incoming session
      */
-    public Response handle(HTTPSession session) {
+    public Response handle(HttpSession session) {
         if (httpHandler != null)
             return httpHandler.apply(session);
         else
