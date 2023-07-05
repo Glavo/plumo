@@ -42,7 +42,6 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.*;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -326,7 +325,6 @@ public abstract class NanoHTTPD {
     public NanoHTTPD(String hostname, int port) {
         this.hostname = hostname;
         this.port = port;
-        setTempFileManagerFactory(DefaultTempFileManager::new);
         setAsyncRunner(new DefaultAsyncRunner());
 
         /*
@@ -440,8 +438,8 @@ public abstract class NanoHTTPD {
         return wasStarted() && !this.serverSocket.isClosed() && this.thread.isAlive();
     }
 
-    public SocketFactory getServerSocketFactory() {
-        return serverSocketFactory == null ? ServerSocket::new : serverSocketFactory;
+    public ServerSocket createServerSocket() throws IOException {
+        return serverSocketFactory == null ? new ServerSocket() : serverSocketFactory.create();
     }
 
     public void setServerSocketFactory(SocketFactory serverSocketFactory) {
@@ -452,8 +450,8 @@ public abstract class NanoHTTPD {
         return hostname;
     }
 
-    public Supplier<TempFileManager> getTempFileManagerFactory() {
-        return tempFileManagerFactory;
+    public TempFileManager createTempFileManager() {
+        return tempFileManagerFactory == null ? new DefaultTempFileManager() : tempFileManagerFactory.get();
     }
 
     /**
@@ -525,7 +523,7 @@ public abstract class NanoHTTPD {
      *             if the socket is in use.
      */
     public void start(final int timeout, boolean daemon) throws IOException {
-        this.serverSocket = this.getServerSocketFactory().create();
+        this.serverSocket = createServerSocket();
         this.serverSocket.setReuseAddress(true);
 
         ServerRunnable serverRunnable = createServerRunnable(timeout);
