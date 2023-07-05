@@ -43,9 +43,8 @@ import java.nio.file.Path;
  * cleanup temporary files created as a result of handling the request.
  * </p>
  */
-public interface TempFileManager {
-
-    void clear();
-
+public interface TempFileManager extends AutoCloseable {
     Path createTempFile(String fileNameHint) throws Exception;
+
+    void close();
 }

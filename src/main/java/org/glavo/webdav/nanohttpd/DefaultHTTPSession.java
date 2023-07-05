@@ -446,7 +446,7 @@ public class DefaultHTTPSession implements HTTPSession {
             NanoHTTPD.safeClose(this.outputStream);
         } finally {
             NanoHTTPD.safeClose(r);
-            this.tempFileManager.clear();
+            this.tempFileManager.close();
         }
     }
 

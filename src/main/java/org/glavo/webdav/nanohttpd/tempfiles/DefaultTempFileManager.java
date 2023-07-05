@@ -102,7 +102,7 @@ public final class DefaultTempFileManager implements TempFileManager {
     }
 
     @Override
-    public void clear() {
+    public void close() {
         for (Path file : this.tempFiles) {
             try {
                 Files.delete(file);
@@ -118,7 +118,7 @@ public final class DefaultTempFileManager implements TempFileManager {
             return false;
 
         int len = fileName.length();
-        if (len > 80) {
+        if (len > 20) {
             return false;
         }
 
