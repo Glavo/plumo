@@ -117,7 +117,7 @@ import org.glavo.webdav.nanohttpd.threading.AsyncRunner;
  * See the separate "LICENSE.md" file for the distribution license (Modified BSD
  * licence)
  */
-public abstract class NanoHTTPD {
+public class NanoHTTPD {
 
     public static final String CONTENT_DISPOSITION_REGEX = "([ |\t]*Content-Disposition[ |\t]*:)(.*)";
 
@@ -504,8 +504,15 @@ public abstract class NanoHTTPD {
     /**
      * Starts the server (in setDaemon(true) mode).
      */
-    public void start(final int timeout) throws IOException {
+    public void start(int timeout) throws IOException {
         start(timeout, true);
+    }
+
+    /**
+     * Starts the server.
+     */
+    public void start(boolean daemon) throws IOException {
+        start(NanoHTTPD.SOCKET_READ_TIMEOUT, true);
     }
 
     /**
@@ -518,7 +525,7 @@ public abstract class NanoHTTPD {
      * @throws IOException
      *             if the socket is in use.
      */
-    public void start(final int timeout, boolean daemon) throws IOException {
+    public void start(int timeout, boolean daemon) throws IOException {
         this.serverSocket = createServerSocket();
         this.serverSocket.setReuseAddress(true);
 
