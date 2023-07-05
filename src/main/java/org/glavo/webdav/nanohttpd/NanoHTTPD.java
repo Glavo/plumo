@@ -431,19 +431,19 @@ public abstract class NanoHTTPD {
         return wasStarted() && !this.serverSocket.isClosed() && this.thread.isAlive();
     }
 
-    public ServerSocket createServerSocket() throws IOException {
-        return serverSocketFactory == null ? new ServerSocket() : serverSocketFactory.create();
-    }
-
     public void setServerSocketFactory(SocketFactory serverSocketFactory) {
         this.serverSocketFactory = serverSocketFactory;
+    }
+
+    protected ServerSocket createServerSocket() throws IOException {
+        return serverSocketFactory == null ? new ServerSocket() : serverSocketFactory.create();
     }
 
     public String getHostname() {
         return hostname;
     }
 
-    public TempFileManager createTempFileManager() {
+    protected TempFileManager createTempFileManager() {
         return tempFileManagerFactory == null ? new DefaultTempFileManager() : tempFileManagerFactory.get();
     }
 
