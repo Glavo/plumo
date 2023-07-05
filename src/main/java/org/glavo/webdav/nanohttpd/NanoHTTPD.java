@@ -42,6 +42,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -292,7 +293,7 @@ public abstract class NanoHTTPD {
 
     private Thread thread;
 
-    private HTTPHandler httpHandler;
+    private Function<HTTPSession, Response> httpHandler;
 
     /**
      * Pluggable strategy for asynchronously executing requests.
@@ -326,15 +327,27 @@ public abstract class NanoHTTPD {
         this.hostname = hostname;
         this.port = port;
         setAsyncRunner(new DefaultAsyncRunner());
-
-        /*
-         * By default, this returns a 404 "Not Found" plain text error response.
-         */
-        this.httpHandler = HTTPHandler.DEFAULT;
     }
 
-    public void setHTTPHandler(HTTPHandler handler) {
+    public void setHTTPHandler(Function<HTTPSession, Response> handler) {
         this.httpHandler = handler;
+    }
+
+    @SafeVarargs
+    public final void setHTTPHandler(Function<HTTPSession, Response> defaultHandler, Function<HTTPSession, Response>... interceptors) {
+        if (interceptors == null || interceptors.length == 0) {
+            setHTTPHandler(defaultHandler);
+        } else {
+            setHTTPHandler(session -> {
+                for (Function<HTTPSession, Response> interceptor : interceptors) {
+                    Response response = interceptor.apply(session);
+                    if (response != null) {
+                        return response;
+                    }
+                }
+                return defaultHandler.apply(session);
+            });
+        }
     }
 
     /**
@@ -472,7 +485,10 @@ public abstract class NanoHTTPD {
      * @return a response to the incoming session
      */
     public Response handle(HTTPSession session) {
-        return httpHandler.handle(session);
+        if (httpHandler != null)
+            return httpHandler.apply(session);
+        else
+            return Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
     }
 
     /**
