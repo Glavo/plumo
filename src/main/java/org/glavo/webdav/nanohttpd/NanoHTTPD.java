@@ -210,17 +210,15 @@ public abstract class NanoHTTPD {
      * loaded/initialized by the caller.
      */
     public static SSLServerSocketFactory makeSSLSocketFactory(KeyStore loadedKeyStore, KeyManager[] keyManagers) throws IOException {
-        SSLServerSocketFactory res = null;
         try {
             TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             trustManagerFactory.init(loadedKeyStore);
             SSLContext ctx = SSLContext.getInstance("TLS");
             ctx.init(keyManagers, trustManagerFactory.getTrustManagers(), null);
-            res = ctx.getServerSocketFactory();
+            return ctx.getServerSocketFactory();
         } catch (Exception e) {
             throw new IOException(e.getMessage());
         }
-        return res;
     }
 
     /**
@@ -286,17 +284,17 @@ public abstract class NanoHTTPD {
 
     public final String hostname;
 
-    public final int myPort;
+    public final int port;
 
-    private volatile ServerSocket myServerSocket;
+    private volatile ServerSocket serverSocket;
 
-    public ServerSocket getMyServerSocket() {
-        return myServerSocket;
+    public ServerSocket getServerSocket() {
+        return serverSocket;
     }
 
     private SocketFactory serverSocketFactory;
 
-    private Thread myThread;
+    private Thread thread;
 
     private Function<HTTPSession, Response> httpHandler;
 
@@ -332,7 +330,7 @@ public abstract class NanoHTTPD {
      */
     public NanoHTTPD(String hostname, int port) {
         this.hostname = hostname;
-        this.myPort = port;
+        this.port = port;
         setTempFileManagerFactory(DefaultTempFileManager::new);
         setAsyncRunner(new DefaultAsyncRunner());
 
@@ -444,11 +442,11 @@ public abstract class NanoHTTPD {
     }
 
     public final int getListeningPort() {
-        return this.myServerSocket == null ? -1 : this.myServerSocket.getLocalPort();
+        return this.serverSocket == null ? -1 : this.serverSocket.getLocalPort();
     }
 
     public final boolean isAlive() {
-        return wasStarted() && !this.myServerSocket.isClosed() && this.myThread.isAlive();
+        return wasStarted() && !this.serverSocket.isClosed() && this.thread.isAlive();
     }
 
     public SocketFactory getServerSocketFactory() {
@@ -541,14 +539,14 @@ public abstract class NanoHTTPD {
      *             if the socket is in use.
      */
     public void start(final int timeout, boolean daemon) throws IOException {
-        this.myServerSocket = this.getServerSocketFactory().create();
-        this.myServerSocket.setReuseAddress(true);
+        this.serverSocket = this.getServerSocketFactory().create();
+        this.serverSocket.setReuseAddress(true);
 
         ServerRunnable serverRunnable = createServerRunnable(timeout);
-        this.myThread = new Thread(serverRunnable);
-        this.myThread.setDaemon(daemon);
-        this.myThread.setName("NanoHttpd Main Listener");
-        this.myThread.start();
+        this.thread = new Thread(serverRunnable);
+        this.thread.setDaemon(daemon);
+        this.thread.setName("NanoHttpd Main Listener");
+        this.thread.start();
         while (!serverRunnable.hasBinded() && serverRunnable.getBindException() == null) {
             try {
                 Thread.sleep(10L);
@@ -568,10 +566,10 @@ public abstract class NanoHTTPD {
      */
     public void stop() {
         try {
-            safeClose(this.myServerSocket);
+            safeClose(this.serverSocket);
             this.asyncRunner.closeAll();
-            if (this.myThread != null) {
-                this.myThread.join();
+            if (this.thread != null) {
+                this.thread.join();
             }
         } catch (Exception e) {
             NanoHTTPD.LOG.log(Level.SEVERE, "Could not stop all connections", e);
@@ -579,6 +577,6 @@ public abstract class NanoHTTPD {
     }
 
     public final boolean wasStarted() {
-        return this.myServerSocket != null && this.myThread != null;
+        return this.serverSocket != null && this.thread != null;
     }
 }
