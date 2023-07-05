@@ -174,9 +174,6 @@ public abstract class NanoHTTPD {
      */
     private static final String QUERY_STRING_PARAMETER = "NanoHttpd.QUERY_STRING";
 
-    private static final Function<HTTPSession, Response> DEFAULT_HTTP_HANDLE =
-            session -> Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
-
     /**
      * logger to log to.
      */
@@ -296,9 +293,7 @@ public abstract class NanoHTTPD {
 
     private Thread thread;
 
-    private Function<HTTPSession, Response> httpHandler;
-
-    protected List<Function<HTTPSession, Response>> interceptors = new ArrayList<>(4);
+    private HTTPHandler httpHandler;
 
     /**
      * Pluggable strategy for asynchronously executing requests.
@@ -337,15 +332,11 @@ public abstract class NanoHTTPD {
         /*
          * By default, this returns a 404 "Not Found" plain text error response.
          */
-        this.httpHandler = DEFAULT_HTTP_HANDLE;
+        this.httpHandler = HTTPHandler.DEFAULT;
     }
 
-    public void setHTTPHandler(Function<HTTPSession, Response> handler) {
+    public void setHTTPHandler(HTTPHandler handler) {
         this.httpHandler = handler;
-    }
-
-    public void addHTTPInterceptor(Function<HTTPSession, Response> interceptor) {
-        interceptors.add(interceptor);
     }
 
     /**
@@ -483,12 +474,7 @@ public abstract class NanoHTTPD {
      * @return a response to the incoming session
      */
     public Response handle(HTTPSession session) {
-        for (Function<HTTPSession, Response> interceptor : interceptors) {
-            Response response = interceptor.apply(session);
-            if (response != null)
-                return response;
-        }
-        return httpHandler.apply(session);
+        return httpHandler.handle(session);
     }
 
     /**
