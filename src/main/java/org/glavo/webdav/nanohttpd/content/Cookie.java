@@ -8,18 +8,18 @@ package org.glavo.webdav.nanohttpd.content;
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the nanohttpd nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -33,24 +33,23 @@ package org.glavo.webdav.nanohttpd.content;
  * #L%
  */
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-import java.util.TimeZone;
 
 /**
  * A simple cookie representation. This is old code and is flawed in many ways.
- * 
+ *
  * @author LordFokas
  */
 public class Cookie {
 
+    public static final DateTimeFormatter HTTP_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.US).withZone(ZoneOffset.UTC);
+
     public static String getHTTPTime(int days) {
-        Calendar calendar = Calendar.getInstance();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        calendar.add(Calendar.DAY_OF_MONTH, days);
-        return dateFormat.format(calendar.getTime());
+        return HTTP_TIME_FORMATTER.format(Instant.now().plusSeconds(Math.multiplyExact(days, 86400L)));
     }
 
     private final String n, v, e;
@@ -72,7 +71,6 @@ public class Cookie {
     }
 
     public String getHTTPHeader() {
-        String fmt = "%s=%s; expires=%s";
-        return String.format(fmt, this.n, this.v, this.e);
+        return this.n + "=" + this.v + "; expires=" + this.e;
     }
 }

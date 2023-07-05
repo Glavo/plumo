@@ -43,12 +43,13 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 
+import org.glavo.webdav.nanohttpd.content.Cookie;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.content.ContentType;
@@ -195,9 +196,6 @@ public class Response implements Closeable {
      * Sends given response to the socket.
      */
     public void send(OutputStream outputStream) {
-        SimpleDateFormat gmtFrmt = new SimpleDateFormat("E, d MMM yyyy HH:mm:ss 'GMT'", Locale.US);
-        gmtFrmt.setTimeZone(TimeZone.getTimeZone("GMT"));
-
         try {
             if (this.status == null) {
                 throw new Error("sendResponse(): Status can't be null.");
@@ -208,7 +206,7 @@ public class Response implements Closeable {
                 printHeader(pw, "content-type", this.mimeType);
             }
             if (header.get("date") == null) {
-                printHeader(pw, "date", gmtFrmt.format(new Date()));
+                printHeader(pw, "date", Cookie.HTTP_TIME_FORMATTER.format(Instant.now()));
             }
             for (Entry<String, String> entry : this.header.entrySet()) {
                 printHeader(pw, entry.getKey(), entry.getValue());
@@ -396,9 +394,8 @@ public class Response implements Closeable {
         return newFixedLengthResponse(StandardStatus.OK, NanoHTTPD.MIME_HTML, msg);
     }
 
-    public Response setUseGzip(boolean useGzip) {
+    public void setUseGzip(boolean useGzip) {
         gzipUsage = useGzip;
-        return this;
     }
 
     // If a Gzip usage has been enforced, use it.
