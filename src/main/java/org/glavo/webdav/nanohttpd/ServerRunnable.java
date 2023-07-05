@@ -60,7 +60,10 @@ public class ServerRunnable implements Runnable {
     @Override
     public void run() {
         try {
-            httpd.getServerSocket().bind(new InetSocketAddress(httpd.hostname, httpd.port));
+            InetSocketAddress address = httpd.hostname == null
+                    ? new InetSocketAddress(httpd.port)
+                    : new InetSocketAddress(httpd.hostname, httpd.port);
+            httpd.getServerSocket().bind(address);
             hasBinded = true;
         } catch (IOException e) {
             this.bindException = e;

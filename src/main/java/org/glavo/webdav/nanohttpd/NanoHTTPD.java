@@ -512,7 +512,7 @@ public class NanoHTTPD {
      * Starts the server.
      */
     public void start(boolean daemon) throws IOException {
-        start(NanoHTTPD.SOCKET_READ_TIMEOUT, true);
+        start(NanoHTTPD.SOCKET_READ_TIMEOUT, daemon);
     }
 
     /**
