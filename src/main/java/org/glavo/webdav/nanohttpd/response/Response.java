@@ -38,10 +38,10 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 
+import org.glavo.webdav.nanohttpd.internal.SimpleStringMap;
 import org.glavo.webdav.nanohttpd.internal.HttpUtils;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
@@ -73,9 +73,9 @@ public class Response implements Closeable {
      * Headers for the HTTP response. Use addHeader() to add lines. the
      * lowercase map is automatically kept up to date.
      */
-    private final Map<String, String> header = new HashMap<>();
+    private final SimpleStringMap<String> header = new SimpleStringMap<>();
 
-    private final Map<String, List<String>> multiHeader = new HashMap<>();
+    private final SimpleStringMap<List<String>> multiHeader = new SimpleStringMap<>();
 
     /**
      * The request method that spawned this response.
@@ -119,20 +119,11 @@ public class Response implements Closeable {
      * Adds given line to the header.
      */
     public void addHeader(String name, String value) {
-        this.header.put(name.toLowerCase(Locale.ROOT), value);
+        this.header.put(name.toUpperCase(Locale.ROOT), value);
     }
 
     public List<String> getMultiHeaders(String name) {
-        return multiHeader.computeIfAbsent(name.toLowerCase(Locale.ROOT),
-                n -> new ArrayList<>(4));
-    }
-
-    public void addMultiHeader(String name, String value) {
-        getMultiHeaders(name).add(value);
-    }
-
-    public void addMultiHeaders(String name, String... values) {
-        Collections.addAll(getMultiHeaders(name), values);
+        return multiHeader.getOrPut(name.toLowerCase(Locale.ROOT), () -> new ArrayList<>(4));
     }
 
     /**
@@ -200,14 +191,14 @@ public class Response implements Closeable {
             if (header.get("date") == null) {
                 printHeader(writer, "date", HttpUtils.getHttpTime(Instant.now()));
             }
-            for (Entry<String, String> entry : this.header.entrySet()) {
-                printHeader(writer, entry.getKey(), entry.getValue());
-            }
-            for (Entry<String, List<String>> entry : this.multiHeader.entrySet()) {
-                for (String header : entry.getValue()) {
-                    printHeader(writer, entry.getKey(), header);
+
+            this.header.forEach((k, v) -> printHeader(writer, k, v));
+            this.multiHeader.forEach((k ,l) -> {
+                for (String v : l) {
+                    printHeader(writer, k, v);
                 }
-            }
+            });
+
             if (header.get("connection") == null) {
                 printHeader(writer, "connection", (this.keepAlive ? "keep-alive" : "close"));
             }
