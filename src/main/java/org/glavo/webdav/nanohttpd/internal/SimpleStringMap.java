@@ -35,7 +35,7 @@ public final class SimpleStringMap<V> {
         final int oldSize = this.size;
 
         if (names.length == oldSize) {
-            int newCapacity = oldSize << 1;
+            int newCapacity = oldSize == 0 ? 8 : oldSize << 1;
             if (newCapacity < oldSize) {
                 throw new OutOfMemoryError("Size: " + oldSize);
             }
