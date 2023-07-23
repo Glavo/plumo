@@ -367,9 +367,10 @@ public class Response implements Closeable {
             return newFixedLengthResponse(status, mimeType, new ByteArrayInputStream(new byte[0]), 0);
         } else {
             Charset encoding = contentType.getEncoding();
-            if (encoding == StandardCharsets.US_ASCII && !encoding.newEncoder().canEncode(txt)) {
+            if (encoding == StandardCharsets.US_ASCII) {
                 encoding = StandardCharsets.UTF_8;
             }
+
             byte[] bytes = txt.getBytes(encoding);
             return newFixedLengthResponse(status, contentType.getContentTypeHeader(), new ByteArrayInputStream(bytes), bytes.length);
         }
