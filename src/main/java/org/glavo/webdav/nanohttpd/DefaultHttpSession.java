@@ -123,7 +123,7 @@ public class DefaultHttpSession implements HttpSession {
         this.tempFileManager = tempFileManager;
         this.inputStream = new BufferedInputStream(inputStream, DefaultHttpSession.BUFSIZE);
         this.outputStream = outputStream;
-        this.remoteIp = inetAddress.isLoopbackAddress() || inetAddress.isAnyLocalAddress() ? "127.0.0.1" : inetAddress.getHostAddress();
+        this.remoteIp = inetAddress.isAnyLocalAddress() ? InetAddress.getLoopbackAddress().getHostAddress() : inetAddress.getHostAddress();
         this.headers = new HashMap<>();
     }
 
