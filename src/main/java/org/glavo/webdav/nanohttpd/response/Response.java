@@ -123,7 +123,7 @@ public class Response implements Closeable {
     }
 
     public List<String> getMultiHeaders(String name) {
-        return multiHeader.getOrPut(name.toLowerCase(Locale.ROOT), () -> new ArrayList<>(4));
+        return multiHeader.computeIfAbsent(name.toLowerCase(Locale.ROOT), key -> new ArrayList<>(4));
     }
 
     /**
@@ -192,8 +192,8 @@ public class Response implements Closeable {
                 printHeader(writer, "date", HttpUtils.getHttpTime(Instant.now()));
             }
 
-            this.header.forEach((k, v) -> printHeader(writer, k, v));
-            this.multiHeader.forEach((k ,l) -> {
+            this.header.forEachChecked((k, v) -> printHeader(writer, k, v));
+            this.multiHeader.forEachChecked((k ,l) -> {
                 for (String v : l) {
                     printHeader(writer, k, v);
                 }

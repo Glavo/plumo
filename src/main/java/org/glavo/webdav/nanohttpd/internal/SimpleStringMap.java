@@ -1,20 +1,23 @@
 package org.glavo.webdav.nanohttpd.internal;
 
-import java.util.Arrays;
-import java.util.function.Supplier;
+import java.util.*;
 
 @SuppressWarnings("unchecked")
-public final class SimpleStringMap<V> {
+public final class SimpleStringMap<V> extends AbstractMap<String, V> {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
     private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
-    private String[] names = EMPTY_STRING_ARRAY;
+    private String[] keys = EMPTY_STRING_ARRAY;
     private Object[] values = EMPTY_OBJECT_ARRAY;
     private int size;
 
-    private int indexOf(String name) {
+    private int indexOf(Object key) {
+        if (!(key instanceof String)) {
+            return -1;
+        }
+
         for (int i = 0; i < size; i++) {
-            if (name.equals(names[i])) {
+            if (key.equals(keys[i])) {
                 return i;
             }
         }
@@ -22,8 +25,14 @@ public final class SimpleStringMap<V> {
         return -1;
     }
 
-    public V get(String name) {
-        int idx = indexOf(name);
+    @Override
+    public int size() {
+        return size;
+    }
+
+    @Override
+    public V get(Object key) {
+        int idx = indexOf(key);
         if (idx < 0) {
             return null;
         }
@@ -31,67 +40,105 @@ public final class SimpleStringMap<V> {
         return (V) values[idx];
     }
 
-    private void append(String name, V value) {
+    private void append(String key, V value) {
         final int oldSize = this.size;
 
-        if (names.length == oldSize) {
+        if (keys.length == oldSize) {
             int newCapacity = oldSize == 0 ? 8 : oldSize << 1;
             if (newCapacity < oldSize) {
                 throw new OutOfMemoryError("Size: " + oldSize);
             }
 
-            String[] newNames = Arrays.copyOf(names, newCapacity);
+            String[] newNames = Arrays.copyOf(keys, newCapacity);
             Object[] newValues = Arrays.copyOf(values, newCapacity);
 
-            this.names = newNames;
+            this.keys = newNames;
             this.values = newValues;
         }
 
-        names[oldSize] = name;
+        keys[oldSize] = key;
         values[oldSize] = value;
         size = oldSize + 1;
     }
 
-    public void put(String name, V value) {
-        int idx = indexOf(name);
+    @Override
+    public V put(String key, V value) {
+        int idx = indexOf(key);
         if (idx >= 0) {
+            V res = (V) values[idx];
             values[idx] = value;
+            return res;
         } else {
-            append(name, value);
+            append(key, value);
+            return null;
         }
     }
 
-    public void remove(String name) {
-        int idx = indexOf(name);
+    @Override
+    public V remove(Object key) {
+        int idx = indexOf(key);
         if (idx < 0) {
-            return;
+            return null;
         }
+
+        V res = (V) values[idx];
 
         int lastIndex = size - 1;
         if (idx < lastIndex) {
             int num = lastIndex - idx;
 
-            System.arraycopy(names, idx + 1, names, idx, num);
+            System.arraycopy(keys, idx + 1, keys, idx, num);
             System.arraycopy(values, idx + 1, values, idx, num);
         } else {
-            names[lastIndex] = null;
+            keys[lastIndex] = null;
             values[lastIndex] = null;
         }
         size = lastIndex;
-    }
 
-    public V getOrPut(String name, Supplier<V> supplier) {
-        V res = get(name);
-        if (res == null) {
-            res = supplier.get();
-            append(name, res);
-        }
         return res;
     }
 
-    public <E extends Throwable> void forEach(CheckedBiConsumer<String, V, E> consumer) throws E {
+    @Override
+    public Set<Entry<String, V>> entrySet() {
+        return new EntrySet();
+    }
+
+    public <E extends Throwable> void forEachChecked(CheckedBiConsumer<String, V, E> consumer) throws E {
         for (int i = 0; i < size; i++) {
-            consumer.accept(names[i], (V) values[i]);
+            consumer.accept(keys[i], (V) values[i]);
+        }
+    }
+
+    private final class EntryIterator implements Iterator<Entry<String, V>> {
+        private int idx = 0;
+
+        @Override
+        public boolean hasNext() {
+            return idx < size;
+        }
+
+        @Override
+        public Entry<String, V> next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+
+            Entry<String, V> entry = new SimpleImmutableEntry<>(keys[idx], (V) values[idx]);
+            idx++;
+            return entry;
+        }
+    }
+
+    private final class EntrySet extends AbstractSet<Entry<String, V>> {
+
+        @Override
+        public Iterator<Entry<String, V>> iterator() {
+            return SimpleStringMap.this.new EntryIterator();
+        }
+
+        @Override
+        public int size() {
+            return SimpleStringMap.this.size();
         }
     }
 }
