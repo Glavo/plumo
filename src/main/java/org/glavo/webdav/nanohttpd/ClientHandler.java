@@ -40,6 +40,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.logging.Level;
 
+import org.glavo.webdav.nanohttpd.internal.HttpSessionImpl;
 import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
 
 /**
@@ -70,7 +71,7 @@ public class ClientHandler implements Runnable {
         try {
             outputStream = this.acceptSocket.getOutputStream();
             TempFileManager tempFileManager = httpd.createTempFileManager();
-            DefaultHttpSession session = new DefaultHttpSession(httpd, tempFileManager, this.inputStream, outputStream, this.acceptSocket.getInetAddress());
+            HttpSessionImpl session = new HttpSessionImpl(httpd, tempFileManager, this.inputStream, outputStream, this.acceptSocket.getInetAddress());
             while (!this.acceptSocket.isClosed()) {
                 session.execute();
             }

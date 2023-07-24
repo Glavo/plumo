@@ -1,4 +1,4 @@
-package org.glavo.webdav.nanohttpd;
+package org.glavo.webdav.nanohttpd.internal;
 
 /*
  * #%L
@@ -63,7 +63,8 @@ import java.util.regex.Matcher;
 
 import javax.net.ssl.SSLException;
 
-import org.glavo.webdav.nanohttpd.internal.SimpleStringMap;
+import org.glavo.webdav.nanohttpd.HttpSession;
+import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.ResponseException;
@@ -72,7 +73,7 @@ import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
 import org.glavo.webdav.nanohttpd.content.ContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
-public class DefaultHttpSession implements HttpSession {
+public final class HttpSessionImpl implements HttpSession {
 
     public static final String POST_DATA = "postData";
 
@@ -112,17 +113,17 @@ public class DefaultHttpSession implements HttpSession {
 
     private String protocolVersion;
 
-    public DefaultHttpSession(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
+    public HttpSessionImpl(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
         this.httpd = httpd;
         this.tempFileManager = tempFileManager;
-        this.inputStream = new BufferedInputStream(inputStream, DefaultHttpSession.BUFSIZE);
+        this.inputStream = new BufferedInputStream(inputStream, HttpSessionImpl.BUFSIZE);
         this.outputStream = outputStream;
     }
 
-    public DefaultHttpSession(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
+    public HttpSessionImpl(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
         this.httpd = httpd;
         this.tempFileManager = tempFileManager;
-        this.inputStream = new BufferedInputStream(inputStream, DefaultHttpSession.BUFSIZE);
+        this.inputStream = new BufferedInputStream(inputStream, HttpSessionImpl.BUFSIZE);
         this.outputStream = outputStream;
         this.remoteIp = inetAddress.isAnyLocalAddress() ? InetAddress.getLoopbackAddress().getHostAddress() : inetAddress.getHostAddress();
     }
@@ -334,14 +335,14 @@ public class DefaultHttpSession implements HttpSession {
             // Apache's default header limit is 8KB.
             // Do NOT assume that a single read will get the entire header
             // at once!
-            byte[] buf = new byte[DefaultHttpSession.BUFSIZE];
+            byte[] buf = new byte[HttpSessionImpl.BUFSIZE];
             this.splitbyte = 0;
             this.rlen = 0;
 
             int read = -1;
-            this.inputStream.mark(DefaultHttpSession.BUFSIZE);
+            this.inputStream.mark(HttpSessionImpl.BUFSIZE);
             try {
-                read = this.inputStream.read(buf, 0, DefaultHttpSession.BUFSIZE);
+                read = this.inputStream.read(buf, 0, HttpSessionImpl.BUFSIZE);
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {
@@ -361,7 +362,7 @@ public class DefaultHttpSession implements HttpSession {
                 if (this.splitbyte > 0) {
                     break;
                 }
-                read = this.inputStream.read(buf, this.rlen, DefaultHttpSession.BUFSIZE - this.rlen);
+                read = this.inputStream.read(buf, this.rlen, HttpSessionImpl.BUFSIZE - this.rlen);
             }
 
             if (this.splitbyte < this.rlen) {
