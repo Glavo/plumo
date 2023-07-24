@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
@@ -54,7 +55,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
-import org.glavo.webdav.nanohttpd.mime.MimeTypesProvider;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
@@ -158,60 +158,6 @@ public class NanoHTTPD {
     public static final Logger LOG = Logger.getLogger(NanoHTTPD.class.getName());
 
     /**
-     * Hashtable mapping (String)FILENAME_EXTENSION -> (String)MIME_TYPE
-     */
-    private static Map<String, String> MIME_TYPES;
-
-    private static final String[] DEFAULT_MIME_TYPES = {
-            "css", "text/css",
-            "htm", "text/html",
-            "html", "text/html",
-            "xml", "text/xml",
-            "java", "text/x-java-source, text/java",
-            "md", "text/plain",
-            "txt", "text/plain",
-            "asc", "text/plain",
-            "gif", "image/gif",
-            "jpg", "image/jpeg",
-            "jpeg", "image/jpeg",
-            "png", "image/png",
-            "svg", "image/svg+xml",
-            "mp3", "audio/mpeg",
-            "m3u", "audio/mpeg-url",
-            "mp4", "video/mp4",
-            "ogv", "video/ogg",
-            "flv", "video/x-flv",
-            "mov", "video/quicktime",
-            "swf", "application/x-shockwave-flash",
-            "js", "application/javascript",
-            "pdf", "application/pdf",
-            "doc", "application/msword",
-            "ogg", "application/x-ogg",
-            "zip", "application/octet-stream",
-            "exe", "application/octet-stream",
-            "class", "application/octet-stream",
-            "m3u8", "application/vnd.apple.mpegurl",
-            "ts", "video/mp2t"
-    };
-
-    public static Map<String, String> mimeTypes() {
-        if (MIME_TYPES == null) {
-            Map<String, String> types = new HashMap<>();
-            for (int i = 0; i < DEFAULT_MIME_TYPES.length; i += 2) {
-                types.put(DEFAULT_MIME_TYPES[0], DEFAULT_MIME_TYPES[1]);
-            }
-
-            //noinspection Java9UndeclaredServiceUsage
-            for (MimeTypesProvider provider : ServiceLoader.load(MimeTypesProvider.class)) {
-                provider.registerMIMETypes(types);
-            }
-
-            MIME_TYPES = types;
-        }
-        return MIME_TYPES;
-    }
-
-    /**
      * Creates an SSLSocketFactory for HTTPS. Pass a loaded KeyStore and an
      * array of loaded KeyManagers. These objects must properly
      * loaded/initialized by the caller.
@@ -271,11 +217,7 @@ public class NanoHTTPD {
      * @return the connected mime/type
      */
     public static String getMimeTypeForFile(String uri) {
-        int dot = uri.lastIndexOf('.');
-        String mime = null;
-        if (dot >= 0) {
-            mime = mimeTypes().get(uri.substring(dot + 1).toLowerCase(Locale.ROOT));
-        }
+        String mime = URLConnection.guessContentTypeFromName(uri);
         return mime == null ? "application/octet-stream" : mime;
     }
 
