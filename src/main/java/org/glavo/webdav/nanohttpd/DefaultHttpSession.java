@@ -428,16 +428,17 @@ public class DefaultHttpSession implements HttpSession {
             // i.e. close the stream & finalAccept object by throwing the
             // exception up the call stack.
             throw ste;
-        } catch (SSLException ssle) {
-            Response resp = Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SSL PROTOCOL FAILURE: " + ssle.getMessage());
-            resp.send(this.outputStream);
-            NanoHTTPD.safeClose(this.outputStream);
-        } catch (IOException ioe) {
-            Response resp = Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage());
-            resp.send(this.outputStream);
-            NanoHTTPD.safeClose(this.outputStream);
-        } catch (ResponseException re) {
-            Response resp = Response.newFixedLengthResponse(re.getStatus(), NanoHTTPD.MIME_PLAINTEXT, re.getMessage());
+        } catch (IOException | ResponseException e) {
+            Response resp;
+            if (e instanceof ResponseException) {
+                ResponseException re = (ResponseException) e;
+                resp = Response.newFixedLengthResponse(re.getStatus(), NanoHTTPD.MIME_PLAINTEXT, re.getMessage());
+            } else if (e instanceof SSLException) {
+                resp = Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SSL PROTOCOL FAILURE: " + e.getMessage());
+            } else {
+                resp = Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
+            }
+
             resp.send(this.outputStream);
             NanoHTTPD.safeClose(this.outputStream);
         } finally {

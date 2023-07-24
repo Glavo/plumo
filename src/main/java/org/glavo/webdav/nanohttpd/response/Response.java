@@ -129,9 +129,8 @@ public class Response implements Closeable {
     /**
      * Indicate to close the connection after the Response has been sent.
      *
-     * @param close
-     *            {@code true} to hint connection closing, {@code false} to let
-     *            connection be closed by client.
+     * @param close {@code true} to hint connection closing, {@code false} to let
+     *              connection be closed by client.
      */
     public void closeConnection(boolean close) {
         if (close)
@@ -142,7 +141,7 @@ public class Response implements Closeable {
 
     /**
      * @return {@code true} if connection is to be closed after this Response
-     *         has been sent.
+     * has been sent.
      */
     public boolean isCloseConnection() {
         return "close".equals(header.get("connection"));
@@ -193,7 +192,7 @@ public class Response implements Closeable {
             }
 
             this.header.forEachChecked((k, v) -> printHeader(writer, k, v));
-            this.multiHeader.forEachChecked((k ,l) -> {
+            this.multiHeader.forEachChecked((k, l) -> {
                 for (String v : l) {
                     printHeader(writer, k, v);
                 }
@@ -244,7 +243,7 @@ public class Response implements Closeable {
                 NanoHTTPD.LOG.severe("content-length was no number " + contentLengthString);
             }
         } else {
-        	writer.write("content-length: " + size + "\r\n");
+            writer.write("content-length: " + size + "\r\n");
         }
         return size;
     }
@@ -256,7 +255,7 @@ public class Response implements Closeable {
             try {
                 chunkedOutputStream.finish();
             } catch (Exception e) {
-                if(this.data != null) {
+                if (this.data != null) {
                     this.data.close();
                 }
             }
@@ -271,7 +270,7 @@ public class Response implements Closeable {
             try {
                 gzipOutputStream = new GZIPOutputStream(outputStream);
             } catch (Exception e) {
-                if(this.data != null) {
+                if (this.data != null) {
                     this.data.close();
                 }
             }
@@ -289,13 +288,10 @@ public class Response implements Closeable {
      * limits the maximum amounts of bytes sent unless it is -1, in which case
      * everything is sent.
      *
-     * @param outputStream
-     *            the OutputStream to send data to
-     * @param pending
-     *            -1 to send everything, otherwise sets a max limit to the
-     *            number of bytes sent
-     * @throws IOException
-     *             if something goes wrong while sending the data.
+     * @param outputStream the OutputStream to send data to
+     * @param pending      -1 to send everything, otherwise sets a max limit to the
+     *                     number of bytes sent
+     * @throws IOException if something goes wrong while sending the data.
      */
     private void sendBody(OutputStream outputStream, long pending) throws IOException {
         long BUFFER_SIZE = 16 * 1024;
@@ -310,7 +306,7 @@ public class Response implements Closeable {
             try {
                 outputStream.write(buff, 0, read);
             } catch (Exception e) {
-                if(this.data != null) {
+                if (this.data != null) {
                     this.data.close();
                 }
             }
@@ -363,17 +359,13 @@ public class Response implements Closeable {
      */
     public static Response newFixedLengthResponse(Status status, String mimeType, String txt) {
         ContentType contentType = new ContentType(mimeType);
-        if (txt == null) {
-            return newFixedLengthResponse(status, mimeType, new ByteArrayInputStream(new byte[0]), 0);
-        } else {
-            Charset encoding = contentType.getEncoding();
-            if (encoding == StandardCharsets.US_ASCII) {
-                encoding = StandardCharsets.UTF_8;
-            }
-
-            byte[] bytes = txt.getBytes(encoding);
-            return newFixedLengthResponse(status, contentType.getContentTypeHeader(), new ByteArrayInputStream(bytes), bytes.length);
+        Charset encoding = contentType.getEncoding();
+        if (encoding == StandardCharsets.US_ASCII) {
+            encoding = StandardCharsets.UTF_8;
         }
+
+        byte[] bytes = txt != null ? txt.getBytes(encoding) : new byte[0];
+        return newFixedLengthResponse(status, contentType.getContentTypeHeader(), new ByteArrayInputStream(bytes), bytes.length);
     }
 
     /**
