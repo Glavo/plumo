@@ -69,7 +69,7 @@ import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.ResponseException;
 import org.glavo.webdav.nanohttpd.response.Status;
-import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
+import org.glavo.webdav.nanohttpd.TempFileManager;
 import org.glavo.webdav.nanohttpd.content.ContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 

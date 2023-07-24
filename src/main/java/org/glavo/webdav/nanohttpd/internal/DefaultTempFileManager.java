@@ -1,4 +1,4 @@
-package org.glavo.webdav.nanohttpd.tempfiles;
+package org.glavo.webdav.nanohttpd.internal;
 
 /*
  * #%L
@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.logging.Level;
 
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
+import org.glavo.webdav.nanohttpd.TempFileManager;
 
 import static java.nio.file.attribute.PosixFilePermission.*;
 
@@ -118,7 +119,7 @@ public final class DefaultTempFileManager implements TempFileManager {
 
         if (deleteDir) {
             try {
-                Files.delete(dir);
+                Files.deleteIfExists(dir);
             } catch (Exception e) {
                 NanoHTTPD.LOG.log(Level.WARNING, "Could not delete temporary dir", e);
             }

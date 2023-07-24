@@ -59,8 +59,7 @@ import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
 import org.glavo.webdav.nanohttpd.sockets.SocketFactory;
-import org.glavo.webdav.nanohttpd.tempfiles.DefaultTempFileManager;
-import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
+import org.glavo.webdav.nanohttpd.internal.DefaultTempFileManager;
 import org.glavo.webdav.nanohttpd.threading.DefaultAsyncRunner;
 import org.glavo.webdav.nanohttpd.threading.AsyncRunner;
 

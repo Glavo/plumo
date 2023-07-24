@@ -41,7 +41,6 @@ import java.net.SocketTimeoutException;
 import java.util.logging.Level;
 
 import org.glavo.webdav.nanohttpd.internal.HttpSessionImpl;
-import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
 
 /**
  * The runnable that will be used for every new client connection.

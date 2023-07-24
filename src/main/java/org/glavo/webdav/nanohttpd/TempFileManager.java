@@ -1,4 +1,4 @@
-package org.glavo.webdav.nanohttpd.tempfiles;
+package org.glavo.webdav.nanohttpd;
 
 /*
  * #%L
