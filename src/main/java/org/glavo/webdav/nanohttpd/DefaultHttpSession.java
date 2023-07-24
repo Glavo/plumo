@@ -67,7 +67,7 @@ import org.glavo.webdav.nanohttpd.internal.SimpleStringMap;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.ResponseException;
-import org.glavo.webdav.nanohttpd.response.StandardStatus;
+import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.tempfiles.TempFileManager;
 import org.glavo.webdav.nanohttpd.content.ContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
@@ -140,13 +140,13 @@ public class DefaultHttpSession implements HttpSession {
 
             StringTokenizer st = new StringTokenizer(inLine);
             if (!st.hasMoreTokens()) {
-                throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Syntax error. Usage: GET /example/file.html");
+                throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Syntax error. Usage: GET /example/file.html");
             }
 
             pre.put("method", st.nextToken());
 
             if (!st.hasMoreTokens()) {
-                throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Missing URI. Usage: GET /example/file.html");
+                throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Missing URI. Usage: GET /example/file.html");
             }
 
             String uri = st.nextToken();
@@ -181,7 +181,7 @@ public class DefaultHttpSession implements HttpSession {
 
             pre.put("uri", uri);
         } catch (IOException ioe) {
-            throw new ResponseException(StandardStatus.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage(), ioe);
+            throw new ResponseException(Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage(), ioe);
         }
     }
 
@@ -193,7 +193,7 @@ public class DefaultHttpSession implements HttpSession {
         try {
             int[] boundaryIdxs = getBoundaryPositions(fbuf, contentType.getBoundary().getBytes(StandardCharsets.UTF_8));
             if (boundaryIdxs.length < 2) {
-                throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but contains less than two boundary strings.");
+                throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but contains less than two boundary strings.");
             }
 
             byte[] partHeaderBuff = new byte[MAX_HEADER_SIZE];
@@ -209,7 +209,7 @@ public class DefaultHttpSession implements HttpSession {
                 String mpline = in.readLine();
                 headerLines++;
                 if (mpline == null || !mpline.contains(contentType.getBoundary())) {
-                    throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but chunk does not start with boundary.");
+                    throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but chunk does not start with boundary.");
                 }
 
                 String partName = null, fileName = null, partContentType = null;
@@ -251,7 +251,7 @@ public class DefaultHttpSession implements HttpSession {
                 }
                 // Read the part data
                 if (partHeaderLength >= len - 4) {
-                    throw new ResponseException(StandardStatus.INTERNAL_ERROR, "Multipart header size exceeds MAX_HEADER_SIZE.");
+                    throw new ResponseException(Status.INTERNAL_ERROR, "Multipart header size exceeds MAX_HEADER_SIZE.");
                 }
                 int partDataStart = boundaryIdxs[boundaryIdx] + partHeaderLength;
                 int partDataEnd = boundaryIdxs[boundaryIdx + 1] - 4;
@@ -284,7 +284,7 @@ public class DefaultHttpSession implements HttpSession {
         } catch (ResponseException re) {
             throw re;
         } catch (Exception e) {
-            throw new ResponseException(StandardStatus.INTERNAL_ERROR, e.toString());
+            throw new ResponseException(Status.INTERNAL_ERROR, e.toString());
         }
     }
 
@@ -386,7 +386,7 @@ public class DefaultHttpSession implements HttpSession {
 
             this.method = Method.lookup(pre.get("method"));
             if (this.method == null) {
-                throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Syntax error. HTTP verb " + pre.get("method") + " unhandled.");
+                throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Syntax error. HTTP verb " + pre.get("method") + " unhandled.");
             }
 
             this.uri = pre.get("uri");
@@ -406,7 +406,7 @@ public class DefaultHttpSession implements HttpSession {
             // (this.inputStream.totalRead() - pos_before_serve))
 
             if (r == null) {
-                throw new ResponseException(StandardStatus.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
+                throw new ResponseException(Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
             } else {
                 String acceptEncoding = this.headers.get("accept-encoding");
                 this.cookies.unloadQueue(r);
@@ -429,11 +429,11 @@ public class DefaultHttpSession implements HttpSession {
             // exception up the call stack.
             throw ste;
         } catch (SSLException ssle) {
-            Response resp = Response.newFixedLengthResponse(StandardStatus.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SSL PROTOCOL FAILURE: " + ssle.getMessage());
+            Response resp = Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SSL PROTOCOL FAILURE: " + ssle.getMessage());
             resp.send(this.outputStream);
             NanoHTTPD.safeClose(this.outputStream);
         } catch (IOException ioe) {
-            Response resp = Response.newFixedLengthResponse(StandardStatus.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage());
+            Response resp = Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage());
             resp.send(this.outputStream);
             NanoHTTPD.safeClose(this.outputStream);
         } catch (ResponseException re) {
@@ -613,7 +613,7 @@ public class DefaultHttpSession implements HttpSession {
                 if (contentType.isMultipart()) {
                     String boundary = contentType.getBoundary();
                     if (boundary == null) {
-                        throw new ResponseException(StandardStatus.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but boundary missing. Usage: GET /example/file.html");
+                        throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but boundary missing. Usage: GET /example/file.html");
                     }
                     decodeMultipartFormData(contentType, fbuf, this.parms, files);
                 } else {

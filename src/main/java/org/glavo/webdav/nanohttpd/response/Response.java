@@ -183,7 +183,7 @@ public class Response implements Closeable {
         try {
             Writer writer = new BufferedWriter(new OutputStreamWriter(outputStream, new ContentType(this.mimeType).getEncoding()));
             writer.append("HTTP/1.1 ")
-                    .append(String.valueOf(this.status.getRequestStatus())).append(' ').append(this.status.getDescription())
+                    .append(String.valueOf(this.status.getStatusCode())).append(' ').append(this.status.getDescription())
                     .append(" \r\n");
             if (this.mimeType != null) {
                 printHeader(writer, "content-type", this.mimeType);
@@ -380,7 +380,7 @@ public class Response implements Closeable {
      * Create a text response with known length.
      */
     public static Response newFixedLengthResponse(String msg) {
-        return newFixedLengthResponse(StandardStatus.OK, NanoHTTPD.MIME_HTML, msg);
+        return newFixedLengthResponse(Status.OK, NanoHTTPD.MIME_HTML, msg);
     }
 
     public void setUseGzip(boolean useGzip) {

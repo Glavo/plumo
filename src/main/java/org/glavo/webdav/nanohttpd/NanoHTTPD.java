@@ -56,7 +56,7 @@ import javax.net.ssl.TrustManagerFactory;
 
 import org.glavo.webdav.nanohttpd.mime.MimeTypesProvider;
 import org.glavo.webdav.nanohttpd.response.Response;
-import org.glavo.webdav.nanohttpd.response.StandardStatus;
+import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
 import org.glavo.webdav.nanohttpd.sockets.SocketFactory;
 import org.glavo.webdav.nanohttpd.tempfiles.DefaultTempFileManager;
@@ -498,7 +498,7 @@ public class NanoHTTPD {
         if (httpHandler != null)
             return httpHandler.apply(session);
         else
-            return Response.newFixedLengthResponse(StandardStatus.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
+            return Response.newFixedLengthResponse(Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
     }
 
     /**
