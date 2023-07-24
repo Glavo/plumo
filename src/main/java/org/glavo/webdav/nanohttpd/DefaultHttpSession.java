@@ -63,6 +63,7 @@ import java.util.regex.Matcher;
 
 import javax.net.ssl.SSLException;
 
+import org.glavo.webdav.nanohttpd.internal.SimpleStringMap;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.ResponseException;
@@ -99,9 +100,9 @@ public class DefaultHttpSession implements HttpSession {
 
     private Method method;
 
-    private Map<String, List<String>> parms;
+    private final Map<String, List<String>> parms = new SimpleStringMap<>();
 
-    private Map<String, String> headers;
+    private final Map<String, String> headers = new SimpleStringMap<>();
 
     private CookieHandler cookies;
 
@@ -124,7 +125,6 @@ public class DefaultHttpSession implements HttpSession {
         this.inputStream = new BufferedInputStream(inputStream, DefaultHttpSession.BUFSIZE);
         this.outputStream = outputStream;
         this.remoteIp = inetAddress.isAnyLocalAddress() ? InetAddress.getLoopbackAddress().getHostAddress() : inetAddress.getHostAddress();
-        this.headers = new HashMap<>();
     }
 
     /**
@@ -369,12 +369,8 @@ public class DefaultHttpSession implements HttpSession {
                 this.inputStream.skip(this.splitbyte);
             }
 
-            this.parms = new HashMap<>();
-            if (this.headers == null) {
-                this.headers = new HashMap<>();
-            } else {
-                this.headers.clear();
-            }
+            this.parms.clear();
+            this.headers.clear();
 
             // Create a BufferedReader for parsing the header.
             BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(buf, 0, this.rlen), StandardCharsets.UTF_8));

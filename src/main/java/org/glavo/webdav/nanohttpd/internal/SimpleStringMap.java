@@ -31,6 +31,11 @@ public final class SimpleStringMap<V> extends AbstractMap<String, V> {
     }
 
     @Override
+    public boolean containsKey(Object key) {
+        return indexOf(key) >= 0;
+    }
+
+    @Override
     public V get(Object key) {
         int idx = indexOf(key);
         if (idx < 0) {
@@ -96,6 +101,15 @@ public final class SimpleStringMap<V> extends AbstractMap<String, V> {
         size = lastIndex;
 
         return res;
+    }
+
+    @Override
+    public void clear() {
+        if (size > 0) {
+            Arrays.fill(keys, 0, size, null);
+            Arrays.fill(values, 0, size, null);
+            this.size = 0;
+        }
     }
 
     @Override
