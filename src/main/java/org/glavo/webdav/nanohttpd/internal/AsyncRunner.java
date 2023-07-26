@@ -1,4 +1,4 @@
-package org.glavo.webdav.nanohttpd.threading;
+package org.glavo.webdav.nanohttpd.internal;
 
 /*
  * #%L
@@ -34,10 +34,6 @@ package org.glavo.webdav.nanohttpd.threading;
  */
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.glavo.webdav.nanohttpd.ClientHandler;
 
 /**
  * Default threading strategy for NanoHTTPD.
@@ -48,37 +44,70 @@ import org.glavo.webdav.nanohttpd.ClientHandler;
  * The name is useful when profiling the application.
  * </p>
  */
-public class DefaultAsyncRunner implements AsyncRunner {
+public class AsyncRunner {
 
-    protected long requestCount;
+    private long requestCount;
 
-    private final List<ClientHandler> running = Collections.synchronizedList(new ArrayList<>());
+    private volatile ClientHandler firstHandle, lastHandle;
 
-    /**
-     * @return a list with currently running clients.
-     */
-    public List<ClientHandler> getRunning() {
-        return running;
-    }
-
-    @Override
     public void closeAll() {
+        ArrayList<ClientHandler> handlers;
+
+        synchronized (this) {
+            ClientHandler handler = firstHandle;
+            if (handler == null) {
+                return;
+            }
+
+            handlers = new ArrayList<>();
+            while (handler != null) {
+                handlers.add(handler);
+                handler = handler.next;
+            }
+        }
+
         // copy of the list for concurrency
-        for (ClientHandler clientHandler : this.running.toArray(new ClientHandler[0])) {
+        for (ClientHandler clientHandler : handlers) {
             clientHandler.close();
         }
     }
 
-    @Override
-    public void closed(ClientHandler clientHandler) {
-        this.running.remove(clientHandler);
+    synchronized void closed(ClientHandler handler) {
+        ClientHandler next = handler.next;
+        ClientHandler prev = handler.prev;
+
+        if (prev == null) {
+            firstHandle = next;
+        } else {
+            prev.next = next;
+            handler.prev = null;
+        }
+
+        if (next == null) {
+            lastHandle = prev;
+        } else {
+            next.prev = prev;
+            handler.next = null;
+        }
     }
 
-    @Override
-    public void exec(ClientHandler clientHandler) {
+    public void exec(ClientHandler handler) {
         this.requestCount++;
-        this.running.add(clientHandler);
-        createThread(clientHandler).start();
+
+        synchronized (this) {
+            ClientHandler last = this.lastHandle;
+
+            if (last == null) {
+                firstHandle = handler;
+            } else {
+                last.next = handler;
+                handler.prev = last;
+            }
+
+            lastHandle = handler;
+        }
+
+        createThread(handler).start();
     }
 
     protected Thread createThread(ClientHandler clientHandler) {

@@ -55,13 +55,13 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
+import org.glavo.webdav.nanohttpd.internal.ClientHandler;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
 import org.glavo.webdav.nanohttpd.sockets.SocketFactory;
 import org.glavo.webdav.nanohttpd.internal.DefaultTempFileManager;
-import org.glavo.webdav.nanohttpd.threading.DefaultAsyncRunner;
-import org.glavo.webdav.nanohttpd.threading.AsyncRunner;
+import org.glavo.webdav.nanohttpd.internal.AsyncRunner;
 
 /**
  * A simple, tiny, nicely embeddable HTTP server in Java
@@ -249,7 +249,7 @@ public class NanoHTTPD {
     /**
      * Pluggable strategy for asynchronously executing requests.
      */
-    protected AsyncRunner asyncRunner;
+    final AsyncRunner asyncRunner = new AsyncRunner();
 
     /**
      * Pluggable strategy for creating and cleaning up temporary files.
@@ -277,7 +277,6 @@ public class NanoHTTPD {
     public NanoHTTPD(String hostname, int port) {
         this.hostname = hostname;
         this.port = port;
-        setAsyncRunner(new DefaultAsyncRunner());
     }
 
     public void setHTTPHandler(Function<HttpSession, Response> handler) {
@@ -319,7 +318,7 @@ public class NanoHTTPD {
      * @return the client handler
      */
     protected ClientHandler createClientHandler(final Socket finalAccept, final InputStream inputStream) {
-        return new ClientHandler(this, inputStream, finalAccept);
+        return new ClientHandler(this, asyncRunner, inputStream, finalAccept);
     }
 
     /**
@@ -414,7 +413,7 @@ public class NanoHTTPD {
         return hostname;
     }
 
-    protected TempFileManager createTempFileManager() {
+    public TempFileManager createTempFileManager() {
         return tempFileManagerFactory == null ? new DefaultTempFileManager() : tempFileManagerFactory.get();
     }
 
@@ -440,16 +439,6 @@ public class NanoHTTPD {
             return httpHandler.apply(session);
         else
             return Response.newFixedLengthResponse(Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
-    }
-
-    /**
-     * Pluggable strategy for asynchronously executing requests.
-     *
-     * @param asyncRunner
-     *            new strategy for handling threads.
-     */
-    public void setAsyncRunner(AsyncRunner asyncRunner) {
-        this.asyncRunner = asyncRunner;
     }
 
     /**

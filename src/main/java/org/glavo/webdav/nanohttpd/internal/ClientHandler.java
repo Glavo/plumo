@@ -1,4 +1,4 @@
-package org.glavo.webdav.nanohttpd;
+package org.glavo.webdav.nanohttpd.internal;
 
 /*
  * #%L
@@ -8,18 +8,18 @@ package org.glavo.webdav.nanohttpd;
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the nanohttpd nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -40,6 +40,8 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.logging.Level;
 
+import org.glavo.webdav.nanohttpd.NanoHTTPD;
+import org.glavo.webdav.nanohttpd.TempFileManager;
 import org.glavo.webdav.nanohttpd.internal.HttpSessionImpl;
 
 /**
@@ -49,12 +51,17 @@ public class ClientHandler implements Runnable {
 
     private final NanoHTTPD httpd;
 
+    private final AsyncRunner asyncRunner;
+
     private final InputStream inputStream;
 
     private final Socket acceptSocket;
 
-    public ClientHandler(NanoHTTPD httpd, InputStream inputStream, Socket acceptSocket) {
+    volatile ClientHandler prev, next;
+
+    public ClientHandler(NanoHTTPD httpd, AsyncRunner asyncRunner, InputStream inputStream, Socket acceptSocket) {
         this.httpd = httpd;
+        this.asyncRunner = asyncRunner;
         this.inputStream = inputStream;
         this.acceptSocket = acceptSocket;
     }
@@ -89,7 +96,7 @@ public class ClientHandler implements Runnable {
             NanoHTTPD.safeClose(outputStream);
             NanoHTTPD.safeClose(this.inputStream);
             NanoHTTPD.safeClose(this.acceptSocket);
-            httpd.asyncRunner.closed(this);
+            asyncRunner.closed(this);
         }
     }
 }
