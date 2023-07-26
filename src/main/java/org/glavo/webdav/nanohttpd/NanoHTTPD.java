@@ -52,7 +52,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
-import org.glavo.webdav.nanohttpd.internal.ServerRunnable;
+import org.glavo.webdav.nanohttpd.internal.ClientHandler;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
@@ -457,7 +457,9 @@ public class NanoHTTPD {
      *             if the socket is in use.
      */
     public void start(int timeout, boolean daemon) throws IOException {
-        this.serverSocket = createServerSocket();
+        ServerSocket serverSocket = createServerSocket();
+
+        this.serverSocket = serverSocket;
         this.serverSocket.setReuseAddress(true);
 
         InetSocketAddress address = hostname == null
@@ -465,7 +467,20 @@ public class NanoHTTPD {
                 : new InetSocketAddress(hostname, port);
         serverSocket.bind(address);
 
-        this.thread = new Thread(new ServerRunnable(this, asyncRunner, timeout));
+        this.thread = new Thread(() -> {
+            do {
+                try {
+                    final Socket finalAccept = serverSocket.accept();
+                    if (timeout > 0) {
+                        finalAccept.setSoTimeout(timeout);
+                    }
+                    final InputStream inputStream = finalAccept.getInputStream();
+                    asyncRunner.exec(new ClientHandler(this, asyncRunner, inputStream, finalAccept));
+                } catch (IOException e) {
+                    NanoHTTPD.LOG.log(Level.FINE, "Communication with the client broken", e);
+                }
+            } while (!serverSocket.isClosed());
+        });
         this.thread.setDaemon(daemon);
         this.thread.setName("NanoHttpd Main Listener");
         this.thread.start();
