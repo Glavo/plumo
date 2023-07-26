@@ -246,7 +246,7 @@ public class NanoHTTPD {
     /**
      * Pluggable strategy for asynchronously executing requests.
      */
-    private final AsyncRunner asyncRunner = new AsyncRunner();
+    private final AsyncRunner asyncRunner = new AsyncRunner(new AsyncRunner.DefaultExecutor());
 
     /**
      * Pluggable strategy for creating and cleaning up temporary files.
