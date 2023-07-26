@@ -52,7 +52,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
-import org.glavo.webdav.nanohttpd.internal.ClientHandler;
 import org.glavo.webdav.nanohttpd.internal.ServerRunnable;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.Status;
@@ -303,20 +302,6 @@ public class NanoHTTPD {
      */
     public synchronized void closeAllConnections() {
         stop();
-    }
-
-    /**
-     * create a instance of the client handler, subclasses can return a subclass
-     * of the ClientHandler.
-     *
-     * @param finalAccept
-     *            the socket the cleint is connected to
-     * @param inputStream
-     *            the input stream
-     * @return the client handler
-     */
-    public ClientHandler createClientHandler(final Socket finalAccept, final InputStream inputStream) {
-        return new ClientHandler(this, asyncRunner, inputStream, finalAccept);
     }
 
     /**

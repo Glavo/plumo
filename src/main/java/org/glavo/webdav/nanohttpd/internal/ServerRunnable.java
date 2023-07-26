@@ -68,7 +68,7 @@ public class ServerRunnable implements Runnable {
                     finalAccept.setSoTimeout(this.timeout);
                 }
                 final InputStream inputStream = finalAccept.getInputStream();
-                asyncRunner.exec(httpd.createClientHandler(finalAccept, inputStream));
+                asyncRunner.exec(new ClientHandler(httpd, asyncRunner, inputStream, finalAccept));
             } catch (IOException e) {
                 NanoHTTPD.LOG.log(Level.FINE, "Communication with the client broken", e);
             }
