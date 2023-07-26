@@ -42,7 +42,6 @@ import java.util.logging.Level;
 
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.TempFileManager;
-import org.glavo.webdav.nanohttpd.internal.HttpSessionImpl;
 
 /**
  * The runnable that will be used for every new client connection.
@@ -96,7 +95,7 @@ public class ClientHandler implements Runnable {
             NanoHTTPD.safeClose(outputStream);
             NanoHTTPD.safeClose(this.inputStream);
             NanoHTTPD.safeClose(this.acceptSocket);
-            asyncRunner.closed(this);
+            asyncRunner.remove(this);
         }
     }
 }

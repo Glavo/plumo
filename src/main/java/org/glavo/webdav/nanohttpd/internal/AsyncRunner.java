@@ -8,18 +8,18 @@ package org.glavo.webdav.nanohttpd.internal;
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the nanohttpd nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -33,7 +33,10 @@ package org.glavo.webdav.nanohttpd.internal;
  * #L%
  */
 
-import java.util.ArrayList;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Default threading strategy for NanoHTTPD.
@@ -44,35 +47,28 @@ import java.util.ArrayList;
  * The name is useful when profiling the application.
  * </p>
  */
-public class AsyncRunner {
-
-    private long requestCount;
+public class AsyncRunner implements AutoCloseable {
 
     private volatile ClientHandler firstHandle, lastHandle;
 
-    public void closeAll() {
-        ArrayList<ClientHandler> handlers;
+    private final Executor executor;
+    private final boolean shutdown;
 
-        synchronized (this) {
-            ClientHandler handler = firstHandle;
-            if (handler == null) {
-                return;
-            }
-
-            handlers = new ArrayList<>();
-            while (handler != null) {
-                handlers.add(handler);
-                handler = handler.next;
-            }
-        }
-
-        // copy of the list for concurrency
-        for (ClientHandler clientHandler : handlers) {
-            clientHandler.close();
-        }
+    public AsyncRunner() {
+        this(new DefaultExecutor());
     }
 
-    synchronized void closed(ClientHandler handler) {
+    public AsyncRunner(Executor executor) {
+        this.executor = executor;
+        this.shutdown = false;
+    }
+
+    public AsyncRunner(ExecutorService executor) {
+        this.executor = executor;
+        this.shutdown = true;
+    }
+
+    synchronized void remove(ClientHandler handler) {
         ClientHandler next = handler.next;
         ClientHandler prev = handler.prev;
 
@@ -92,8 +88,6 @@ public class AsyncRunner {
     }
 
     public void exec(ClientHandler handler) {
-        this.requestCount++;
-
         synchronized (this) {
             ClientHandler last = this.lastHandle;
 
@@ -107,13 +101,35 @@ public class AsyncRunner {
             lastHandle = handler;
         }
 
-        createThread(handler).start();
+        executor.execute(handler);
     }
 
-    protected Thread createThread(ClientHandler clientHandler) {
-        Thread t = new Thread(clientHandler);
-        t.setDaemon(true);
-        t.setName("NanoHttpd Request Processor (#" + this.requestCount + ")");
-        return t;
+    @Override
+    public synchronized void close() {
+        ClientHandler handler = firstHandle;
+
+        while (handler != null) {
+            handler.close();
+            handler = handler.next;
+        }
+
+        firstHandle = null;
+        lastHandle = null;
+
+        if (shutdown) {
+            ((ExecutorService) executor).shutdown();
+        }
+    }
+
+    private static final class DefaultExecutor implements Executor {
+        private long requestCount;
+
+        @Override
+        public void execute(@NotNull Runnable command) {
+            Thread t = new Thread(command);
+            t.setDaemon(true);
+            t.setName("NanoHttpd Request Processor (#" + this.requestCount++ + ")");
+            t.start();
+        }
     }
 }

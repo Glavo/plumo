@@ -492,7 +492,7 @@ public class NanoHTTPD {
     public void stop() {
         try {
             safeClose(this.serverSocket);
-            this.asyncRunner.closeAll();
+            this.asyncRunner.close();
             if (this.thread != null) {
                 this.thread.join();
             }
