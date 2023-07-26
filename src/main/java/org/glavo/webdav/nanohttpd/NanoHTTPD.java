@@ -36,10 +36,7 @@ package org.glavo.webdav.nanohttpd;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.URLConnection;
-import java.net.URLDecoder;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.*;
@@ -56,6 +53,7 @@ import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 import org.glavo.webdav.nanohttpd.internal.ClientHandler;
+import org.glavo.webdav.nanohttpd.internal.ServerRunnable;
 import org.glavo.webdav.nanohttpd.response.Response;
 import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
@@ -249,7 +247,7 @@ public class NanoHTTPD {
     /**
      * Pluggable strategy for asynchronously executing requests.
      */
-    final AsyncRunner asyncRunner = new AsyncRunner();
+    private final AsyncRunner asyncRunner = new AsyncRunner();
 
     /**
      * Pluggable strategy for creating and cleaning up temporary files.
@@ -317,20 +315,8 @@ public class NanoHTTPD {
      *            the input stream
      * @return the client handler
      */
-    protected ClientHandler createClientHandler(final Socket finalAccept, final InputStream inputStream) {
+    public ClientHandler createClientHandler(final Socket finalAccept, final InputStream inputStream) {
         return new ClientHandler(this, asyncRunner, inputStream, finalAccept);
-    }
-
-    /**
-     * Instantiate the server runnable, can be overwritten by subclasses to
-     * provide a subclass of the ServerRunnable.
-     *
-     * @param timeout
-     *            the socet timeout to use.
-     * @return the server runnable.
-     */
-    protected ServerRunnable createServerRunnable(final int timeout) {
-        return new ServerRunnable(this, timeout);
     }
 
     /**
@@ -489,23 +475,15 @@ public class NanoHTTPD {
         this.serverSocket = createServerSocket();
         this.serverSocket.setReuseAddress(true);
 
-        ServerRunnable serverRunnable = createServerRunnable(timeout);
-        this.thread = new Thread(serverRunnable);
+        InetSocketAddress address = hostname == null
+                ? new InetSocketAddress(port)
+                : new InetSocketAddress(hostname, port);
+        serverSocket.bind(address);
+
+        this.thread = new Thread(new ServerRunnable(this, asyncRunner, timeout));
         this.thread.setDaemon(daemon);
         this.thread.setName("NanoHttpd Main Listener");
         this.thread.start();
-        while (!serverRunnable.hasBinded() && serverRunnable.getBindException() == null) {
-            try {
-                Thread.sleep(10L);
-            } catch (Throwable e) {
-                // on android this may not be allowed, that's why we
-                // catch throwable the wait should be very short because we are
-                // just waiting for the bind of the socket
-            }
-        }
-        if (serverRunnable.getBindException() != null) {
-            throw serverRunnable.getBindException();
-        }
     }
 
     /**

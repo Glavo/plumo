@@ -1,4 +1,4 @@
-package org.glavo.webdav.nanohttpd;
+package org.glavo.webdav.nanohttpd.internal;
 
 /*
  * #%L
@@ -33,6 +33,9 @@ package org.glavo.webdav.nanohttpd;
  * #L%
  */
 
+import org.glavo.webdav.nanohttpd.NanoHTTPD;
+import org.glavo.webdav.nanohttpd.internal.AsyncRunner;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -46,29 +49,18 @@ public class ServerRunnable implements Runnable {
 
     private final NanoHTTPD httpd;
 
+    private final AsyncRunner asyncRunner;
+
     private final int timeout;
 
-    private IOException bindException;
-
-    private boolean hasBinded = false;
-
-    public ServerRunnable(NanoHTTPD httpd, int timeout) {
+    public ServerRunnable(NanoHTTPD httpd, AsyncRunner asyncRunner, int timeout) {
         this.httpd = httpd;
+        this.asyncRunner = asyncRunner;
         this.timeout = timeout;
     }
 
     @Override
     public void run() {
-        try {
-            InetSocketAddress address = httpd.hostname == null
-                    ? new InetSocketAddress(httpd.port)
-                    : new InetSocketAddress(httpd.hostname, httpd.port);
-            httpd.getServerSocket().bind(address);
-            hasBinded = true;
-        } catch (IOException e) {
-            this.bindException = e;
-            return;
-        }
         do {
             try {
                 final Socket finalAccept = httpd.getServerSocket().accept();
@@ -76,18 +68,10 @@ public class ServerRunnable implements Runnable {
                     finalAccept.setSoTimeout(this.timeout);
                 }
                 final InputStream inputStream = finalAccept.getInputStream();
-                httpd.asyncRunner.exec(httpd.createClientHandler(finalAccept, inputStream));
+                asyncRunner.exec(httpd.createClientHandler(finalAccept, inputStream));
             } catch (IOException e) {
                 NanoHTTPD.LOG.log(Level.FINE, "Communication with the client broken", e);
             }
         } while (!httpd.getServerSocket().isClosed());
-    }
-
-    public IOException getBindException() {
-        return bindException;
-    }
-
-    public boolean hasBinded() {
-        return hasBinded;
     }
 }
