@@ -68,7 +68,7 @@ public class ChunkedOutputStream extends FilterOutputStream {
             return;
         out.write(String.format("%x\r\n", len).getBytes(StandardCharsets.ISO_8859_1));
         out.write(b, off, len);
-        out.write(IOUtils.CRLF);
+        out.write(Constants.CRLF);
     }
 
     public void finish() throws IOException {

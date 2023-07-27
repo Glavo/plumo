@@ -218,10 +218,10 @@ public final class HttpSessionImpl implements HttpSession {
                 mpline = in.readLine();
                 headerLines++;
                 while (mpline != null && mpline.trim().length() > 0) {
-                    Matcher matcher = NanoHTTPD.CONTENT_DISPOSITION_PATTERN.matcher(mpline);
+                    Matcher matcher = Constants.CONTENT_DISPOSITION_PATTERN.matcher(mpline);
                     if (matcher.matches()) {
                         String attributeString = matcher.group(2);
-                        matcher = NanoHTTPD.CONTENT_DISPOSITION_ATTRIBUTE_PATTERN.matcher(attributeString);
+                        matcher = Constants.CONTENT_DISPOSITION_ATTRIBUTE_PATTERN.matcher(attributeString);
                         while (matcher.find()) {
                             String key = matcher.group(1);
                             if ("name".equalsIgnoreCase(key)) {
@@ -239,7 +239,7 @@ public final class HttpSessionImpl implements HttpSession {
                             }
                         }
                     }
-                    matcher = NanoHTTPD.CONTENT_TYPE_PATTERN.matcher(mpline);
+                    matcher = Constants.CONTENT_TYPE_PATTERN.matcher(mpline);
                     if (matcher.matches()) {
                         partContentType = matcher.group(2).trim();
                     }

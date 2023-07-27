@@ -73,7 +73,7 @@ public class UnsyncBufferedOutputStream extends OutputStream {
     }
 
     public void writeCRLF() throws IOException {
-        write(IOUtils.CRLF, 0, 2);
+        write(Constants.CRLF, 0, 2);
     }
 
     public void writeASCII(String str) throws IOException {
