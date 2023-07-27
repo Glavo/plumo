@@ -47,10 +47,7 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 
-import org.glavo.webdav.nanohttpd.internal.ChunkedOutputStream;
-import org.glavo.webdav.nanohttpd.internal.HttpUtils;
-import org.glavo.webdav.nanohttpd.internal.SimpleStringMap;
-import org.glavo.webdav.nanohttpd.internal.UnsyncBufferedOutputStream;
+import org.glavo.webdav.nanohttpd.internal.*;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.content.ContentType;
@@ -198,7 +195,7 @@ public class Response implements Closeable {
                 printHeader(out, "content-type", this.mimeType);
             }
             if (header.get("date") == null) {
-                printHeader(out, "date", HttpUtils.getHttpTime(Instant.now()));
+                printHeader(out, "date", Constants.HTTP_TIME_FORMATTER.format(Instant.now()));
             }
 
             this.header.forEachChecked((k, v) -> printHeader(out, k, v));

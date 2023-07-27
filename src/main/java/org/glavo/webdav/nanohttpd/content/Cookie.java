@@ -33,7 +33,7 @@ package org.glavo.webdav.nanohttpd.content;
  * #L%
  */
 
-import org.glavo.webdav.nanohttpd.internal.HttpUtils;
+import org.glavo.webdav.nanohttpd.internal.Constants;
 
 import java.time.Instant;
 
@@ -52,7 +52,7 @@ public class Cookie {
     public Cookie(String name, String value, int numDays) {
         this.n = name;
         this.v = value;
-        this.e = HttpUtils.getHttpTime(Instant.now().plusSeconds(Math.multiplyExact(numDays, 86400L)));
+        this.e = Constants.HTTP_TIME_FORMATTER.format(Instant.now().plusSeconds(Math.multiplyExact(numDays, 86400L)));
     }
 
     public Cookie(String name, String value, String expires) {
