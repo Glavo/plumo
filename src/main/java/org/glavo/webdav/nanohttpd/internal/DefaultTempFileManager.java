@@ -106,6 +106,10 @@ public final class DefaultTempFileManager implements TempFileManager {
     }
 
     private void closeImpl() {
+        if (tempFiles == null) {
+            return;
+        }
+
         for (Path file : this.tempFiles) {
             try {
                 Files.deleteIfExists(file);
