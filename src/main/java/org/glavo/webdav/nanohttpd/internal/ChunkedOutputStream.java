@@ -1,4 +1,4 @@
-package org.glavo.webdav.nanohttpd.response;
+package org.glavo.webdav.nanohttpd.internal;
 
 /*
  * #%L
@@ -45,7 +45,6 @@ import java.nio.charset.StandardCharsets;
  */
 public class ChunkedOutputStream extends FilterOutputStream {
 
-    private static final byte[] CRLF = {'\r', '\n'};
     private static final byte[] FINISH = {'0', '\r', '\n', '\r', '\n'};
 
     public ChunkedOutputStream(OutputStream out) {
@@ -69,7 +68,7 @@ public class ChunkedOutputStream extends FilterOutputStream {
             return;
         out.write(String.format("%x\r\n", len).getBytes(StandardCharsets.ISO_8859_1));
         out.write(b, off, len);
-        out.write(CRLF);
+        out.write(IOUtils.CRLF);
     }
 
     public void finish() throws IOException {

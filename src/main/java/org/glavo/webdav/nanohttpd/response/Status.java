@@ -33,6 +33,10 @@ package org.glavo.webdav.nanohttpd.response;
  * #L%
  */
 
+import org.jetbrains.annotations.ApiStatus;
+
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Serializable;
 
 public final class Status implements Serializable {
@@ -84,10 +88,39 @@ public final class Status implements Serializable {
 
     private final int statusCode;
     private final String description;
+    private final byte[] binary;
 
     public Status(int statusCode, String description) {
         this.statusCode = statusCode;
         this.description = description;
+        this.binary = binary(statusCode, description);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static byte[] binary(int statusCode, String description) {
+        String statusCodeStr = String.valueOf(statusCode);
+        boolean descriptionIsEmpty = description == null || description.isEmpty();
+
+        int binaryLength = statusCodeStr.length() + (descriptionIsEmpty ? 0 : description.length() + 1);
+        byte[] binary = new byte[binaryLength];
+
+        statusCodeStr.getBytes(0, statusCodeStr.length(), binary, 0);
+        if (!descriptionIsEmpty) {
+            binary[statusCodeStr.length()] = ' ';
+
+            int offset = statusCodeStr.length() + 1;
+            for (int i = 0; i < description.length(); i++) {
+                char ch = description.charAt(i);
+
+                if (ch < 128) {
+                    binary[offset + i] = (byte) ch;
+                } else {
+                    throw new IllegalArgumentException();
+                }
+            }
+        }
+
+        return binary;
     }
 
     public int getStatusCode() {
@@ -96,5 +129,10 @@ public final class Status implements Serializable {
 
     public String getDescription() {
         return description;
+    }
+
+    @ApiStatus.Internal
+    public void writeTo(OutputStream out) throws IOException {
+        out.write(binary);
     }
 }

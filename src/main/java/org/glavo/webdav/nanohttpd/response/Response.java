@@ -41,6 +41,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 
+import org.glavo.webdav.nanohttpd.internal.ChunkedOutputStream;
 import org.glavo.webdav.nanohttpd.internal.SimpleStringMap;
 import org.glavo.webdav.nanohttpd.internal.HttpUtils;
 import org.glavo.webdav.nanohttpd.request.Method;
