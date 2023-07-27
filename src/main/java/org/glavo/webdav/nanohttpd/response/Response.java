@@ -33,17 +33,24 @@ package org.glavo.webdav.nanohttpd.response;
  * #L%
  */
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 
 import org.glavo.webdav.nanohttpd.internal.ChunkedOutputStream;
-import org.glavo.webdav.nanohttpd.internal.SimpleStringMap;
 import org.glavo.webdav.nanohttpd.internal.HttpUtils;
+import org.glavo.webdav.nanohttpd.internal.SimpleStringMap;
+import org.glavo.webdav.nanohttpd.internal.UnsyncBufferedOutputStream;
 import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.content.ContentType;
@@ -181,60 +188,59 @@ public class Response implements Closeable {
         }
 
         try {
-            Writer writer = new BufferedWriter(new OutputStreamWriter(outputStream, new ContentType(this.mimeType).getEncoding()));
-            writer.append("HTTP/1.1 ")
-                    .append(String.valueOf(this.status.getStatusCode())).append(' ').append(this.status.getDescription())
-                    .append(" \r\n");
+            UnsyncBufferedOutputStream out = new UnsyncBufferedOutputStream(outputStream, 1024);
+
+            out.writeASCII("HTTP/1.1 ");
+            out.writeStatus(status);
+            out.writeCRLF();
+
             if (this.mimeType != null) {
-                printHeader(writer, "content-type", this.mimeType);
+                printHeader(out, "content-type", this.mimeType);
             }
             if (header.get("date") == null) {
-                printHeader(writer, "date", HttpUtils.getHttpTime(Instant.now()));
+                printHeader(out, "date", HttpUtils.getHttpTime(Instant.now()));
             }
 
-            this.header.forEachChecked((k, v) -> printHeader(writer, k, v));
+            this.header.forEachChecked((k, v) -> printHeader(out, k, v));
             this.multiHeader.forEachChecked((k, l) -> {
                 for (String v : l) {
-                    printHeader(writer, k, v);
+                    printHeader(out, k, v);
                 }
             });
 
             if (header.get("connection") == null) {
-                printHeader(writer, "connection", (this.keepAlive ? "keep-alive" : "close"));
+                printHeader(out, "connection", (this.keepAlive ? "keep-alive" : "close"));
             }
             if (header.get("content-length") != null) {
                 setUseGzip(false);
             }
             if (useGzipWhenAccepted()) {
-                printHeader(writer, "content-encoding", "gzip");
+                printHeader(out, "content-encoding", "gzip");
                 setChunkedTransfer(true);
             }
             long pending = this.data != null ? this.contentLength : 0;
             if (this.requestMethod != Method.HEAD && this.chunkedTransfer) {
-                printHeader(writer, "transfer-encoding", "chunked");
+                printHeader(out, "transfer-encoding", "chunked");
             } else if (!useGzipWhenAccepted()) {
-                pending = sendContentLengthHeaderIfNotAlreadyPresent(writer, pending);
+                pending = sendContentLengthHeaderIfNotAlreadyPresent(out, pending);
             }
-            writer.append("\r\n");
-            writer.flush();
-            sendBodyWithCorrectTransferAndEncoding(outputStream, pending);
-            outputStream.flush();
+            out.writeCRLF();
+            sendBodyWithCorrectTransferAndEncoding(out, pending);
+            out.flush();
             NanoHTTPD.safeClose(this.data);
         } catch (IOException ioe) {
             NanoHTTPD.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
         }
     }
 
-    protected void printHeader(Writer writer, String key, String value) throws IOException {
-        writer.write(key);
-        writer.write(": ");
-        writer.write(value);
-        writer.write("\r\n");
-
-        writer.append(key).append(": ").append(value).append("\r\n");
+    protected void printHeader(UnsyncBufferedOutputStream out, String key, String value) throws IOException {
+        out.writeASCII(key);
+        out.writeASCII(": ");
+        out.writeASCII(value);
+        out.writeCRLF();
     }
 
-    protected long sendContentLengthHeaderIfNotAlreadyPresent(Writer writer, long defaultSize) throws IOException {
+    protected long sendContentLengthHeaderIfNotAlreadyPresent(UnsyncBufferedOutputStream out, long defaultSize) throws IOException {
         String contentLengthString = header.get("content-length");
         long size = defaultSize;
         if (contentLengthString != null) {
@@ -244,7 +250,9 @@ public class Response implements Closeable {
                 NanoHTTPD.LOG.severe("content-length was no number " + contentLengthString);
             }
         } else {
-            writer.write("content-length: " + size + "\r\n");
+            out.writeASCII("content-length: ");
+            out.writeASCII(Long.toString(size));
+            out.writeCRLF();
         }
         return size;
     }

@@ -1,5 +1,6 @@
 package org.glavo.webdav.nanohttpd.internal;
 
+import org.glavo.webdav.nanohttpd.response.Status;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -67,6 +68,14 @@ public class UnsyncBufferedOutputStream extends OutputStream {
         return true;
     }
 
+    public void writeStatus(Status status) throws IOException {
+        status.writeTo(this);
+    }
+
+    public void writeCRLF() throws IOException {
+        write(IOUtils.CRLF, 0, 2);
+    }
+
     public void writeASCII(String str) throws IOException {
         writeASCII(str, 0, str.length());
     }
@@ -98,6 +107,12 @@ public class UnsyncBufferedOutputStream extends OutputStream {
             count += num;
             bufRem -= num;
         }
+    }
+
+    @Override
+    public void flush() throws IOException {
+        flushBuffer();
+        out.flush();
     }
 
     @Override
