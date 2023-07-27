@@ -127,7 +127,7 @@ public class Response implements Closeable {
      * Adds given line to the header.
      */
     public void addHeader(String name, String value) {
-        this.header.put(name.toUpperCase(Locale.ROOT), value);
+        this.header.put(name.toLowerCase(Locale.ROOT), value);
     }
 
     public List<String> getMultiHeaders(String name) {
@@ -233,9 +233,11 @@ public class Response implements Closeable {
         }
     }
 
+    private static final byte[] SEPARATOR = {':', ' '};
+
     protected void printHeader(UnsyncBufferedOutputStream out, String key, String value) throws IOException {
         out.writeASCII(key);
-        out.writeASCII(": ");
+        out.write(SEPARATOR);
         out.writeASCII(value);
         out.writeCRLF();
     }
