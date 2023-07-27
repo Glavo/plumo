@@ -33,23 +33,18 @@ package org.glavo.webdav.nanohttpd.internal;
  * #L%
  */
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.PosixFileAttributeView;
-import java.nio.file.attribute.PosixFilePermission;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-import java.util.logging.Level;
-
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.TempFileManager;
 
-import static java.nio.file.attribute.PosixFilePermission.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileAttribute;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Level;
 
 /**
  * Default strategy for creating and cleaning up temporary files.
@@ -63,128 +58,76 @@ import static java.nio.file.attribute.PosixFilePermission.*;
  */
 public final class DefaultTempFileManager implements TempFileManager {
 
-    private static final LinkOption[] EMPTY_LINK_OPTIONS = new LinkOption[0];
+    private static final FileAttribute<?>[] EMPTY_FILE_ATTRIBUTES = new FileAttribute<?>[0];
 
-    private final Path dir;
-    private final Set<PosixFilePermission> filePermissions;
+    private static final Path TEMP_DIR;
+    private static final boolean FALLBACK;
 
-    private final boolean deleteDir;
-    private final List<Path> tempFiles = new ArrayList<>();
-
-    public DefaultTempFileManager() {
+    static {
         Path dir;
-        Set<PosixFilePermission> permissions = null;
-        boolean deleteDir = false;
+        boolean fallback = false;
 
         try {
             dir = Files.createTempDirectory("NanoHTTPD-");
-            deleteDir = true;
 
-            // CVE-2022-21230
-            PosixFileAttributeView view = Files.getFileAttributeView(dir, PosixFileAttributeView.class, EMPTY_LINK_OPTIONS);
-            if (view != null) {
-                permissions = EnumSet.of(OWNER_READ, OWNER_WRITE);
-                try {
-                    view.setPermissions(permissions);
-                } catch (IOException e) {
-                    NanoHTTPD.LOG.log(Level.WARNING, "Could not set temporary file permissions", e);
+            File d = dir.toFile();
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (!d.exists()) {
+                    return;
                 }
-            }
+
+                File[] list = d.listFiles();
+                if (list != null) {
+                    for (File file : list) {
+                        //noinspection ResultOfMethodCallIgnored
+                        file.delete();
+                    }
+                }
+
+                d.delete();
+            }));
         } catch (IOException e) {
             NanoHTTPD.LOG.log(Level.WARNING, "Failed to create temporary dir", e);
-
             dir = Paths.get(System.getProperty("java.io.tmpdir"));
-            dir.toFile().mkdirs();
-
-            if (Files.getFileAttributeView(dir, PosixFileAttributeView.class, EMPTY_LINK_OPTIONS) != null) {
-                permissions = EnumSet.of(OWNER_READ, OWNER_WRITE);
-            }
+            fallback = true;
         }
 
-        this.dir = dir;
-        this.deleteDir = deleteDir;
-        this.filePermissions = permissions;
+        TEMP_DIR = dir;
+        FALLBACK = fallback;
     }
 
-    @Override
-    public void close() {
+    private List<Path> tempFiles = new ArrayList<>();
+    private Thread shutdownHook;
+
+    public DefaultTempFileManager() {
+        if (FALLBACK) {
+            shutdownHook = new Thread(this::closeImpl);
+        }
+    }
+
+    private void closeImpl() {
         for (Path file : this.tempFiles) {
             try {
-                Files.delete(file);
+                Files.deleteIfExists(file);
             } catch (Exception e) {
                 NanoHTTPD.LOG.log(Level.WARNING, "Could not delete temporary file", e);
             }
         }
-        this.tempFiles.clear();
-
-        if (deleteDir) {
-            try {
-                Files.deleteIfExists(dir);
-            } catch (Exception e) {
-                NanoHTTPD.LOG.log(Level.WARNING, "Could not delete temporary dir", e);
-            }
-        }
+        tempFiles = null;
     }
 
-    private static boolean isSimpleName(String fileName) {
-        if (fileName == null)
-            return false;
-
-        int len = fileName.length();
-        if (len > 20) {
-            return false;
+    @Override
+    public void close() {
+        closeImpl();
+        if (FALLBACK) {
+            Runtime.getRuntime().removeShutdownHook(shutdownHook);
         }
-
-        for (int i = 0; i < len; i++) {
-            char ch = fileName.charAt(i);
-            if (ch > 'z') {
-                return false;
-            }
-
-            if ((ch >= 'a' /*&& ch <= 'z'*/)
-                    || (ch >= 'A' && ch <= 'Z')
-                    || (ch >= '0' && ch <= '9')
-                    || ch == '.'
-                    || ch == '_'
-                    || ch == '-') {
-                continue;
-            } else {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     @Override
     public Path createTempFile(String fileNameHint) throws Exception {
-        String prefix = null;
-        String suffix = null;
-
-        if (isSimpleName(fileNameHint)) {
-            int dotIndex = fileNameHint.lastIndexOf('.');
-            if (dotIndex >= 0 && dotIndex < fileNameHint.length() - 1) {
-                prefix = fileNameHint.substring(0, dotIndex);
-                suffix = fileNameHint.substring(dotIndex);
-            } else {
-                prefix = fileNameHint;
-            }
-        }
-
-        Path tmpFile = Files.createTempFile(dir, prefix, suffix).toAbsolutePath();
-
-        // CVE-2022-21230
-        if (filePermissions != null) {
-            PosixFileAttributeView view = Files.getFileAttributeView(tmpFile, PosixFileAttributeView.class, EMPTY_LINK_OPTIONS);
-            if (view != null) {
-                try {
-                    view.setPermissions(filePermissions);
-                } catch (IOException e) {
-                    NanoHTTPD.LOG.log(Level.WARNING, "Could not set file permissions", e);
-                }
-            }
-        }
-
-        return tmpFile;
+        Path tempFile = Files.createTempFile(TEMP_DIR, null, null, EMPTY_FILE_ATTRIBUTES).toAbsolutePath();
+        tempFiles.add(tempFile);
+        return tempFile;
     }
 }
