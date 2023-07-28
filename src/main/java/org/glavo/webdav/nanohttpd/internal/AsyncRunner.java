@@ -40,6 +40,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Default threading strategy for NanoHTTPD.
@@ -50,12 +51,14 @@ import java.util.concurrent.ExecutorService;
  * The name is useful when profiling the application.
  * </p>
  */
-public class AsyncRunner implements AutoCloseable {
+public final class AsyncRunner implements AutoCloseable {
 
     private volatile ClientHandler firstHandle, lastHandle;
 
     private final Executor executor;
     private final boolean shutdown;
+
+    private final ReentrantLock lock = new ReentrantLock();
 
     public AsyncRunner(Executor executor) {
         this.executor = executor;
@@ -67,27 +70,34 @@ public class AsyncRunner implements AutoCloseable {
         this.shutdown = true;
     }
 
-    synchronized void remove(ClientHandler handler) {
-        ClientHandler next = handler.next;
-        ClientHandler prev = handler.prev;
+    void remove(ClientHandler handler) {
+        lock.lock();
 
-        if (prev == null) {
-            firstHandle = next;
-        } else {
-            prev.next = next;
-            handler.prev = null;
-        }
+        try {
+            ClientHandler next = handler.next;
+            ClientHandler prev = handler.prev;
 
-        if (next == null) {
-            lastHandle = prev;
-        } else {
-            next.prev = prev;
-            handler.next = null;
+            if (prev == null) {
+                firstHandle = next;
+            } else {
+                prev.next = next;
+                handler.prev = null;
+            }
+
+            if (next == null) {
+                lastHandle = prev;
+            } else {
+                next.prev = prev;
+                handler.next = null;
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
     public void exec(ClientHandler handler) {
-        synchronized (this) {
+        lock.lock();
+        try {
             ClientHandler last = this.lastHandle;
 
             if (last == null) {
@@ -98,25 +108,32 @@ public class AsyncRunner implements AutoCloseable {
             }
 
             lastHandle = handler;
+        } finally {
+            lock.unlock();
         }
 
         executor.execute(handler);
     }
 
     @Override
-    public synchronized void close() {
-        ClientHandler handler = firstHandle;
+    public void close() {
+        lock.lock();
+        try {
+            ClientHandler handler = firstHandle;
 
-        while (handler != null) {
-            handler.close();
-            handler = handler.next;
-        }
+            while (handler != null) {
+                handler.close();
+                handler = handler.next;
+            }
 
-        firstHandle = null;
-        lastHandle = null;
+            firstHandle = null;
+            lastHandle = null;
 
-        if (shutdown) {
-            ((ExecutorService) executor).shutdown();
+            if (shutdown) {
+                ((ExecutorService) executor).shutdown();
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
