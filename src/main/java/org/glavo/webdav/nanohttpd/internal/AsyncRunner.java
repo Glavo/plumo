@@ -72,7 +72,6 @@ public final class AsyncRunner implements AutoCloseable {
 
     void remove(ClientHandler handler) {
         lock.lock();
-
         try {
             ClientHandler next = handler.next;
             ClientHandler prev = handler.prev;

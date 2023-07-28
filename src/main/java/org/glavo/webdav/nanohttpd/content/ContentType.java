@@ -54,6 +54,8 @@ public class ContentType {
 
     private static final Pattern BOUNDARY_PATTERN = Pattern.compile(BOUNDARY_REGEX, Pattern.CASE_INSENSITIVE);
 
+    public static final ContentType PLAIN_TEXT = new ContentType("text/plain; charset=UTF-8");
+
     private final String contentTypeHeader;
 
     private final String contentType;

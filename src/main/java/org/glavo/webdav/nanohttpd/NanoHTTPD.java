@@ -44,7 +44,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -53,8 +52,6 @@ import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 import org.glavo.webdav.nanohttpd.internal.ClientHandler;
-import org.glavo.webdav.nanohttpd.response.Response;
-import org.glavo.webdav.nanohttpd.response.Status;
 import org.glavo.webdav.nanohttpd.sockets.SecureServerSocketFactory;
 import org.glavo.webdav.nanohttpd.sockets.SocketFactory;
 import org.glavo.webdav.nanohttpd.internal.DefaultTempFileManager;
@@ -229,7 +226,7 @@ public class NanoHTTPD {
 
     private Thread thread;
 
-    private Function<HttpSession, Response> httpHandler;
+    private Function<HttpSession, HttpResponse> httpHandler;
 
     /**
      * Pluggable strategy for asynchronously executing requests.
@@ -248,14 +245,6 @@ public class NanoHTTPD {
         this(null, port);
     }
 
-    // -------------------------------------------------------------------------------
-    // //
-    //
-    // Threading Strategy.
-    //
-    // -------------------------------------------------------------------------------
-    // //
-
     /**
      * Constructs an HTTP server on given hostname and port.
      */
@@ -264,32 +253,8 @@ public class NanoHTTPD {
         this.port = port;
     }
 
-    public void setHTTPHandler(Function<HttpSession, Response> handler) {
+    public void setHTTPHandler(Function<HttpSession, HttpResponse> handler) {
         this.httpHandler = handler;
-    }
-
-    @SafeVarargs
-    public final void setHTTPHandler(Function<HttpSession, Response> defaultHandler, Function<HttpSession, Response>... interceptors) {
-        if (interceptors == null || interceptors.length == 0) {
-            setHTTPHandler(defaultHandler);
-        } else {
-            setHTTPHandler(session -> {
-                for (Function<HttpSession, Response> interceptor : interceptors) {
-                    Response response = interceptor.apply(session);
-                    if (response != null) {
-                        return response;
-                    }
-                }
-                return defaultHandler.apply(session);
-            });
-        }
-    }
-
-    /**
-     * Forcibly closes all connections that are open.
-     */
-    public synchronized void closeAllConnections() {
-        stop();
     }
 
     /**
@@ -393,11 +358,12 @@ public class NanoHTTPD {
      *            the incoming session
      * @return a response to the incoming session
      */
-    public Response handle(HttpSession session) {
+    public HttpResponse handle(HttpSession session) {
         if (httpHandler != null)
             return httpHandler.apply(session);
         else
-            return Response.newFixedLengthResponse(Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
+            // return Response.newFixedLengthResponse(Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
+            return null; // TODO
     }
 
     /**

@@ -64,7 +64,6 @@ public enum Method {
         try {
             return valueOf(method);
         } catch (IllegalArgumentException e) {
-            // TODO: Log it?
             return null;
         }
     }

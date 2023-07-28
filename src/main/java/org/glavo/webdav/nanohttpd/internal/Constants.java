@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
 public final class Constants {
     public static final byte[] CRLF = {'\r', '\n'};
 
+    public static final byte[] HTTP_HEADER_SEPARATOR = {':', ' '};
+
     public static final String CONTENT_DISPOSITION_REGEX = "([ |\t]*Content-Disposition[ |\t]*:)(.*)";
 
     public static final Pattern CONTENT_DISPOSITION_PATTERN = Pattern.compile(CONTENT_DISPOSITION_REGEX, Pattern.CASE_INSENSITIVE);

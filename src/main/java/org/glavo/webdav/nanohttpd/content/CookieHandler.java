@@ -35,7 +35,7 @@ package org.glavo.webdav.nanohttpd.content;
 
 import java.util.*;
 
-import org.glavo.webdav.nanohttpd.response.Response;
+import org.glavo.webdav.nanohttpd.HttpResponse;
 
 /**
  * Provides rudimentary support for cookies. Doesn't support 'path', 'secure'
@@ -116,10 +116,7 @@ public class CookieHandler implements Iterable<String> {
      *            The Response object to which headers the queued cookies will
      *            be added.
      */
-    public void unloadQueue(Response response) {
-        List<String> cookieHeaders = response.getMultiHeaders("set-cookie");
-        for (Cookie cookie : this.queue) {
-            cookieHeaders.add(cookie.getHTTPHeader());
-        }
+    public void unloadQueue(HttpResponse response) {
+        response.addCookies(this.queue);
     }
 }

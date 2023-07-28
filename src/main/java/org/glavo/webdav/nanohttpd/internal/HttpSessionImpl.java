@@ -8,18 +8,18 @@ package org.glavo.webdav.nanohttpd.internal;
  * %%
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the nanohttpd nor the names of its contributors
  *    may be used to endorse or promote products derived from this software without
  *    specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -52,6 +52,7 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -60,16 +61,13 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
+import java.util.zip.GZIPOutputStream;
 
 import javax.net.ssl.SSLException;
 
-import org.glavo.webdav.nanohttpd.HttpSession;
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
+import org.glavo.webdav.nanohttpd.*;
+import org.glavo.webdav.nanohttpd.content.Cookie;
 import org.glavo.webdav.nanohttpd.request.Method;
-import org.glavo.webdav.nanohttpd.response.Response;
-import org.glavo.webdav.nanohttpd.response.ResponseException;
-import org.glavo.webdav.nanohttpd.response.Status;
-import org.glavo.webdav.nanohttpd.TempFileManager;
 import org.glavo.webdav.nanohttpd.content.ContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
@@ -89,7 +87,7 @@ public final class HttpSessionImpl implements HttpSession {
 
     private final TempFileManager tempFileManager;
 
-    private final OutputStream outputStream;
+    private final UnsyncBufferedOutputStream outputStream;
 
     private final BufferedInputStream inputStream;
 
@@ -113,25 +111,18 @@ public final class HttpSessionImpl implements HttpSession {
 
     private String protocolVersion;
 
-    public HttpSessionImpl(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
-        this.httpd = httpd;
-        this.tempFileManager = tempFileManager;
-        this.inputStream = new BufferedInputStream(inputStream, HttpSessionImpl.BUFSIZE);
-        this.outputStream = outputStream;
-    }
-
     public HttpSessionImpl(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
         this.httpd = httpd;
         this.tempFileManager = tempFileManager;
         this.inputStream = new BufferedInputStream(inputStream, HttpSessionImpl.BUFSIZE);
-        this.outputStream = outputStream;
+        this.outputStream = new UnsyncBufferedOutputStream(outputStream, 1024);
         this.remoteIp = inetAddress.isAnyLocalAddress() ? InetAddress.getLoopbackAddress().getHostAddress() : inetAddress.getHostAddress();
     }
 
     /**
      * Decodes the sent headers and loads the data into Key/value pairs
      */
-    private void decodeHeader(BufferedReader in, Map<String, String> pre, Map<String, List<String>> parms, Map<String, String> headers) throws ResponseException {
+    private void decodeHeader(BufferedReader in, Map<String, String> pre, Map<String, List<String>> parms, Map<String, String> headers) throws HttpResponseException {
         try {
             // Read the request line
             String inLine = in.readLine();
@@ -141,13 +132,13 @@ public final class HttpSessionImpl implements HttpSession {
 
             StringTokenizer st = new StringTokenizer(inLine);
             if (!st.hasMoreTokens()) {
-                throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Syntax error. Usage: GET /example/file.html");
+                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Syntax error. Usage: GET /example/file.html");
             }
 
             pre.put("method", st.nextToken());
 
             if (!st.hasMoreTokens()) {
-                throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Missing URI. Usage: GET /example/file.html");
+                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Missing URI. Usage: GET /example/file.html");
             }
 
             String uri = st.nextToken();
@@ -182,19 +173,19 @@ public final class HttpSessionImpl implements HttpSession {
 
             pre.put("uri", uri);
         } catch (IOException ioe) {
-            throw new ResponseException(Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage(), ioe);
+            throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage(), ioe);
         }
     }
 
     /**
      * Decodes the Multipart Body data and put it into Key/Value pairs.
      */
-    private void decodeMultipartFormData(ContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws ResponseException {
+    private void decodeMultipartFormData(ContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws HttpResponseException {
         int pcount = 0;
         try {
             int[] boundaryIdxs = getBoundaryPositions(fbuf, contentType.getBoundary().getBytes(StandardCharsets.UTF_8));
             if (boundaryIdxs.length < 2) {
-                throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but contains less than two boundary strings.");
+                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but contains less than two boundary strings.");
             }
 
             byte[] partHeaderBuff = new byte[MAX_HEADER_SIZE];
@@ -210,7 +201,7 @@ public final class HttpSessionImpl implements HttpSession {
                 String mpline = in.readLine();
                 headerLines++;
                 if (mpline == null || !mpline.contains(contentType.getBoundary())) {
-                    throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but chunk does not start with boundary.");
+                    throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but chunk does not start with boundary.");
                 }
 
                 String partName = null, fileName = null, partContentType = null;
@@ -252,7 +243,7 @@ public final class HttpSessionImpl implements HttpSession {
                 }
                 // Read the part data
                 if (partHeaderLength >= len - 4) {
-                    throw new ResponseException(Status.INTERNAL_ERROR, "Multipart header size exceeds MAX_HEADER_SIZE.");
+                    throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "Multipart header size exceeds MAX_HEADER_SIZE.");
                 }
                 int partDataStart = boundaryIdxs[boundaryIdx] + partHeaderLength;
                 int partDataEnd = boundaryIdxs[boundaryIdx + 1] - 4;
@@ -282,10 +273,10 @@ public final class HttpSessionImpl implements HttpSession {
                     values.add(fileName);
                 }
             }
-        } catch (ResponseException re) {
+        } catch (HttpResponseException re) {
             throw re;
         } catch (Exception e) {
-            throw new ResponseException(Status.INTERNAL_ERROR, e.toString());
+            throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, e.toString());
         }
     }
 
@@ -326,9 +317,8 @@ public final class HttpSessionImpl implements HttpSession {
         }
     }
 
-    @Override
     public void execute() throws IOException {
-        Response r = null;
+        HttpResponseImpl r = null;
         try {
             // Read the first 8192 bytes.
             // The full header should fit in here.
@@ -387,7 +377,7 @@ public final class HttpSessionImpl implements HttpSession {
 
             this.method = Method.lookup(pre.get("method"));
             if (this.method == null) {
-                throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Syntax error. HTTP verb " + pre.get("method") + " unhandled.");
+                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Syntax error. HTTP verb " + pre.get("method") + " unhandled.");
             }
 
             this.uri = pre.get("uri");
@@ -395,55 +385,58 @@ public final class HttpSessionImpl implements HttpSession {
             this.cookies = new CookieHandler(this.headers);
 
             String connection = this.headers.get("connection");
-            boolean keepAlive = "HTTP/1.1".equals(protocolVersion) && (connection == null || !connection.matches("(?i).*close.*"));
+            boolean keepAlive = "HTTP/1.1".equals(protocolVersion) && (connection == null || !connection.equals("close"));
 
             // Ok, now do the serve()
 
             // TODO: long body_size = getBodySize();
             // TODO: long pos_before_serve = this.inputStream.totalRead()
             // (requires implementation for totalRead())
-            r = httpd.handle(this);
+            r = (HttpResponseImpl) httpd.handle(this);
             // TODO: this.inputStream.skip(body_size -
             // (this.inputStream.totalRead() - pos_before_serve))
 
             if (r == null) {
-                throw new ResponseException(Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
-            } else {
-                String acceptEncoding = this.headers.get("accept-encoding");
-                this.cookies.unloadQueue(r);
-                r.setRequestMethod(this.method);
-                if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
-                    r.setUseGzip(false);
-                }
-                r.setKeepAlive(keepAlive);
-                r.send(this.outputStream);
-            }
-            if (!keepAlive || r.isCloseConnection()) {
-                throw new SocketException("NanoHttpd Shutdown");
-            }
-        } catch (SocketException e) {
-            // throw it out to close socket object (finalAccept)
-            throw e;
-        } catch (SocketTimeoutException ste) {
-            // treat socket timeouts the same way we treat socket exceptions
-            // i.e. close the stream & finalAccept object by throwing the
-            // exception up the call stack.
-            throw ste;
-        } catch (IOException | ResponseException e) {
-            Response resp;
-            if (e instanceof ResponseException) {
-                ResponseException re = (ResponseException) e;
-                resp = Response.newFixedLengthResponse(re.getStatus(), NanoHTTPD.MIME_PLAINTEXT, re.getMessage());
-            } else if (e instanceof SSLException) {
-                resp = Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SSL PROTOCOL FAILURE: " + e.getMessage());
-            } else {
-                resp = Response.newFixedLengthResponse(Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
+                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
             }
 
-            resp.send(this.outputStream);
+            String acceptEncoding = this.headers.get("accept-encoding");
+            this.cookies.unloadQueue(r);
+            if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
+                r.setContentEncoding("");
+            }
+            r.setKeepAlive(keepAlive);
+
+            try {
+                send(r, this.outputStream);
+            } catch (IOException ioe) {
+                NanoHTTPD.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
+                NanoHTTPD.safeClose(this.outputStream);
+                return;
+            }
+
+            if (!keepAlive || r.needCloseConnection()) {
+                throw new SocketException("NanoHttpd Shutdown");
+            }
+        } catch (SocketException | SocketTimeoutException e) {
+            // throw it out to close socket object (finalAccept)
+            throw e;
+        } catch (IOException | HttpResponseException e) {
+            HttpResponse resp;
+            if (e instanceof HttpResponseException) {
+                resp = HttpResponse.newResponse(((HttpResponseException) e).getStatus(), e.getMessage());
+            } else if (e instanceof SSLException) {
+                resp = HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
+            } else {
+                resp = HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
+            }
+
+            send((HttpResponseImpl) resp, this.outputStream);
             NanoHTTPD.safeClose(this.outputStream);
         } finally {
-            NanoHTTPD.safeClose(r);
+            if (r != null) {
+                r.finish();
+            }
             this.tempFileManager.close();
         }
     }
@@ -516,28 +509,172 @@ public final class HttpSessionImpl implements HttpSession {
         return res;
     }
 
+    /**
+     * Sends given response to the socket.
+     */
+    public void send(HttpResponseImpl response, UnsyncBufferedOutputStream out) throws IOException {
+        if (response.status == null) {
+            throw new Error("sendResponse(): Status can't be null.");
+        }
+
+        boolean useGzip;
+        if (response.contentEncoding == null) {
+            if (response.contentType == null) {
+                useGzip = false;
+            } else {
+                String type = response.contentType.getContentType();
+                useGzip = type.startsWith("text/") || type.endsWith("json");
+            }
+        } else if (response.contentEncoding.isEmpty() || "identity".equals(response.contentEncoding)) {
+            useGzip = false;
+        } else if ("gzip".equals(response.contentEncoding)) {
+            useGzip = true;
+        } else {
+            throw new Error("unsupported content encoding: " + response.contentEncoding);
+        }
+
+        ContentType contentType = response.contentType;
+
+        out.writeASCII("HTTP/1.1 ");
+        out.writeStatus(response.status);
+        out.writeCRLF();
+
+        if (contentType != null) {
+            out.writeHttpHeader("content-type", contentType.getContentTypeHeader());
+        }
+
+        Instant date = response.date == null ? Instant.now() : response.date;
+        out.writeHttpHeader("date", Constants.HTTP_TIME_FORMATTER.format(date));
+
+        response.headers.forEachChecked(out::writeHttpHeader);
+
+        if (response.cookies != null) {
+            for (Cookie cookie : response.cookies) {
+                out.writeHttpHeader("set-cookie", cookie.getHTTPHeader());
+            }
+        }
+
+        if (response.connection != null) {
+            out.writeHttpHeader("connection", response.connection);
+        }
+
+        if (useGzip) {
+            out.writeHttpHeader("content-encoding", "gzip");
+        }
+
+        long contentLength;
+        boolean chunkedTransfer;
+        InputStream input = null;
+        byte[] data = null;
+
+        Object body = response.body;
+        if (body == null) {
+            contentLength = 0L;
+            chunkedTransfer = false;
+        } else if (body instanceof InputStream) {
+            input = (InputStream) body;
+            contentLength = response.contentLength;
+            chunkedTransfer = contentLength < 0;
+        } else if (body instanceof byte[]) {
+            data = (byte[]) body;
+            contentLength = data.length;
+            chunkedTransfer = useGzip;
+        } else if (body instanceof String) {
+            data = ((String) body).getBytes(contentType == null ? StandardCharsets.UTF_8 : contentType.getEncoding());
+            contentLength = data.length;
+            chunkedTransfer = useGzip;
+        } else {
+            throw new InternalError("unexpected types: " + body.getClass());
+        }
+
+        if (contentLength >= 0) {
+            out.writeHttpHeader("content-length", Long.toString(contentLength));
+        }
+
+        if (this.method != Method.HEAD && chunkedTransfer) {
+            out.writeHttpHeader("transfer-encoding", "chunked");
+        }
+        out.writeCRLF();
+        if (method != Method.HEAD && (input != null || data != null)) {
+            if (input != null || chunkedTransfer) {
+                long pending;
+
+                if (input == null) {
+                    input = new ByteArrayInputStream(data);
+                    pending = Long.MAX_VALUE;
+                } else {
+                    pending = contentLength >= 0 ? contentLength : Long.MAX_VALUE;
+                }
+
+                OutputStream o = out;
+
+                ChunkedOutputStream chunkedOutputStream = null;
+                GZIPOutputStream gzipOutputStream = null;
+
+                if (chunkedTransfer) {
+                    o = chunkedOutputStream = new ChunkedOutputStream(o);
+                }
+                if (useGzip) {
+                    o = gzipOutputStream = new GZIPOutputStream(o);
+                }
+
+                sendBody(input, o, pending);
+
+                if (useGzip) {
+                    gzipOutputStream.finish();
+                }
+                if (chunkedTransfer) {
+                    chunkedOutputStream.finish();
+                }
+            } else {
+                sendBody(data, outputStream);
+            }
+        }
+        out.flush();
+    }
+
+    private void sendBody(InputStream input, OutputStream outputStream, long pending) throws IOException {
+        long BUFFER_SIZE = 16 * 1024;
+        byte[] buff = new byte[(int) BUFFER_SIZE];
+        while (pending > 0) {
+            long bytesToRead = Math.min(pending, BUFFER_SIZE);
+            int read = input.read(buff, 0, (int) bytesToRead);
+            if (read <= 0) {
+                break;
+            }
+            outputStream.write(buff, 0, read);
+            pending -= read;
+        }
+    }
+
+    private void sendBody(byte[] data, OutputStream outputStream) throws IOException {
+        outputStream.write(data);
+    }
+
+    // --- API ---
+
     @Override
     public CookieHandler getCookies() {
         return this.cookies;
     }
 
     @Override
-    public final Map<String, String> getHeaders() {
+    public Map<String, String> getHeaders() {
         return this.headers;
     }
 
     @Override
-    public final InputStream getInputStream() {
+    public InputStream getInputStream() {
         return this.inputStream;
     }
 
     @Override
-    public final Method getMethod() {
+    public Method getMethod() {
         return this.method;
     }
 
     @Override
-    public final Map<String, List<String>> getParameters() {
+    public Map<String, List<String>> getParameters() {
         return this.parms;
     }
 
@@ -556,7 +693,7 @@ public final class HttpSessionImpl implements HttpSession {
     }
 
     @Override
-    public final String getUri() {
+    public String getUri() {
         return this.uri;
     }
 
@@ -575,7 +712,7 @@ public final class HttpSessionImpl implements HttpSession {
     }
 
     @Override
-    public void parseBody(Map<String, String> files) throws IOException, ResponseException {
+    public void parseBody(Map<String, String> files) throws IOException, HttpResponseException {
         RandomAccessFile randomAccessFile = null;
         try {
             long size = getBodySize();
@@ -617,7 +754,7 @@ public final class HttpSessionImpl implements HttpSession {
                     if (contentType.isMultipart()) {
                         String boundary = contentType.getBoundary();
                         if (boundary == null) {
-                            throw new ResponseException(Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but boundary missing. Usage: GET /example/file.html");
+                            throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Content type is multipart/form-data but boundary missing. Usage: GET /example/file.html");
                         }
                         decodeMultipartFormData(contentType, fbuf, this.parms, files);
                     } else {
