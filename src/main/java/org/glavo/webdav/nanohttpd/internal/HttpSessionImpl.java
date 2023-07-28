@@ -67,7 +67,7 @@ import javax.net.ssl.SSLException;
 
 import org.glavo.webdav.nanohttpd.*;
 import org.glavo.webdav.nanohttpd.content.Cookie;
-import org.glavo.webdav.nanohttpd.request.Method;
+import org.glavo.webdav.nanohttpd.HttpRequestMethod;
 import org.glavo.webdav.nanohttpd.content.ContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
@@ -97,7 +97,7 @@ public final class HttpSessionImpl implements HttpSession {
 
     private String uri;
 
-    private Method method;
+    private HttpRequestMethod method;
 
     private final Map<String, List<String>> parms = new SimpleStringMap<>();
 
@@ -375,7 +375,7 @@ public final class HttpSessionImpl implements HttpSession {
                 this.headers.put("http-client-ip", this.remoteIp);
             }
 
-            this.method = Method.lookup(pre.get("method"));
+            this.method = HttpRequestMethod.lookup(pre.get("method"));
             if (this.method == null) {
                 throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Syntax error. HTTP verb " + pre.get("method") + " unhandled.");
             }
@@ -591,11 +591,11 @@ public final class HttpSessionImpl implements HttpSession {
             out.writeHttpHeader("content-length", Long.toString(contentLength));
         }
 
-        if (this.method != Method.HEAD && chunkedTransfer) {
+        if (this.method != HttpRequestMethod.HEAD && chunkedTransfer) {
             out.writeHttpHeader("transfer-encoding", "chunked");
         }
         out.writeCRLF();
-        if (method != Method.HEAD && (input != null || data != null)) {
+        if (method != HttpRequestMethod.HEAD && (input != null || data != null)) {
             if (input != null || chunkedTransfer) {
                 long pending;
 
@@ -669,7 +669,7 @@ public final class HttpSessionImpl implements HttpSession {
     }
 
     @Override
-    public Method getMethod() {
+    public HttpRequestMethod getMethod() {
         return this.method;
     }
 

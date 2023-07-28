@@ -1,4 +1,4 @@
-package org.glavo.webdav.nanohttpd.request;
+package org.glavo.webdav.nanohttpd;
 
 /*
  * #%L
@@ -37,7 +37,7 @@ package org.glavo.webdav.nanohttpd.request;
  * HTTP Request methods, with the ability to decode a <code>String</code> back
  * to its enum value.
  */
-public enum Method {
+public enum HttpRequestMethod {
     GET,
     PUT,
     POST,
@@ -57,7 +57,7 @@ public enum Method {
     NOTIFY,
     SUBSCRIBE;
 
-    public static Method lookup(String method) {
+    public static HttpRequestMethod lookup(String method) {
         if (method == null)
             return null;
 

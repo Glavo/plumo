@@ -38,7 +38,6 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
-import org.glavo.webdav.nanohttpd.request.Method;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
 /**
@@ -52,7 +51,7 @@ public interface HttpSession {
 
     InputStream getInputStream();
 
-    Method getMethod();
+    HttpRequestMethod getMethod();
 
     Map<String, List<String>> getParameters();
 
