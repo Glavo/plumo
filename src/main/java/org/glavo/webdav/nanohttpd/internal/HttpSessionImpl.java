@@ -83,7 +83,7 @@ public final class HttpSessionImpl implements HttpSession {
 
     public static final int MAX_HEADER_SIZE = 1024;
 
-    private final NanoHTTPD httpd;
+    private final HttpHandler handler;
 
     private final TempFileManager tempFileManager;
 
@@ -111,8 +111,12 @@ public final class HttpSessionImpl implements HttpSession {
 
     private String protocolVersion;
 
-    public HttpSessionImpl(NanoHTTPD httpd, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
-        this.httpd = httpd;
+    public HttpSessionImpl(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
+        this(handler, tempFileManager, inputStream, outputStream, InetAddress.getLoopbackAddress());
+    }
+
+    public HttpSessionImpl(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
+        this.handler = handler;
         this.tempFileManager = tempFileManager;
         this.inputStream = new BufferedInputStream(inputStream, HttpSessionImpl.BUFSIZE);
         this.outputStream = new UnsyncBufferedOutputStream(outputStream, 1024);
@@ -147,9 +151,9 @@ public final class HttpSessionImpl implements HttpSession {
             int qmi = uri.indexOf('?');
             if (qmi >= 0) {
                 decodeParms(uri.substring(qmi + 1), parms);
-                uri = NanoHTTPD.decodePercent(uri.substring(0, qmi));
+                uri = Utils.decodePercent(uri.substring(0, qmi));
             } else {
-                uri = NanoHTTPD.decodePercent(uri);
+                uri = Utils.decodePercent(uri);
             }
 
             // If there's another token, its protocol version,
@@ -160,7 +164,7 @@ public final class HttpSessionImpl implements HttpSession {
                 protocolVersion = st.nextToken();
             } else {
                 protocolVersion = "HTTP/1.1";
-                NanoHTTPD.LOG.log(Level.FINE, "no protocol version specified, strange. Assuming HTTP/1.1.");
+                HttpServerImpl.LOG.log(Level.FINE, "no protocol version specified, strange. Assuming HTTP/1.1.");
             }
             String line = in.readLine();
             while (line != null && !line.trim().isEmpty()) {
@@ -306,10 +310,10 @@ public final class HttpSessionImpl implements HttpSession {
             String value;
 
             if (sep >= 0) {
-                key = NanoHTTPD.decodePercent(e.substring(0, sep)).trim();
-                value = NanoHTTPD.decodePercent(e.substring(sep + 1));
+                key = Utils.decodePercent(e.substring(0, sep)).trim();
+                value = Utils.decodePercent(e.substring(sep + 1));
             } else {
-                key = NanoHTTPD.decodePercent(e).trim();
+                key = Utils.decodePercent(e).trim();
                 value = "";
             }
 
@@ -336,14 +340,14 @@ public final class HttpSessionImpl implements HttpSession {
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {
-                NanoHTTPD.safeClose(this.inputStream);
-                NanoHTTPD.safeClose(this.outputStream);
+                IOUtils.safeClose(this.inputStream);
+                IOUtils.safeClose(this.outputStream);
                 throw new SocketException("NanoHttpd Shutdown");
             }
             if (read == -1) {
                 // socket was closed
-                NanoHTTPD.safeClose(this.inputStream);
-                NanoHTTPD.safeClose(this.outputStream);
+                IOUtils.safeClose(this.inputStream);
+                IOUtils.safeClose(this.outputStream);
                 throw new SocketException("NanoHttpd Shutdown");
             }
             while (read > 0) {
@@ -392,7 +396,7 @@ public final class HttpSessionImpl implements HttpSession {
             // TODO: long body_size = getBodySize();
             // TODO: long pos_before_serve = this.inputStream.totalRead()
             // (requires implementation for totalRead())
-            r = (HttpResponseImpl) httpd.handle(this);
+            r = (HttpResponseImpl) handler.handle(this);
             // TODO: this.inputStream.skip(body_size -
             // (this.inputStream.totalRead() - pos_before_serve))
 
@@ -410,8 +414,8 @@ public final class HttpSessionImpl implements HttpSession {
             try {
                 send(r, this.outputStream);
             } catch (IOException ioe) {
-                NanoHTTPD.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
-                NanoHTTPD.safeClose(this.outputStream);
+                HttpServerImpl.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
+                IOUtils.safeClose(this.outputStream);
                 return;
             }
 
@@ -432,7 +436,7 @@ public final class HttpSessionImpl implements HttpSession {
             }
 
             send((HttpResponseImpl) resp, this.outputStream);
-            NanoHTTPD.safeClose(this.outputStream);
+            IOUtils.safeClose(this.outputStream);
         } finally {
             if (r != null) {
                 r.finish();
@@ -777,7 +781,7 @@ public final class HttpSessionImpl implements HttpSession {
                     break;
             }
         } finally {
-            NanoHTTPD.safeClose(randomAccessFile);
+            IOUtils.safeClose(randomAccessFile);
         }
     }
 
@@ -799,7 +803,7 @@ public final class HttpSessionImpl implements HttpSession {
             } catch (Exception e) { // Catch exception if any
                 throw new Error(e); // we won't recover, so throw an error
             } finally {
-                NanoHTTPD.safeClose(dest);
+                IOUtils.safeClose(dest);
             }
         }
         return path;

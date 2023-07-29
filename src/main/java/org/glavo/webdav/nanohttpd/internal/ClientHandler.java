@@ -33,52 +33,67 @@ package org.glavo.webdav.nanohttpd.internal;
  * #L%
  */
 
+import java.io.Closeable;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.nio.channels.SocketChannel;
 import java.util.logging.Level;
 
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.TempFileManager;
 
 /**
  * The runnable that will be used for every new client connection.
  */
-public class ClientHandler implements Runnable {
+public final class ClientHandler implements Runnable {
 
-    private final NanoHTTPD httpd;
-
+    private final HttpServerImpl httpd;
     private final AsyncRunner asyncRunner;
+    private final InetAddress inetAddress;
 
     private final InputStream inputStream;
+    private final OutputStream outputStream;
 
-    private final Socket acceptSocket;
+    private final Closeable acceptSocket;
 
     volatile ClientHandler prev, next;
 
-    public ClientHandler(NanoHTTPD httpd, AsyncRunner asyncRunner, InputStream inputStream, Socket acceptSocket) {
+    public ClientHandler(HttpServerImpl httpd, AsyncRunner asyncRunner, InetAddress inetAddress,
+                         InputStream inputStream, OutputStream outputStream,
+                         Closeable acceptSocket) {
         this.httpd = httpd;
         this.asyncRunner = asyncRunner;
+        this.inetAddress = inetAddress;
         this.inputStream = inputStream;
+        this.outputStream = outputStream;
         this.acceptSocket = acceptSocket;
     }
 
     public void close() {
-        NanoHTTPD.safeClose(this.inputStream);
-        NanoHTTPD.safeClose(this.acceptSocket);
+        IOUtils.safeClose(this.outputStream);
+        IOUtils.safeClose(this.inputStream);
+        IOUtils.safeClose(this.acceptSocket);
     }
 
     @Override
     public void run() {
-        OutputStream outputStream = null;
         try {
-            outputStream = this.acceptSocket.getOutputStream();
-            TempFileManager tempFileManager = httpd.createTempFileManager();
-            HttpSessionImpl session = new HttpSessionImpl(httpd, tempFileManager, this.inputStream, outputStream, this.acceptSocket.getInetAddress());
-            while (!this.acceptSocket.isClosed()) {
-                session.execute();
+            TempFileManager tempFileManager = httpd.tempFileManagerFactory.get();
+            HttpSessionImpl session = new HttpSessionImpl(httpd.httpHandler, tempFileManager, this.inputStream, outputStream, inetAddress);
+
+            if (this.acceptSocket instanceof Socket) {
+                Socket socket = (Socket) this.acceptSocket;
+                while (!socket.isClosed()) {
+                    session.execute();
+                }
+            } else {
+                SocketChannel socketChannel = (SocketChannel) this.acceptSocket;
+                while (socketChannel.isOpen()) {
+                    session.execute();
+                }
             }
         } catch (Exception e) {
             // When the socket is closed by the client,
@@ -89,12 +104,10 @@ public class ClientHandler implements Runnable {
             // SocketTimeoutException, print the
             // stacktrace
             if (!(e instanceof SocketException && "NanoHttpd Shutdown".equals(e.getMessage())) && !(e instanceof SocketTimeoutException)) {
-                NanoHTTPD.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
+                HttpServerImpl.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
             }
         } finally {
-            NanoHTTPD.safeClose(outputStream);
-            NanoHTTPD.safeClose(this.inputStream);
-            NanoHTTPD.safeClose(this.acceptSocket);
+            close();
             asyncRunner.remove(this);
         }
     }

@@ -33,7 +33,6 @@ package org.glavo.webdav.nanohttpd.internal;
  * #L%
  */
 
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.TempFileManager;
 
 import java.io.File;
@@ -87,7 +86,7 @@ public final class DefaultTempFileManager implements TempFileManager {
                 d.delete();
             }));
         } catch (IOException e) {
-            NanoHTTPD.LOG.log(Level.WARNING, "Failed to create temporary dir", e);
+            HttpServerImpl.LOG.log(Level.WARNING, "Failed to create temporary dir", e);
             dir = Paths.get(System.getProperty("java.io.tmpdir"));
             fallback = true;
         }
@@ -114,7 +113,7 @@ public final class DefaultTempFileManager implements TempFileManager {
             try {
                 Files.deleteIfExists(file);
             } catch (Exception e) {
-                NanoHTTPD.LOG.log(Level.WARNING, "Could not delete temporary file", e);
+                HttpServerImpl.LOG.log(Level.WARNING, "Could not delete temporary file", e);
             }
         }
         tempFiles = null;

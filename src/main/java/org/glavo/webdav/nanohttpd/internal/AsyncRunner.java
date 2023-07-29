@@ -60,14 +60,9 @@ public final class AsyncRunner implements AutoCloseable {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    public AsyncRunner(Executor executor) {
+    public AsyncRunner(Executor executor, boolean shutdown) {
         this.executor = executor;
-        this.shutdown = false;
-    }
-
-    public AsyncRunner(ExecutorService executor) {
-        this.executor = executor;
-        this.shutdown = true;
+        this.shutdown = shutdown;
     }
 
     void remove(ClientHandler handler) {

@@ -1,7 +1,6 @@
 package org.glavo.webdav.nanohttpd.internal;
 
 import org.glavo.webdav.nanohttpd.HttpResponse;
-import org.glavo.webdav.nanohttpd.NanoHTTPD;
 import org.glavo.webdav.nanohttpd.HttpContentType;
 import org.glavo.webdav.nanohttpd.content.Cookie;
 
@@ -34,6 +33,11 @@ public final class HttpResponseImpl implements HttpResponse {
 
     public HttpResponseImpl(Status status) {
         this.status = status;
+    }
+
+    public HttpResponseImpl(Status status, Object body) {
+        this.status = status;
+        this.body = body;
     }
 
     @Override
@@ -161,7 +165,7 @@ public final class HttpResponseImpl implements HttpResponse {
 
     void finish() {
         if (body instanceof InputStream) {
-            NanoHTTPD.safeClose((InputStream) body);
+            IOUtils.safeClose((InputStream) body);
         }
     }
 }
