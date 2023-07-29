@@ -95,7 +95,7 @@ public final class ClientHandler implements Runnable {
                     session.execute();
                 }
             }
-        } catch (Exception e) {
+        } catch (ServerShutdown | SocketTimeoutException ignored) {
             // When the socket is closed by the client,
             // we throw our own SocketException
             // to break the "keep alive" loop above. If
@@ -103,9 +103,8 @@ public final class ClientHandler implements Runnable {
             // than the expected SocketException OR a
             // SocketTimeoutException, print the
             // stacktrace
-            if (!(e instanceof SocketException && "NanoHttpd Shutdown".equals(e.getMessage())) && !(e instanceof SocketTimeoutException)) {
-                HttpServerImpl.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
-            }
+        } catch (Exception e) {
+            HttpServerImpl.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
         } finally {
             close();
             asyncRunner.remove(this);

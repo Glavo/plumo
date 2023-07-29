@@ -342,13 +342,13 @@ public final class HttpSessionImpl implements HttpSession {
             } catch (IOException e) {
                 IOUtils.safeClose(this.inputStream);
                 IOUtils.safeClose(this.outputStream);
-                throw new SocketException("NanoHttpd Shutdown");
+                throw ServerShutdown.shutdown();
             }
             if (read == -1) {
                 // socket was closed
                 IOUtils.safeClose(this.inputStream);
                 IOUtils.safeClose(this.outputStream);
-                throw new SocketException("NanoHttpd Shutdown");
+                throw ServerShutdown.shutdown();
             }
             while (read > 0) {
                 this.rlen += read;
@@ -420,7 +420,7 @@ public final class HttpSessionImpl implements HttpSession {
             }
 
             if (!keepAlive || r.needCloseConnection()) {
-                throw new SocketException("NanoHttpd Shutdown");
+                throw ServerShutdown.shutdown();
             }
         } catch (SocketException | SocketTimeoutException e) {
             // throw it out to close socket object (finalAccept)
