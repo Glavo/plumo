@@ -428,11 +428,11 @@ public final class HttpSessionImpl implements HttpSession {
         } catch (IOException | HttpResponseException e) {
             HttpResponse resp;
             if (e instanceof HttpResponseException) {
-                resp = HttpResponse.newResponse(((HttpResponseException) e).getStatus(), e.getMessage());
+                resp = HttpResponse.newPlainTextResponse(((HttpResponseException) e).getStatus(), e.getMessage());
             } else if (e instanceof SSLException) {
-                resp = HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
+                resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
             } else {
-                resp = HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
+                resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
             }
 
             send((HttpResponseImpl) resp, this.outputStream);

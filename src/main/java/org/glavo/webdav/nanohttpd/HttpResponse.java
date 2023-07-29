@@ -44,25 +44,23 @@ public /*sealed*/ interface HttpResponse {
         return new HttpResponseImpl(status);
     }
 
-    static HttpResponse newResponse(byte[] data) {
-        return newResponse(Status.OK, data);
+    static HttpResponse newPlainTextResponse(String data) {
+        return new HttpResponseImpl(Status.OK, data, HttpContentType.PLAIN_TEXT);
     }
 
-    static HttpResponse newResponse(Status status, byte[] data) {
-        return new HttpResponseImpl(status, data);
+    static HttpResponse newPlainTextResponse(Status status, String data) {
+        return new HttpResponseImpl(status, data, HttpContentType.PLAIN_TEXT);
     }
 
-    static HttpResponse newResponse(String data) {
-        return newResponse(Status.OK, data, HttpContentType.PLAIN_TEXT);
+    static HttpResponse newHtmlResponse(String html) {
+        return new HttpResponseImpl(Status.OK, html, HttpContentType.HTML);
     }
 
-    static HttpResponse newResponse(Status status, String data) {
-        return newResponse(status, data, HttpContentType.PLAIN_TEXT);
+    static HttpResponse newHtmlResponse(Status status, String html) {
+        return new HttpResponseImpl(status, html, HttpContentType.HTML);
     }
 
-    static HttpResponse newResponse(Status status, String data, HttpContentType contentType) {
-        return new HttpResponseImpl(status, data).setContentType(contentType);
-    }
+
 
     final class Status implements Serializable {
         private static final long serialVersionUID = 0L;

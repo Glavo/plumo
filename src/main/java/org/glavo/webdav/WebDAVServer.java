@@ -18,7 +18,7 @@ public final class WebDAVServer {
                     System.out.println(session.getUri());
                     System.out.println(session.getHeaders());
                     return HttpResponse.newResponse(HttpResponse.Status.OK)
-                            .setContentType(HttpContentType.PLAIN_HTML)
+                            .setContentType(HttpContentType.HTML)
                             .setBody("<body>Hello World!</body>");
                 }).start();
     }

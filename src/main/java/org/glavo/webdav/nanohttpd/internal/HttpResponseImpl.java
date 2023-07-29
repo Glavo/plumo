@@ -35,9 +35,10 @@ public final class HttpResponseImpl implements HttpResponse {
         this.status = status;
     }
 
-    public HttpResponseImpl(Status status, Object body) {
+    public HttpResponseImpl(Status status, Object body, HttpContentType contentType) {
         this.status = status;
         this.body = body;
+        this.contentType = contentType;
     }
 
     @Override

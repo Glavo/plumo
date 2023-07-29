@@ -42,7 +42,10 @@ import java.nio.charset.StandardCharsets;
 public final class HttpContentType {
 
     public static final HttpContentType PLAIN_TEXT = new HttpContentType("text/plain", null, null);
-    public static final HttpContentType PLAIN_HTML = new HttpContentType("text/html", null, null);
+    public static final HttpContentType HTML = new HttpContentType("text/html", null, null);
+    public static final HttpContentType JSON = new HttpContentType("application/json", null, null);
+
+    public static final HttpContentType OCTET_STREAM = new HttpContentType("application/octet-stream", null, null);
 
     private String contentTypeHeader;
 

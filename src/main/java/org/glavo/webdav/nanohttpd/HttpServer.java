@@ -138,7 +138,7 @@ public final class HttpServer {
             HttpHandler httpHandler = this.httpHandler;
             if (httpHandler == null) {
                 httpHandler = session ->
-                        HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND, "Not Found");
+                        HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND).setBody("Not Found");
             }
 
             Supplier<TempFileManager> tempFileManagerFactory = this.tempFileManagerFactory;
