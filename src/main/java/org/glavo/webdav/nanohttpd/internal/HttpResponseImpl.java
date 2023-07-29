@@ -2,7 +2,7 @@ package org.glavo.webdav.nanohttpd.internal;
 
 import org.glavo.webdav.nanohttpd.HttpResponse;
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
-import org.glavo.webdav.nanohttpd.content.ContentType;
+import org.glavo.webdav.nanohttpd.HttpContentType;
 import org.glavo.webdav.nanohttpd.content.Cookie;
 
 import java.io.InputStream;
@@ -24,7 +24,7 @@ public final class HttpResponseImpl implements HttpResponse {
     // InputStream | String | byte[]
     Object body;
     long contentLength;
-    ContentType contentType;
+    HttpContentType contentType;
     String contentEncoding;
 
     List<Cookie> cookies;
@@ -69,7 +69,7 @@ public final class HttpResponseImpl implements HttpResponse {
                 this.contentLength = len;
                 break;
             case "content-type":
-                this.contentType = new ContentType(value);
+                this.contentType = new HttpContentType(value);
                 break;
             case "content-encoding":
                 this.contentEncoding = value;
@@ -85,14 +85,14 @@ public final class HttpResponseImpl implements HttpResponse {
     }
 
     @Override
-    public HttpResponse setContentType(ContentType contentType) {
+    public HttpResponse setContentType(HttpContentType contentType) {
         this.contentType = contentType;
         return this;
     }
 
     @Override
     public HttpResponse setContentType(String contentType) {
-        this.contentType = new ContentType(contentType);
+        this.contentType = new HttpContentType(contentType);
         return this;
     }
 

@@ -1,6 +1,5 @@
 package org.glavo.webdav.nanohttpd;
 
-import org.glavo.webdav.nanohttpd.content.ContentType;
 import org.glavo.webdav.nanohttpd.content.Cookie;
 import org.glavo.webdav.nanohttpd.internal.HttpResponseImpl;
 import org.jetbrains.annotations.ApiStatus;
@@ -19,7 +18,7 @@ public /*sealed*/ interface HttpResponse {
 
     HttpResponse setHeader(String name, String value);
 
-    HttpResponse setContentType(ContentType contentType);
+    HttpResponse setContentType(HttpContentType contentType);
 
     HttpResponse setContentType(String contentType);
 
@@ -50,10 +49,10 @@ public /*sealed*/ interface HttpResponse {
     }
 
     static HttpResponse newResponse(Status status, String data) {
-        return newResponse(status, data, ContentType.PLAIN_TEXT);
+        return newResponse(status, data, HttpContentType.PLAIN_TEXT);
     }
 
-    static HttpResponse newResponse(Status status, String data, ContentType contentType) {
+    static HttpResponse newResponse(Status status, String data, HttpContentType contentType) {
         return new HttpResponseImpl(status).setBody(data).setContentType(contentType);
     }
 

@@ -118,16 +118,6 @@ public class NanoHTTPD {
     public static final int SOCKET_READ_TIMEOUT = 5000;
 
     /**
-     * Common MIME type for dynamic content: plain text
-     */
-    public static final String MIME_PLAINTEXT = "text/plain";
-
-    /**
-     * Common MIME type for dynamic content: html
-     */
-    public static final String MIME_HTML = "text/html";
-
-    /**
      * Pseudo-Parameter to use to store the actual query string in the
      * parameters map for later re-processing.
      */

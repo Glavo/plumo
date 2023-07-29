@@ -2,7 +2,6 @@ package org.glavo.webdav;
 
 import org.glavo.webdav.nanohttpd.HttpResponse;
 import org.glavo.webdav.nanohttpd.NanoHTTPD;
-import org.glavo.webdav.nanohttpd.content.ContentType;
 
 public final class WebDAVServer {
     private WebDAVServer() {
@@ -15,7 +14,6 @@ public final class WebDAVServer {
             System.out.println(httpSession.getHeaders());
 
             return HttpResponse.newResponse(HttpResponse.Status.UNAUTHORIZED, "你好世界")
-                    .setContentType(ContentType.PLAIN_TEXT)
                     .setHeader("www-authenticate", "Basic realm=\"Hello World!\"");
         });
 

@@ -68,7 +68,7 @@ import javax.net.ssl.SSLException;
 import org.glavo.webdav.nanohttpd.*;
 import org.glavo.webdav.nanohttpd.content.Cookie;
 import org.glavo.webdav.nanohttpd.HttpRequestMethod;
-import org.glavo.webdav.nanohttpd.content.ContentType;
+import org.glavo.webdav.nanohttpd.HttpContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
 public final class HttpSessionImpl implements HttpSession {
@@ -180,7 +180,7 @@ public final class HttpSessionImpl implements HttpSession {
     /**
      * Decodes the Multipart Body data and put it into Key/Value pairs.
      */
-    private void decodeMultipartFormData(ContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws HttpResponseException {
+    private void decodeMultipartFormData(HttpContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws HttpResponseException {
         int pcount = 0;
         try {
             int[] boundaryIdxs = getBoundaryPositions(fbuf, contentType.getBoundary().getBytes(StandardCharsets.UTF_8));
@@ -194,7 +194,7 @@ public final class HttpSessionImpl implements HttpSession {
                 int len = Math.min(fbuf.remaining(), MAX_HEADER_SIZE);
                 fbuf.get(partHeaderBuff, 0, len);
                 BufferedReader in =
-                        new BufferedReader(new InputStreamReader(new ByteArrayInputStream(partHeaderBuff, 0, len), contentType.getEncoding()), len);
+                        new BufferedReader(new InputStreamReader(new ByteArrayInputStream(partHeaderBuff, 0, len), contentType.getCharset()), len);
 
                 int headerLines = 0;
                 // First line is boundary string
@@ -257,7 +257,7 @@ public final class HttpSessionImpl implements HttpSession {
                     byte[] dataBytes = new byte[partDataEnd - partDataStart];
                     fbuf.get(dataBytes);
 
-                    values.add(new String(dataBytes, contentType.getEncoding()));
+                    values.add(new String(dataBytes, contentType.getCharset()));
                 } else {
                     // Read it into a file
                     String path = saveTmpFile(fbuf, partDataStart, partDataEnd - partDataStart, fileName);
@@ -522,7 +522,7 @@ public final class HttpSessionImpl implements HttpSession {
             if (response.contentType == null) {
                 useGzip = false;
             } else {
-                String type = response.contentType.getContentType();
+                String type = response.contentType.getMimeType();
                 useGzip = type.startsWith("text/") || type.endsWith("json");
             }
         } else if (response.contentEncoding.isEmpty() || "identity".equals(response.contentEncoding)) {
@@ -533,14 +533,14 @@ public final class HttpSessionImpl implements HttpSession {
             throw new Error("unsupported content encoding: " + response.contentEncoding);
         }
 
-        ContentType contentType = response.contentType;
+        HttpContentType contentType = response.contentType;
 
         out.writeASCII("HTTP/1.1 ");
         out.writeStatus(response.status);
         out.writeCRLF();
 
         if (contentType != null) {
-            out.writeHttpHeader("content-type", contentType.getContentTypeHeader());
+            out.writeHttpHeader("content-type", contentType.toString());
         }
 
         Instant date = response.date == null ? Instant.now() : response.date;
@@ -550,7 +550,7 @@ public final class HttpSessionImpl implements HttpSession {
 
         if (response.cookies != null) {
             for (Cookie cookie : response.cookies) {
-                out.writeHttpHeader("set-cookie", cookie.getHTTPHeader());
+                out.writeHttpHeader("set-cookie", cookie.toString());
             }
         }
 
@@ -580,7 +580,7 @@ public final class HttpSessionImpl implements HttpSession {
             contentLength = data.length;
             chunkedTransfer = useGzip;
         } else if (body instanceof String) {
-            data = ((String) body).getBytes(contentType == null ? StandardCharsets.UTF_8 : contentType.getEncoding());
+            data = ((String) body).getBytes(contentType == null ? StandardCharsets.UTF_8 : contentType.getCharset());
             contentLength = data.length;
             chunkedTransfer = useGzip;
         } else {
@@ -750,7 +750,7 @@ public final class HttpSessionImpl implements HttpSession {
             // in data section, too, read it:
             switch (this.method) {
                 case POST:
-                    ContentType contentType = new ContentType(this.headers.get("content-type"));
+                    HttpContentType contentType = new HttpContentType(this.headers.get("content-type"));
                     if (contentType.isMultipart()) {
                         String boundary = contentType.getBoundary();
                         if (boundary == null) {
@@ -760,9 +760,9 @@ public final class HttpSessionImpl implements HttpSession {
                     } else {
                         byte[] postBytes = new byte[fbuf.remaining()];
                         fbuf.get(postBytes);
-                        String postLine = new String(postBytes, contentType.getEncoding()).trim();
+                        String postLine = new String(postBytes, contentType.getCharset()).trim();
                         // Handle application/x-www-form-urlencoded
-                        if ("application/x-www-form-urlencoded".equalsIgnoreCase(contentType.getContentType())) {
+                        if ("application/x-www-form-urlencoded".equalsIgnoreCase(contentType.getMimeType())) {
                             decodeParms(postLine, this.parms);
                         } else if (!postLine.isEmpty()) {
                             // Special case for raw POST data => create a
