@@ -147,7 +147,7 @@ public final class AsyncRunner implements AutoCloseable {
         }
     }
 
-    public static final class VirtualThreadExecutor implements Executor {
+    private static final class VirtualThreadExecutor implements Executor {
         static final boolean AVAILABLE;
         static final boolean NEED_ENABLE_PREVIEW;
 

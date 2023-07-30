@@ -107,20 +107,13 @@ public final class HttpServer {
 
     public HttpServer setExecutor(Executor executor) {
         this.executor = executor;
-        this.shutdownExecutor = executor instanceof ExecutorService;
+        this.shutdownExecutor = false;
         return this;
     }
 
-    public HttpServer setExecutorNotShutdown(ExecutorService executor) {
+    public HttpServer setExecutor(ExecutorService executor, boolean shutdownOnClose) {
         this.executor = executor;
-        this.shutdownExecutor = false;
-        return this;
-    }
-
-    public HttpServer setUseVirtualThreadExecutor() {
-        AsyncRunner.VirtualThreadExecutor.checkAvailable();
-        this.executor = new AsyncRunner.VirtualThreadExecutor();
-        this.shutdownExecutor = false;
+        this.shutdownExecutor = shutdownOnClose;
         return this;
     }
 
