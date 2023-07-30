@@ -132,12 +132,7 @@ public final class HttpServer {
                 throw new IllegalStateException("Server has started");
             }
             started = true;
-            AsyncRunner asyncRunner;
-            if (executor == null) {
-                asyncRunner = new AsyncRunner(new AsyncRunner.DefaultExecutor(), false);
-            } else {
-                asyncRunner = new AsyncRunner(executor, shutdownExecutor);
-            }
+            AsyncRunner asyncRunner = executor == null ? new AsyncRunner() : new AsyncRunner(executor, shutdownExecutor);
 
             HttpHandler httpHandler = this.httpHandler;
             if (httpHandler == null) {

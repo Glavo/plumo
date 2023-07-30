@@ -60,6 +60,11 @@ public final class AsyncRunner implements AutoCloseable {
 
     private final ReentrantLock lock = new ReentrantLock();
 
+    public AsyncRunner() {
+        this.executor = VirtualThreadExecutor.AVAILABLE ? new VirtualThreadExecutor() : new DefaultExecutor();
+        this.shutdown = false;
+    }
+
     public AsyncRunner(Executor executor, boolean shutdown) {
         this.executor = executor;
         this.shutdown = shutdown;
@@ -131,7 +136,7 @@ public final class AsyncRunner implements AutoCloseable {
         }
     }
 
-    public static final class DefaultExecutor implements Executor {
+    private static final class DefaultExecutor implements Executor {
         private long requestCount;
 
         @Override
@@ -143,8 +148,8 @@ public final class AsyncRunner implements AutoCloseable {
     }
 
     public static final class VirtualThreadExecutor implements Executor {
-        private static final boolean AVAILABLE;
-        private static final boolean NEED_ENABLE_PREVIEW;
+        static final boolean AVAILABLE;
+        static final boolean NEED_ENABLE_PREVIEW;
 
         private static final MethodHandle newThread;
 
@@ -192,10 +197,8 @@ public final class AsyncRunner implements AutoCloseable {
                 Thread t = (Thread) newThread.invokeExact(command);
                 t.setName("NanoHttpd Request Processor (#" + this.requestCount++ + ")");
                 t.start();
-            } catch (RuntimeException | Error e) {
-                throw e;
             } catch (Throwable e) {
-                throw new RuntimeException(e);
+                throw new InternalError(e);
             }
         }
     }
