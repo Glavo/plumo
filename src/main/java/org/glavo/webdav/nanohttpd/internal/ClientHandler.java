@@ -38,7 +38,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.SocketChannel;
 import java.util.logging.Level;
@@ -72,7 +71,7 @@ public final class ClientHandler implements Runnable {
         this.acceptSocket = acceptSocket;
     }
 
-    public void close() {
+    void closeSocket() {
         IOUtils.safeClose(this.outputStream);
         IOUtils.safeClose(this.inputStream);
         IOUtils.safeClose(this.acceptSocket);
@@ -106,8 +105,7 @@ public final class ClientHandler implements Runnable {
         } catch (Exception e) {
             HttpServerImpl.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
         } finally {
-            close();
-            asyncRunner.remove(this);
+            asyncRunner.close(this);
         }
     }
 }

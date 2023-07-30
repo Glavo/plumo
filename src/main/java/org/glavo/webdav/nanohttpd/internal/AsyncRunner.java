@@ -72,7 +72,7 @@ public final class AsyncRunner implements AutoCloseable {
         this.shutdown = shutdown;
     }
 
-    void remove(ClientHandler handler) {
+    void close(ClientHandler handler) {
         lock.lock();
         try {
             if (closed) {
@@ -97,6 +97,7 @@ public final class AsyncRunner implements AutoCloseable {
             }
         } finally {
             lock.unlock();
+            handler.closeSocket();
         }
     }
 
@@ -137,7 +138,7 @@ public final class AsyncRunner implements AutoCloseable {
             ClientHandler handler = firstHandle;
 
             while (handler != null) {
-                handler.close();
+                handler.closeSocket();
                 handler = handler.next;
             }
 
