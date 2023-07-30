@@ -11,6 +11,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.*;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.Executor;
@@ -37,11 +38,11 @@ public final class HttpServer {
 
     public static HttpServer create(Path path) {
         UnixDomainSocketUtils.checkAvailable();
-        return create(UnixDomainSocketUtils.createUnixDomainSocketAddress(path));
+        return new HttpServer(UnixDomainSocketUtils.createUnixDomainSocketAddress(path), path);
     }
 
-    public static HttpServer create(SocketAddress address) {
-        return new HttpServer(Objects.requireNonNull(address));
+    public static HttpServer create(InetSocketAddress address) {
+        return new HttpServer(Objects.requireNonNull(address), null);
     }
 
     private final SocketAddress address;
@@ -54,10 +55,13 @@ public final class HttpServer {
     private SSLServerSocketFactory sslServerSocketFactory;
     private String[] sslProtocols;
 
+    private final Path unixSocketPath;
+
     private Thread thread;
 
-    public HttpServer(SocketAddress address) {
+    public HttpServer(SocketAddress address, Path unixSocketPath) {
         this.address = address;
+        this.unixSocketPath = unixSocketPath;
     }
 
     public HttpServer setSocketReadTimeout(int timeout) {
@@ -119,6 +123,15 @@ public final class HttpServer {
     }
 
     private volatile HttpServerImpl impl;
+    private volatile Thread deleteUnixDomainSocketFileHook;
+
+    private void deleteUnixDomainSocketFile() {
+        try {
+            Files.deleteIfExists(unixSocketPath);
+        } catch (IOException e) {
+            HttpServerImpl.LOG.log(Level.WARNING, "Could not delete unix socket file", e);
+        }
+    }
 
     private void startImpl(ThreadFactory threadFactory) throws IOException {
         HttpServerImpl impl;
@@ -146,9 +159,9 @@ public final class HttpServer {
                 tempFileManagerFactory = DefaultTempFileManager::new;
             }
 
-            Closeable s = null;
+            Closeable s;
 
-            if (this.address instanceof InetSocketAddress) {
+            if (this.unixSocketPath == null) {
                 ServerSocket serverSocket;
 
                 if (sslServerSocketFactory == null) {
@@ -170,6 +183,11 @@ public final class HttpServer {
             } else {
                 ServerSocketChannel serverSocketChannel = UnixDomainSocketUtils.openUnixDomainServerSocketChannel();
                 serverSocketChannel.bind(this.address);
+
+                Thread hook = new Thread(this::deleteUnixDomainSocketFile);
+                Runtime.getRuntime().addShutdownHook(hook);
+                this.deleteUnixDomainSocketFileHook = hook;
+
                 s = serverSocketChannel;
             }
 
@@ -226,6 +244,13 @@ public final class HttpServer {
             } catch (InterruptedException e) {
                 HttpServerImpl.LOG.log(Level.SEVERE, "Interrupted", e);
             }
+        }
+
+        Thread hook = this.deleteUnixDomainSocketFileHook;
+        if (hook != null) {
+            deleteUnixDomainSocketFileHook = null;
+            Runtime.getRuntime().removeShutdownHook(hook);
+            deleteUnixDomainSocketFile();
         }
     }
 }
