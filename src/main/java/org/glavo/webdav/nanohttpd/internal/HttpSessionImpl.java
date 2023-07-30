@@ -33,7 +33,6 @@ package org.glavo.webdav.nanohttpd.internal;
  * #L%
  */
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -79,7 +78,7 @@ public final class HttpSessionImpl implements HttpSession {
 
     private static final int MEMORY_STORE_LIMIT = 1024;
 
-    public static final int BUFSIZE = 8192;
+    public static final int HEADER_BUFFER_SIZE = 8192;
 
     public static final int MAX_HEADER_SIZE = 1024;
 
@@ -89,7 +88,7 @@ public final class HttpSessionImpl implements HttpSession {
 
     private final UnsyncBufferedOutputStream outputStream;
 
-    private final PrependableInputStream inputStream;
+    private final HttpRequestInputStream inputStream;
 
     private int splitbyte;
 
@@ -118,7 +117,7 @@ public final class HttpSessionImpl implements HttpSession {
     public HttpSessionImpl(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
         this.handler = handler;
         this.tempFileManager = tempFileManager;
-        this.inputStream = new PrependableInputStream(inputStream);
+        this.inputStream = new HttpRequestInputStream(inputStream);
         this.outputStream = new UnsyncBufferedOutputStream(outputStream, 1024);
         this.remoteIp = inetAddress.isAnyLocalAddress() ? InetAddress.getLoopbackAddress().getHostAddress() : inetAddress.getHostAddress();
     }
@@ -329,14 +328,14 @@ public final class HttpSessionImpl implements HttpSession {
             // Apache's default header limit is 8KB.
             // Do NOT assume that a single read will get the entire header
             // at once!
-            byte[] readBuf = new byte[HttpSessionImpl.BUFSIZE];
+
             this.splitbyte = 0;
             this.rlen = 0;
 
             int read;
             // this.inputStream.mark(HttpSessionImpl.BUFSIZE);
             try {
-                read = this.inputStream.read(readBuf, 0, HttpSessionImpl.BUFSIZE);
+                read = this.inputStream.readHead();
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {
@@ -350,24 +349,25 @@ public final class HttpSessionImpl implements HttpSession {
                 IOUtils.safeClose(this.outputStream);
                 throw ServerShutdown.shutdown();
             }
+
+            byte[] headBuf = this.inputStream.getHeaderBuffer();
+
             while (read > 0) {
                 this.rlen += read;
-                this.splitbyte = findHeaderEnd(readBuf, this.rlen);
+                this.splitbyte = findHeaderEnd(headBuf, this.rlen);
                 if (this.splitbyte > 0) {
                     break;
                 }
-                read = this.inputStream.read(readBuf, this.rlen, HttpSessionImpl.BUFSIZE - this.rlen);
+                read = this.inputStream.readRaw(headBuf, this.rlen, HEADER_BUFFER_SIZE - this.rlen);
             }
 
-            if (this.splitbyte < this.rlen) {
-                this.inputStream.prepend(readBuf, this.splitbyte, this.rlen - this.splitbyte);
-            }
+            this.inputStream.setBufRemaining(splitbyte, this.rlen - splitbyte);
 
             this.parms.clear();
             this.headers.clear();
 
             // Create a BufferedReader for parsing the header.
-            BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(readBuf, 0, this.rlen), StandardCharsets.UTF_8));
+            BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(headBuf, 0, this.rlen), StandardCharsets.UTF_8));
 
             // Decode the header into parms and header java properties
             Map<String, String> pre = new HashMap<>();
