@@ -89,7 +89,7 @@ public final class HttpSessionImpl implements HttpSession {
 
     private final UnsyncBufferedOutputStream outputStream;
 
-    private final BufferedInputStream inputStream;
+    private final PrependableInputStream inputStream;
 
     private int splitbyte;
 
@@ -118,7 +118,7 @@ public final class HttpSessionImpl implements HttpSession {
     public HttpSessionImpl(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
         this.handler = handler;
         this.tempFileManager = tempFileManager;
-        this.inputStream = new BufferedInputStream(inputStream, HttpSessionImpl.BUFSIZE);
+        this.inputStream = new PrependableInputStream(inputStream);
         this.outputStream = new UnsyncBufferedOutputStream(outputStream, 1024);
         this.remoteIp = inetAddress.isAnyLocalAddress() ? InetAddress.getLoopbackAddress().getHostAddress() : inetAddress.getHostAddress();
     }
@@ -329,14 +329,14 @@ public final class HttpSessionImpl implements HttpSession {
             // Apache's default header limit is 8KB.
             // Do NOT assume that a single read will get the entire header
             // at once!
-            byte[] buf = new byte[HttpSessionImpl.BUFSIZE];
+            byte[] readBuf = new byte[HttpSessionImpl.BUFSIZE];
             this.splitbyte = 0;
             this.rlen = 0;
 
-            int read = -1;
-            this.inputStream.mark(HttpSessionImpl.BUFSIZE);
+            int read;
+            // this.inputStream.mark(HttpSessionImpl.BUFSIZE);
             try {
-                read = this.inputStream.read(buf, 0, HttpSessionImpl.BUFSIZE);
+                read = this.inputStream.read(readBuf, 0, HttpSessionImpl.BUFSIZE);
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {
@@ -352,23 +352,22 @@ public final class HttpSessionImpl implements HttpSession {
             }
             while (read > 0) {
                 this.rlen += read;
-                this.splitbyte = findHeaderEnd(buf, this.rlen);
+                this.splitbyte = findHeaderEnd(readBuf, this.rlen);
                 if (this.splitbyte > 0) {
                     break;
                 }
-                read = this.inputStream.read(buf, this.rlen, HttpSessionImpl.BUFSIZE - this.rlen);
+                read = this.inputStream.read(readBuf, this.rlen, HttpSessionImpl.BUFSIZE - this.rlen);
             }
 
             if (this.splitbyte < this.rlen) {
-                this.inputStream.reset();
-                this.inputStream.skip(this.splitbyte);
+                this.inputStream.prepend(readBuf, this.splitbyte, this.rlen - this.splitbyte);
             }
 
             this.parms.clear();
             this.headers.clear();
 
             // Create a BufferedReader for parsing the header.
-            BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(buf, 0, this.rlen), StandardCharsets.UTF_8));
+            BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(readBuf, 0, this.rlen), StandardCharsets.UTF_8));
 
             // Decode the header into parms and header java properties
             Map<String, String> pre = new HashMap<>();
