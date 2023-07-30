@@ -1,10 +1,8 @@
 package org.glavo.webdav.nanohttpd;
 
-import org.glavo.webdav.nanohttpd.internal.AsyncRunner;
-import org.glavo.webdav.nanohttpd.internal.DefaultTempFileManager;
-import org.glavo.webdav.nanohttpd.internal.HttpServerImpl;
-import org.glavo.webdav.nanohttpd.internal.UnixDomainSocketUtils;
+import org.glavo.webdav.nanohttpd.internal.*;
 
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import java.io.Closeable;
@@ -52,7 +50,7 @@ public final class HttpServer {
     private Executor executor;
     private boolean shutdownExecutor;
     private int timeout = SOCKET_READ_TIMEOUT;
-    private SSLServerSocketFactory sslServerSocketFactory;
+    private SSLContext sslContext;
     private String[] sslProtocols;
 
     private final Path unixSocketPath;
@@ -88,17 +86,17 @@ public final class HttpServer {
         return this;
     }
 
-    public HttpServer setUseHttps(SSLServerSocketFactory factory) {
-        setUseHttps(factory, null);
+    public HttpServer setUseHttps(SSLContext context) {
+        setUseHttps(context, null);
         return this;
     }
 
-    public HttpServer setUseHttps(SSLServerSocketFactory factory, String[] sslProtocols) {
+    public HttpServer setUseHttps(SSLContext context, String[] sslProtocols) {
         if (!(address instanceof InetSocketAddress)) {
             throw new UnsupportedOperationException();
         }
 
-        this.sslServerSocketFactory = Objects.requireNonNull(factory);
+        this.sslContext = Objects.requireNonNull(context);
         this.sslProtocols = sslProtocols;
         return this;
     }
@@ -159,36 +157,39 @@ public final class HttpServer {
                 tempFileManagerFactory = DefaultTempFileManager::new;
             }
 
-            Closeable s;
+            Closeable s = null;
 
-            if (this.unixSocketPath == null) {
-                ServerSocket serverSocket;
+            try {
+                if (this.unixSocketPath == null) {
+                    ServerSocket serverSocket;
 
-                if (sslServerSocketFactory == null) {
-                    serverSocket = new ServerSocket();
-                } else {
-                    serverSocket = sslServerSocketFactory.createServerSocket();
+                    if (sslContext == null) {
+                        s = serverSocket = new ServerSocket();
+                    } else {
+                        s = serverSocket = sslContext.getServerSocketFactory().createServerSocket();
 
-                    SSLServerSocket ss = (SSLServerSocket) serverSocket;
-                    if (sslProtocols != null) {
-                        ss.setEnabledProtocols(sslProtocols);
+                        SSLServerSocket ss = (SSLServerSocket) serverSocket;
+                        if (sslProtocols != null) {
+                            ss.setEnabledProtocols(sslProtocols);
+                        }
+                        ss.setUseClientMode(false);
+                        ss.setWantClientAuth(false);
+                        ss.setNeedClientAuth(false);
                     }
-                    ss.setUseClientMode(false);
-                    ss.setWantClientAuth(false);
-                    ss.setNeedClientAuth(false);
+                    serverSocket.setReuseAddress(true);
+                    serverSocket.bind(this.address);
+                } else {
+                    ServerSocketChannel serverSocketChannel = UnixDomainSocketUtils.openUnixDomainServerSocketChannel();
+                    s = serverSocketChannel;
+                    serverSocketChannel.bind(this.address);
+
+                    Thread hook = new Thread(this::deleteUnixDomainSocketFile);
+                    Runtime.getRuntime().addShutdownHook(hook);
+                    this.deleteUnixDomainSocketFileHook = hook;
                 }
-                serverSocket.setReuseAddress(true);
-                serverSocket.bind(this.address);
-                s = serverSocket;
-            } else {
-                ServerSocketChannel serverSocketChannel = UnixDomainSocketUtils.openUnixDomainServerSocketChannel();
-                serverSocketChannel.bind(this.address);
-
-                Thread hook = new Thread(this::deleteUnixDomainSocketFile);
-                Runtime.getRuntime().addShutdownHook(hook);
-                this.deleteUnixDomainSocketFileHook = hook;
-
-                s = serverSocketChannel;
+            } catch (Throwable e) {
+                IOUtils.safeClose(s);
+                throw e;
             }
 
             this.impl = impl = new HttpServerImpl(
