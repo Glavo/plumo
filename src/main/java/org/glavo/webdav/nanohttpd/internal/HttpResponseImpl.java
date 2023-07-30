@@ -6,14 +6,11 @@ import org.glavo.webdav.nanohttpd.content.Cookie;
 
 import java.io.InputStream;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.*;
 
 public final class HttpResponseImpl implements HttpResponse {
 
-    final SimpleStringMap<String> headers = new SimpleStringMap<>();
+    final Map<String, String> headers = new HashMap<>();
 
     Status status;
     Instant date;

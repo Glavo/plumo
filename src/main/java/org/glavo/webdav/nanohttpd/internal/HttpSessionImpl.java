@@ -99,9 +99,9 @@ public final class HttpSessionImpl implements HttpSession {
 
     private HttpRequestMethod method;
 
-    private final Map<String, List<String>> parms = new SimpleStringMap<>();
+    private final Map<String, List<String>> parms = new HashMap<>();
 
-    private final Map<String, String> headers = new SimpleStringMap<>();
+    private final Map<String, String> headers = new HashMap<>();
 
     private CookieHandler cookies;
 
@@ -550,7 +550,9 @@ public final class HttpSessionImpl implements HttpSession {
         Instant date = response.date == null ? Instant.now() : response.date;
         out.writeHttpHeader("date", Constants.HTTP_TIME_FORMATTER.format(date));
 
-        response.headers.forEachChecked(out::writeHttpHeader);
+        for (Map.Entry<String, String> entry : response.headers.entrySet()) {
+            out.writeHttpHeader(entry.getKey(), entry.getValue());
+        }
 
         if (response.cookies != null) {
             for (Cookie cookie : response.cookies) {
