@@ -60,8 +60,6 @@ public /*sealed*/ interface HttpResponse {
         return new HttpResponseImpl(status, html, HttpContentType.HTML);
     }
 
-
-
     final class Status implements Serializable {
         private static final long serialVersionUID = 0L;
 

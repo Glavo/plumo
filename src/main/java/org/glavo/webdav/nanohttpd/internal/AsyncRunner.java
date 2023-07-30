@@ -58,6 +58,8 @@ public final class AsyncRunner implements AutoCloseable {
     private final Executor executor;
     private final boolean shutdown;
 
+    private volatile boolean closed = false;
+
     private final ReentrantLock lock = new ReentrantLock();
 
     public AsyncRunner() {
@@ -73,6 +75,10 @@ public final class AsyncRunner implements AutoCloseable {
     void remove(ClientHandler handler) {
         lock.lock();
         try {
+            if (closed) {
+                return;
+            }
+
             ClientHandler next = handler.next;
             ClientHandler prev = handler.prev;
 
@@ -94,7 +100,7 @@ public final class AsyncRunner implements AutoCloseable {
         }
     }
 
-    public void exec(ClientHandler handler) {
+    void exec(ClientHandler handler) {
         lock.lock();
         try {
             ClientHandler last = this.lastHandle;
@@ -118,6 +124,8 @@ public final class AsyncRunner implements AutoCloseable {
     public void close() {
         lock.lock();
         try {
+            closed = true;
+
             ClientHandler handler = firstHandle;
 
             while (handler != null) {
