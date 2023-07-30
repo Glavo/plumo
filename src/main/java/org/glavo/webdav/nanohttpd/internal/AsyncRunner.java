@@ -103,6 +103,10 @@ public final class AsyncRunner implements AutoCloseable {
     void exec(ClientHandler handler) {
         lock.lock();
         try {
+            if (closed) {
+                throw new IllegalStateException("Runner is closed");
+            }
+
             ClientHandler last = this.lastHandle;
 
             if (last == null) {
@@ -124,6 +128,10 @@ public final class AsyncRunner implements AutoCloseable {
     public void close() {
         lock.lock();
         try {
+            if (closed) {
+                return;
+            }
+
             closed = true;
 
             ClientHandler handler = firstHandle;
