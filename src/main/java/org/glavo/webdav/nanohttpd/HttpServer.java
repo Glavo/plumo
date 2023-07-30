@@ -4,17 +4,16 @@ import org.glavo.webdav.nanohttpd.internal.*;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.*;
 import java.nio.channels.ServerSocketChannel;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
@@ -53,13 +52,18 @@ public final class HttpServer {
     private SSLContext sslContext;
     private String[] sslProtocols;
 
-    private final Path unixSocketPath;
+    private final Path unixDomainSocketPath;
 
+    private volatile boolean started = false;
+    private volatile boolean stopped = false;
+    private volatile HttpServerImpl impl;
+    private final AtomicReference<Thread> deleteUnixDomainSocketFileHook;
     private Thread thread;
 
-    public HttpServer(SocketAddress address, Path unixSocketPath) {
+    public HttpServer(SocketAddress address, Path unixDomainSocketPath) {
         this.address = address;
-        this.unixSocketPath = unixSocketPath;
+        this.unixDomainSocketPath = unixDomainSocketPath;
+        this.deleteUnixDomainSocketFileHook = unixDomainSocketPath == null ? null : new AtomicReference<>();
     }
 
     public HttpServer setSocketReadTimeout(int timeout) {
@@ -120,25 +124,14 @@ public final class HttpServer {
         return this;
     }
 
-    private volatile HttpServerImpl impl;
-    private volatile Thread deleteUnixDomainSocketFileHook;
-
-    private void deleteUnixDomainSocketFile() {
-        try {
-            Files.deleteIfExists(unixSocketPath);
-        } catch (IOException e) {
-            HttpServerImpl.LOG.log(Level.WARNING, "Could not delete unix socket file", e);
-        }
-    }
-
     private void startImpl(ThreadFactory threadFactory) throws IOException {
         HttpServerImpl impl;
-        synchronized (this) {
-            impl = this.impl;
-            if (impl != null) {
-                throw new IllegalStateException();
-            }
 
+        synchronized (this) {
+            if (started) {
+                throw new IllegalStateException("Server has started");
+            }
+            started = true;
             AsyncRunner asyncRunner;
             if (executor == null) {
                 asyncRunner = new AsyncRunner(new AsyncRunner.DefaultExecutor(), false);
@@ -160,7 +153,7 @@ public final class HttpServer {
             Closeable s = null;
 
             try {
-                if (this.unixSocketPath == null) {
+                if (this.unixDomainSocketPath == null) {
                     ServerSocket serverSocket;
 
                     if (sslContext == null) {
@@ -183,9 +176,7 @@ public final class HttpServer {
                     s = serverSocketChannel;
                     serverSocketChannel.bind(this.address);
 
-                    Thread hook = new Thread(this::deleteUnixDomainSocketFile);
-                    Runtime.getRuntime().addShutdownHook(hook);
-                    this.deleteUnixDomainSocketFileHook = hook;
+                    UnixDomainSocketUtils.registerShutdownHook(this.deleteUnixDomainSocketFileHook, unixDomainSocketPath);
                 }
             } catch (Throwable e) {
                 IOUtils.safeClose(s);
@@ -232,11 +223,25 @@ public final class HttpServer {
         return this;
     }
 
-    public synchronized void stop() {
+    public void stop() {
+        synchronized (this){
+            if (stopped) {
+                return;
+            }
+
+            if (!started) {
+                throw new IllegalStateException("Server not started");
+            }
+
+            stopped = true;
+        }
+
         HttpServerImpl impl = this.impl;
         if (impl == null) {
             return;
         }
+
+        this.impl = null;
 
         impl.stop();
         if (thread != null && thread.isAlive()) {
@@ -247,11 +252,22 @@ public final class HttpServer {
             }
         }
 
-        Thread hook = this.deleteUnixDomainSocketFileHook;
-        if (hook != null) {
-            deleteUnixDomainSocketFileHook = null;
-            Runtime.getRuntime().removeShutdownHook(hook);
-            deleteUnixDomainSocketFile();
+        AtomicReference<Thread> hookHolder = this.deleteUnixDomainSocketFileHook;
+        if (hookHolder != null) {
+            boolean needDelete = false;
+            Thread hook;
+            synchronized (hookHolder) {
+                hook = hookHolder.get();
+                if (hook != null) {
+                    needDelete = true;
+                    hookHolder.set(null);
+                }
+            }
+
+            if (needDelete) {
+                Runtime.getRuntime().removeShutdownHook(hook);
+                IOUtils.deleteIfExists(unixDomainSocketPath);
+            }
         }
     }
 }
