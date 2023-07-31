@@ -12,58 +12,6 @@ import java.util.*;
 // TODO
 public final class Utils {
 
-    /**
-     * Creates an SSLSocketFactory for HTTPS. Pass a loaded KeyStore and an
-     * array of loaded KeyManagers. These objects must properly
-     * loaded/initialized by the caller.
-     */
-    public static SSLServerSocketFactory makeSSLSocketFactory(KeyStore loadedKeyStore, KeyManager[] keyManagers) throws IOException {
-        try {
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            trustManagerFactory.init(loadedKeyStore);
-            SSLContext ctx = SSLContext.getInstance("TLS");
-            ctx.init(keyManagers, trustManagerFactory.getTrustManagers(), null);
-            return ctx.getServerSocketFactory();
-        } catch (Exception e) {
-            throw new IOException(e.getMessage());
-        }
-    }
-
-    /**
-     * Creates an SSLSocketFactory for HTTPS. Pass a loaded KeyStore and a
-     * loaded KeyManagerFactory. These objects must properly loaded/initialized
-     * by the caller.
-     */
-    public static SSLServerSocketFactory makeSSLSocketFactory(KeyStore loadedKeyStore, KeyManagerFactory loadedKeyFactory) throws IOException {
-        try {
-            return makeSSLSocketFactory(loadedKeyStore, loadedKeyFactory.getKeyManagers());
-        } catch (Exception e) {
-            throw new IOException(e.getMessage());
-        }
-    }
-
-    /**
-     * Creates an SSLSocketFactory for HTTPS. Pass a KeyStore resource with your
-     * certificate and passphrase
-     */
-    public static SSLServerSocketFactory makeSSLSocketFactory(String keyAndTrustStoreClasspathPath, char[] passphrase) throws IOException {
-        try {
-            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-            InputStream keystoreStream = HttpServerImpl.class.getResourceAsStream(keyAndTrustStoreClasspathPath);
-
-            if (keystoreStream == null) {
-                throw new IOException("Unable to load keystore from classpath: " + keyAndTrustStoreClasspathPath);
-            }
-
-            keystore.load(keystoreStream, passphrase);
-            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            keyManagerFactory.init(keystore, passphrase);
-            return makeSSLSocketFactory(keystore, keyManagerFactory);
-        } catch (Exception e) {
-            throw new IOException(e.getMessage());
-        }
-    }
-
     // -------------------------------------------------------------------------------
     // //
 

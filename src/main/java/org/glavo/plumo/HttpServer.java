@@ -2,15 +2,17 @@ package org.glavo.plumo;
 
 import org.glavo.plumo.internal.*;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.*;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.*;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -117,6 +119,41 @@ public final class HttpServer {
 
         this.sslContext = Objects.requireNonNull(context);
         this.sslProtocols = sslProtocols;
+        return this;
+    }
+
+    public HttpServer setUseHttps(KeyStore loadedKeyStore, KeyManager[] keyManagers) throws GeneralSecurityException {
+        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        trustManagerFactory.init(loadedKeyStore);
+        SSLContext ctx = SSLContext.getInstance("TLS");
+        ctx.init(keyManagers, trustManagerFactory.getTrustManagers(), null);
+        setUseHttps(ctx);
+
+        return this;
+    }
+
+    public HttpServer setUseHttps(KeyStore loadedKeyStore, KeyManagerFactory loadedKeyFactory) throws GeneralSecurityException {
+        setUseHttps(loadedKeyStore, loadedKeyFactory.getKeyManagers());
+        return this;
+    }
+
+    public HttpServer setUseHttps(String keyAndTrustStoreClasspathPath, char[] passphrase) throws IOException {
+        try {
+            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+            InputStream keystoreStream = HttpServer.class.getResourceAsStream(keyAndTrustStoreClasspathPath);
+
+            if (keystoreStream == null) {
+                throw new IOException("Unable to load keystore from classpath: " + keyAndTrustStoreClasspathPath);
+            }
+
+            keystore.load(keystoreStream, passphrase);
+            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            keyManagerFactory.init(keystore, passphrase);
+            setUseHttps(keystore, keyManagerFactory);
+        } catch (Exception e) {
+            throw new IOException(e.getMessage());
+        }
+
         return this;
     }
 
@@ -227,7 +264,7 @@ public final class HttpServer {
     }
 
     public void stop() {
-        synchronized (this){
+        synchronized (this) {
             if (stopped) {
                 return;
             }
