@@ -172,4 +172,13 @@ public final class HttpRequestImpl implements HttpRequest, HttpHeaders {
         return getImpl("host");
     }
 
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("HttpRequest {\n");
+        builder.append("    ").append(method).append(' ').append(rawUri).append(' ').append(httpVersion).append('\n');
+        forEach((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
+        builder.append("}");
+        return builder.toString();
+    }
 }

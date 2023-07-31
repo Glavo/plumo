@@ -13,10 +13,7 @@ public final class WebDAVServer {
     public static void main(String[] args) throws Throwable {
         HttpServer.create(Path.of("D:\\unix-domain-socket"), true)
                 .setHttpHandler(request -> {
-                    System.out.println("======" + request.getMethod() + "======");
-                    System.out.println(request.getUri());
-                    System.out.println(request.getRawUri());
-                    System.out.println(request.getHeaders());
+                    System.out.println(request);
                     return HttpResponse.newResponse(HttpResponse.Status.OK)
                             .setContentType(HttpContentType.HTML)
                             .setBody("<body>Hello World!</body>");
