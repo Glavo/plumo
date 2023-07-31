@@ -9,14 +9,6 @@ import java.util.Map;
 
 public interface HttpRequest {
 
-    boolean containsHeader(String name);
-
-    String getHeader(String name);
-
-    List<String> getHeaders(String name);
-
-    Map<String, List<String>> getHeaders();
-
     InputStream getBody();
 
     Method getMethod();
@@ -34,6 +26,24 @@ public interface HttpRequest {
     InetAddress getLocalInetAddress();
 
     String getHost();
+
+    //
+    // Headers
+    //
+
+    Map<String, List<String>> getHeaders();
+
+    boolean containsHeader(String name);
+
+    String getHeader(String name);
+
+    List<String> getHeaders(String name);
+
+    //
+    // Cookies
+    //
+
+    Map<String, List<String>> getCookies();
 
     /**
      * HTTP Request methods, with the ability to decode a <code>String</code> back

@@ -33,7 +33,6 @@ import javax.net.ssl.SSLException;
 
 import org.glavo.plumo.*;
 import org.glavo.plumo.content.Cookie;
-import org.glavo.plumo.content.CookieHandler;
 
 public final class HttpSession {
 
@@ -66,8 +65,6 @@ public final class HttpSession {
     private final Map<String, List<String>> parms = new HashMap<>();
 
     private final Map<String, String> headers = new HashMap<>();
-
-    private CookieHandler cookies;
 
     private String queryParameterString;
 
@@ -260,8 +257,6 @@ public final class HttpSession {
 //                this.headers.put("http-client-ip", this.remoteIp);
 //            }
 //
-//            this.cookies = new CookieHandler(this.headers);
-
             String connection = request.headers.getFirst("connection");
             boolean keepAlive = "HTTP/1.1".equals(request.httpVersion) && (connection == null || !connection.equals("close"));
 
@@ -274,7 +269,6 @@ public final class HttpSession {
             }
 
             String acceptEncoding = request.headers.getFirst("accept-encoding");
-            // TODO: this.cookies.unloadQueue(r);
             if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
                 r.setContentEncoding("");
             }
@@ -517,10 +511,6 @@ public final class HttpSession {
     }
 
     // --- API ---
-
-    public CookieHandler getCookies() {
-        return this.cookies;
-    }
 
     public Map<String, String> getHeaders() {
         return this.headers;
