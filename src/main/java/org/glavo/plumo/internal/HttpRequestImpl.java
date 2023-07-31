@@ -69,7 +69,7 @@ public final class HttpRequestImpl implements HttpRequest {
     }
 
     @Override
-    public URI getUri() {
+    public URI getURI() {
         if (decodedUri == null) {
             if (illegalUri) {
                 return null;
@@ -85,7 +85,7 @@ public final class HttpRequestImpl implements HttpRequest {
     }
 
     @Override
-    public String getRawUri() {
+    public String getRawURI() {
         return rawUri;
     }
 

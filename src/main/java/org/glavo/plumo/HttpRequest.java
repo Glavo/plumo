@@ -21,9 +21,9 @@ public interface HttpRequest {
 
     Method getMethod();
 
-    URI getUri();
+    URI getURI();
 
-    String getRawUri();
+    String getRawURI();
 
     SocketAddress getRemoteAddress();
 
