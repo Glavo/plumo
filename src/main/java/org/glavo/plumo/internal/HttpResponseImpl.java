@@ -81,21 +81,7 @@ public final class HttpResponseImpl implements HttpResponse {
                 this.date = Instant.from(Constants.HTTP_TIME_FORMATTER.parse(value));
                 break;
             default:
-                headers.compute(name, (key, oldValue) -> {
-                    if (oldValue == null) {
-                        return value;
-                    }
-
-                    List<String> list;
-                    if (oldValue instanceof String) {
-                        list = new ArrayList<>(4);
-                        list.add((String) oldValue);
-                    } else {
-                        list = (List<String>) oldValue;
-                    }
-                    list.add(value);
-                    return list;
-                });
+                MultiStringMap.add(headers, name, value);
         }
 
         return this;

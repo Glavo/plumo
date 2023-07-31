@@ -107,6 +107,8 @@ public final class HttpSession {
                 BufferedReader in =
                         new BufferedReader(new InputStreamReader(new ByteArrayInputStream(partHeaderBuff, 0, len), contentType.getCharset()), len);
 
+
+
                 int headerLines = 0;
                 // First line is boundary string
                 String mpline = in.readLine();
@@ -258,11 +260,9 @@ public final class HttpSession {
 //                this.headers.put("http-client-ip", this.remoteIp);
 //            }
 //
-//            this.uri = pre.get("uri");
-//
 //            this.cookies = new CookieHandler(this.headers);
 
-            String connection = request.getImpl("connection");
+            String connection = request.headers.getFirst("connection");
             boolean keepAlive = "HTTP/1.1".equals(request.httpVersion) && (connection == null || !connection.equals("close"));
 
             // Ok, now do the serve()
@@ -273,7 +273,7 @@ public final class HttpSession {
                 throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
             }
 
-            String acceptEncoding = request.getImpl("accept-encoding");
+            String acceptEncoding = request.headers.getFirst("accept-encoding");
             // TODO: this.cookies.unloadQueue(r);
             if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
                 r.setContentEncoding("");

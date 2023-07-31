@@ -4,10 +4,18 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 
 public interface HttpRequest {
 
-    HttpHeaders getHeaders();
+    boolean containsHeader(String name);
+
+    String getHeader(String name);
+
+    List<String> getHeaders(String name);
+
+    Map<String, List<String>> getHeaders();
 
     InputStream getBody();
 

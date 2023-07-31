@@ -1,6 +1,5 @@
 package org.glavo.plumo.internal;
 
-import org.glavo.plumo.HttpHeaders;
 import org.glavo.plumo.HttpRequest;
 
 import java.io.InputStream;
@@ -9,9 +8,9 @@ import java.util.*;
 import java.util.function.BiConsumer;
 
 @SuppressWarnings("unchecked")
-public final class HttpRequestImpl implements HttpRequest, HttpHeaders {
+public final class HttpRequestImpl implements HttpRequest {
 
-    final Map<String, Object> headers = new HashMap<>();
+    final MultiStringMap headers = new MultiStringMap();
 
     Method method;
     String rawUri;
@@ -26,69 +25,22 @@ public final class HttpRequestImpl implements HttpRequest, HttpHeaders {
     // headers
 
     @Override
-    public int size() {
-        return headers.size();
-    }
-
-    @Override
-    public boolean contains(String name) {
+    public boolean containsHeader(String name) {
         return headers.containsKey(name.toLowerCase(Locale.ROOT));
     }
 
-    String getImpl(String name) {
-        Object v = headers.get(name);
-        if (v == null) {
-            return null;
-        } else if (v instanceof String) {
-            return ((String) v);
-        } else {
-            return ((List<String>) v).get(0);
-        }
+    @Override
+    public String getHeader(String name) {
+        return headers.getFirst(name.toLowerCase(Locale.ROOT));
     }
 
     @Override
-    public String get(String name) {
-        return getImpl(name.toLowerCase(Locale.ROOT));
+    public List<String> getHeaders(String name) {
+        return headers.get(name.toLowerCase(Locale.ROOT));
     }
 
-    List<String> getAllImpl(String name) {
-        Object v = headers.get(name);
-
-        if (v == null) {
-            return Collections.emptyList();
-        } else if (v instanceof String) {
-            return Collections.singletonList((String) v);
-        } else {
-            return (List<String>) v;
-        }
-    }
-
-    @Override
-    public List<String> getAll(String name) {
-        return getAllImpl(name.toLowerCase(Locale.ROOT));
-    }
-
-    void putHeader(String name, String value) {
-        headers.compute(name.toLowerCase(Locale.ROOT), (key, oldValue) -> {
-            if (oldValue == null) {
-                return value;
-            }
-
-            List<String> list;
-            if (oldValue instanceof String) {
-                list = new ArrayList<>(4);
-                list.add((String) oldValue);
-            } else {
-                list = (List<String>) oldValue;
-            }
-            list.add(value);
-            return list;
-        });
-    }
-
-    @Override
-    public void forEach(BiConsumer<String, String> consumer) {
-        for (Map.Entry<String, Object> entry : headers.entrySet()) {
+    public void forEachHeader(BiConsumer<String, String> consumer) {
+        for (Map.Entry<String, Object> entry : headers.map.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
 
@@ -162,13 +114,13 @@ public final class HttpRequestImpl implements HttpRequest, HttpHeaders {
     }
 
     @Override
-    public HttpHeaders getHeaders() {
-        return this;
+    public Map<String, List<String>> getHeaders() {
+        return headers;
     }
 
     @Override
     public String getHost() {
-        return getImpl("host");
+        return headers.getFirst("host");
     }
 
     @Override
@@ -176,7 +128,7 @@ public final class HttpRequestImpl implements HttpRequest, HttpHeaders {
         StringBuilder builder = new StringBuilder();
         builder.append("HttpRequest {\n");
         builder.append("    ").append(method).append(' ').append(rawUri).append(' ').append(httpVersion).append('\n');
-        forEach((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
+        forEachHeader((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
         builder.append("}");
         return builder.toString();
     }

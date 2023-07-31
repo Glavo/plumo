@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Locale;
 
 public class HttpRequestReader implements Closeable {
 
@@ -286,6 +287,6 @@ public class HttpRequestReader implements Closeable {
 
         String value = off < 0 ? "" : new String(buf, off, end - off, HEADER_ENCODING).trim();
 
-        request.putHeader(name, value);
+        MultiStringMap.add(request.headers, name.toLowerCase(Locale.ROOT), value);
     }
 }
