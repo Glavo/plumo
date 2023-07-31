@@ -1,8 +1,8 @@
 package org.glavo.webdav;
 
-import org.glavo.webdav.nanohttpd.HttpContentType;
-import org.glavo.webdav.nanohttpd.HttpResponse;
-import org.glavo.webdav.nanohttpd.HttpServer;
+import org.glavo.plumo.HttpContentType;
+import org.glavo.plumo.HttpResponse;
+import org.glavo.plumo.HttpServer;
 
 import java.nio.file.Path;
 

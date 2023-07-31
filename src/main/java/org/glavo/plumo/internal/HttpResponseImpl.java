@@ -1,0 +1,184 @@
+package org.glavo.plumo.internal;
+
+import org.glavo.plumo.HttpResponse;
+import org.glavo.plumo.HttpContentType;
+import org.glavo.plumo.content.Cookie;
+
+import java.io.InputStream;
+import java.time.Instant;
+import java.util.*;
+
+@SuppressWarnings("unchecked")
+public final class HttpResponseImpl implements HttpResponse {
+
+    final Map<String, Object /* String|List<String> */> headers = new HashMap<>();
+
+    Status status;
+    Instant date;
+
+    String connection;
+
+    // InputStream | String | byte[]
+    Object body;
+    long contentLength;
+    HttpContentType contentType;
+    String contentEncoding;
+
+    List<Cookie> cookies;
+
+    public HttpResponseImpl() {
+    }
+
+    public HttpResponseImpl(Status status) {
+        this.status = status;
+    }
+
+    public HttpResponseImpl(Status status, Object body, HttpContentType contentType) {
+        this.status = status;
+        this.body = body;
+        this.contentType = contentType;
+    }
+
+    @Override
+    public HttpResponse setStatus(Status status) {
+        this.status = status;
+        return this;
+    }
+
+    @Override
+    public HttpResponse setDate(Instant date) {
+        this.date = date;
+        return this;
+    }
+
+    @Override
+    public HttpResponse addHeader(String name, String value) {
+        Objects.requireNonNull(value);
+
+        name = name.toLowerCase(Locale.ROOT);
+        switch (name) {
+            case "connection":
+                connection = value;
+                break;
+            case "content-length":
+                if (!(body instanceof InputStream)) {
+                    throw new UnsupportedOperationException();
+                }
+
+                long len = Long.parseLong(value);
+                if (len < 0) {
+                    throw new IllegalArgumentException();
+                }
+                this.contentLength = len;
+                break;
+            case "content-type":
+                this.contentType = new HttpContentType(value);
+                break;
+            case "content-encoding":
+                this.contentEncoding = value;
+                break;
+            case "date":
+                this.date = Instant.from(Constants.HTTP_TIME_FORMATTER.parse(value));
+                break;
+            default:
+                headers.compute(name, (key, oldValue) -> {
+                    if (oldValue == null) {
+                        return value;
+                    }
+
+                    List<String> list;
+                    if (oldValue instanceof String) {
+                        list = new ArrayList<>(4);
+                        list.add((String) oldValue);
+                    } else {
+                        list = (List<String>) oldValue;
+                    }
+                    list.add(value);
+                    return list;
+                });
+        }
+
+        return this;
+    }
+
+    @Override
+    public HttpResponse setContentType(HttpContentType contentType) {
+        this.contentType = contentType;
+        return this;
+    }
+
+    @Override
+    public HttpResponse setContentType(String contentType) {
+        this.contentType = new HttpContentType(contentType);
+        return this;
+    }
+
+    @Override
+    public HttpResponse setContentEncoding(String contentEncoding) {
+        this.contentEncoding = contentEncoding;
+        return this;
+    }
+
+    @Override
+    public HttpResponse setKeepAlive(boolean keepAlive) {
+        connection = keepAlive ? "keep-alive" : "close";
+        return this;
+    }
+
+    @Override
+    public HttpResponse addCookies(Iterable<? extends Cookie> cookies) {
+        if (this.cookies == null) {
+            this.cookies = new ArrayList<>();
+        }
+
+        for (Cookie cookie : cookies) {
+            this.cookies.add(cookie);
+        }
+
+        return this;
+    }
+
+    @Override
+    public HttpResponse setBody(byte[] data) {
+        this.body = data;
+        this.contentLength = -1;
+        return this;
+    }
+
+    @Override
+    public HttpResponse setBody(String data) {
+        this.body = data;
+        this.contentLength = -1;
+        return this;
+    }
+
+    @Override
+    public HttpResponse setBody(InputStream data, long contentLength) {
+        if (contentLength < 0) {
+            throw new IllegalArgumentException();
+        }
+
+        this.body = data;
+        this.contentLength = contentLength;
+        return this;
+    }
+
+    @Override
+    public HttpResponse setDataUnknownSize(InputStream data) {
+        this.body = data;
+        this.contentLength = -1;
+        return this;
+    }
+
+    // ----
+
+    boolean needCloseConnection() {
+        return "close".equals(connection);
+    }
+
+    void finish() {
+        if (body instanceof InputStream) {
+            IOUtils.safeClose((InputStream) body);
+        }
+    }
+}
