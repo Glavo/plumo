@@ -10,6 +10,37 @@ public final class IOUtils {
     private IOUtils() {
     }
 
+    public static boolean isSeparator(byte ch) {
+        switch (ch) {
+            case '(':
+            case ')':
+            case '<':
+            case '>':
+            case '@':
+            case ',':
+            case ';':
+            case ':':
+            case '\\':
+            case '"':
+            case '/':
+            case '[':
+            case ']':
+            case '?':
+            case '=':
+            case '{':
+            case '}':
+            case ' ':
+            case '\t':
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static boolean isTokenPart(byte ch) {
+        return ch > 31 && ch < 127 && !IOUtils.isSeparator(ch);
+    }
+
     public static void safeClose(Closeable closeable) {
         try {
             if (closeable != null) {

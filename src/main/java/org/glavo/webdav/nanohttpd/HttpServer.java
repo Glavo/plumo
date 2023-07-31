@@ -6,8 +6,10 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.*;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.Executor;
@@ -34,7 +36,20 @@ public final class HttpServer {
     }
 
     public static HttpServer create(Path path) {
+        return create(path, false);
+    }
+
+    public static HttpServer create(Path path, boolean deleteIfExists) {
         UnixDomainSocketUtils.checkAvailable();
+
+        if (deleteIfExists) {
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
         return new HttpServer(UnixDomainSocketUtils.createUnixDomainSocketAddress(path), path);
     }
 

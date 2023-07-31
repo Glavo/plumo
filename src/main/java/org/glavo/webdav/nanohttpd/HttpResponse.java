@@ -16,8 +16,6 @@ public /*sealed*/ interface HttpResponse {
 
     HttpResponse setDate(Instant time);
 
-    HttpResponse setHeader(String name, String value);
-
     HttpResponse setContentType(HttpContentType contentType);
 
     HttpResponse setContentType(String contentType);
@@ -25,6 +23,8 @@ public /*sealed*/ interface HttpResponse {
     HttpResponse setContentEncoding(String contentEncoding);
 
     HttpResponse setKeepAlive(boolean keepAlive);
+
+    HttpResponse addHeader(String name, String value);
 
     HttpResponse addCookies(Iterable<? extends Cookie> cookies);
 
@@ -103,6 +103,7 @@ public /*sealed*/ interface HttpResponse {
         public static final Status RANGE_NOT_SATISFIABLE = register(416, "Requested Range Not Satisfiable");
         public static final Status EXPECTATION_FAILED = register(417, "Expectation Failed");
         public static final Status TOO_MANY_REQUESTS = register(429, "Too Many Requests");
+        public static final Status REQUEST_HEADER_FIELDS_TOO_LARGE = register(431, "Request Header Fields Too Large");
 
         public static final Status INTERNAL_ERROR = register(500, "Internal Server Error");
         public static final Status NOT_IMPLEMENTED = register(501, "Not Implemented");

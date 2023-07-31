@@ -70,7 +70,7 @@ import org.glavo.webdav.nanohttpd.HttpRequestMethod;
 import org.glavo.webdav.nanohttpd.HttpContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
-public final class HttpSessionImpl implements HttpSession {
+public final class HttpSessionImpl {
 
     public static final String POST_DATA = "postData";
 
@@ -88,7 +88,7 @@ public final class HttpSessionImpl implements HttpSession {
 
     private final UnsyncBufferedOutputStream outputStream;
 
-    private final HttpRequestInputStream inputStream;
+    private final HttpRequestReader inputStream;
 
     private int splitbyte;
 
@@ -117,68 +117,11 @@ public final class HttpSessionImpl implements HttpSession {
     public HttpSessionImpl(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
         this.handler = handler;
         this.tempFileManager = tempFileManager;
-        this.inputStream = new HttpRequestInputStream(inputStream);
+        this.inputStream = new HttpRequestReader(inputStream);
         this.outputStream = new UnsyncBufferedOutputStream(outputStream, 1024);
         this.remoteIp = inetAddress.isAnyLocalAddress() ? InetAddress.getLoopbackAddress().getHostAddress() : inetAddress.getHostAddress();
     }
 
-    /**
-     * Decodes the sent headers and loads the data into Key/value pairs
-     */
-    private void decodeHeader(BufferedReader in, Map<String, String> pre, Map<String, List<String>> parms, Map<String, String> headers) throws HttpResponseException {
-        try {
-            // Read the request line
-            String inLine = in.readLine();
-            if (inLine == null) {
-                return;
-            }
-
-            StringTokenizer st = new StringTokenizer(inLine);
-            if (!st.hasMoreTokens()) {
-                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Syntax error. Usage: GET /example/file.html");
-            }
-
-            pre.put("method", st.nextToken());
-
-            if (!st.hasMoreTokens()) {
-                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Missing URI. Usage: GET /example/file.html");
-            }
-
-            String uri = st.nextToken();
-
-            // Decode parameters from the URI
-            int qmi = uri.indexOf('?');
-            if (qmi >= 0) {
-                decodeParms(uri.substring(qmi + 1), parms);
-                uri = Utils.decodePercent(uri.substring(0, qmi));
-            } else {
-                uri = Utils.decodePercent(uri);
-            }
-
-            // If there's another token, its protocol version,
-            // followed by HTTP headers.
-            // NOTE: this now forces header names lower case since they are
-            // case insensitive and vary by client.
-            if (st.hasMoreTokens()) {
-                protocolVersion = st.nextToken();
-            } else {
-                protocolVersion = "HTTP/1.1";
-                HttpServerImpl.LOG.log(Level.FINE, "no protocol version specified, strange. Assuming HTTP/1.1.");
-            }
-            String line = in.readLine();
-            while (line != null && !line.trim().isEmpty()) {
-                int p = line.indexOf(':');
-                if (p >= 0) {
-                    headers.put(line.substring(0, p).trim().toLowerCase(Locale.ROOT), line.substring(p + 1).trim());
-                }
-                line = in.readLine();
-            }
-
-            pre.put("uri", uri);
-        } catch (IOException ioe) {
-            throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage(), ioe);
-        }
-    }
 
     /**
      * Decodes the Multipart Body data and put it into Key/Value pairs.
@@ -332,10 +275,10 @@ public final class HttpSessionImpl implements HttpSession {
             this.splitbyte = 0;
             this.rlen = 0;
 
-            int read;
-            // this.inputStream.mark(HttpSessionImpl.BUFSIZE);
+            HttpRequestImpl request;
+
             try {
-                read = this.inputStream.readHead();
+                request = inputStream.beginRead();
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {
@@ -343,68 +286,30 @@ public final class HttpSessionImpl implements HttpSession {
                 IOUtils.safeClose(this.outputStream);
                 throw ServerShutdown.shutdown();
             }
-            if (read == -1) {
-                // socket was closed
-                IOUtils.safeClose(this.inputStream);
-                IOUtils.safeClose(this.outputStream);
-                throw ServerShutdown.shutdown();
-            }
 
-            byte[] headBuf = this.inputStream.getHeaderBuffer();
 
-            while (read > 0) {
-                this.rlen += read;
-                this.splitbyte = findHeaderEnd(headBuf, this.rlen);
-                if (this.splitbyte > 0) {
-                    break;
-                }
-                read = this.inputStream.readRaw(headBuf, this.rlen, HEADER_BUFFER_SIZE - this.rlen);
-            }
+//            if (null != this.remoteIp) {
+//                this.headers.put("remote-addr", this.remoteIp);
+//                this.headers.put("http-client-ip", this.remoteIp);
+//            }
+//
+//            this.uri = pre.get("uri");
+//
+//            this.cookies = new CookieHandler(this.headers);
 
-            this.inputStream.setBufRemaining(splitbyte, this.rlen - splitbyte);
-
-            this.parms.clear();
-            this.headers.clear();
-
-            // Create a BufferedReader for parsing the header.
-            BufferedReader hin = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(headBuf, 0, this.rlen), StandardCharsets.UTF_8));
-
-            // Decode the header into parms and header java properties
-            Map<String, String> pre = new HashMap<>();
-            decodeHeader(hin, pre, this.parms, this.headers);
-
-            if (null != this.remoteIp) {
-                this.headers.put("remote-addr", this.remoteIp);
-                this.headers.put("http-client-ip", this.remoteIp);
-            }
-
-            this.method = HttpRequestMethod.lookup(pre.get("method"));
-            if (this.method == null) {
-                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Syntax error. HTTP verb " + pre.get("method") + " unhandled.");
-            }
-
-            this.uri = pre.get("uri");
-
-            this.cookies = new CookieHandler(this.headers);
-
-            String connection = this.headers.get("connection");
-            boolean keepAlive = "HTTP/1.1".equals(protocolVersion) && (connection == null || !connection.equals("close"));
+            String connection = request.getImpl("connection");
+            boolean keepAlive = "HTTP/1.1".equals(request.httpVersion) && (connection == null || !connection.equals("close"));
 
             // Ok, now do the serve()
 
-            // TODO: long body_size = getBodySize();
-            // TODO: long pos_before_serve = this.inputStream.totalRead()
-            // (requires implementation for totalRead())
-            r = (HttpResponseImpl) handler.handle(this);
-            // TODO: this.inputStream.skip(body_size -
-            // (this.inputStream.totalRead() - pos_before_serve))
+            r = (HttpResponseImpl) handler.handle(request);
 
             if (r == null) {
                 throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
             }
 
-            String acceptEncoding = this.headers.get("accept-encoding");
-            this.cookies.unloadQueue(r);
+            String acceptEncoding = request.getImpl("accept-encoding");
+            // TODO: this.cookies.unloadQueue(r);
             if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
                 r.setContentEncoding("");
             }
@@ -442,28 +347,6 @@ public final class HttpSessionImpl implements HttpSession {
             }
             this.tempFileManager.close();
         }
-    }
-
-    /**
-     * Find byte index separating header from body. It must be the last byte of
-     * the first two sequential new lines.
-     */
-    private int findHeaderEnd(final byte[] buf, int rlen) {
-        int splitbyte = 0;
-        while (splitbyte + 1 < rlen) {
-
-            // RFC2616
-            if (buf[splitbyte] == '\r' && buf[splitbyte + 1] == '\n' && splitbyte + 3 < rlen && buf[splitbyte + 2] == '\r' && buf[splitbyte + 3] == '\n') {
-                return splitbyte + 4;
-            }
-
-            // tolerance
-            if (buf[splitbyte] == '\n' && buf[splitbyte + 1] == '\n') {
-                return splitbyte + 2;
-            }
-            splitbyte++;
-        }
-        return 0;
     }
 
     /**
@@ -549,8 +432,20 @@ public final class HttpSessionImpl implements HttpSession {
         Instant date = response.date == null ? Instant.now() : response.date;
         out.writeHttpHeader("date", Constants.HTTP_TIME_FORMATTER.format(date));
 
-        for (Map.Entry<String, String> entry : response.headers.entrySet()) {
-            out.writeHttpHeader(entry.getKey(), entry.getValue());
+        for (Map.Entry<String, Object> entry : response.headers.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+
+            if (value instanceof String) {
+                out.writeHttpHeader(key, (String) value);
+            } else {
+                @SuppressWarnings("unchecked")
+                List<String> list = (List<String>) value;
+                for (String v : list) {
+                    out.writeHttpHeader(key, v);
+                }
+            }
+
         }
 
         if (response.cookies != null) {
@@ -658,32 +553,22 @@ public final class HttpSessionImpl implements HttpSession {
 
     // --- API ---
 
-    @Override
     public CookieHandler getCookies() {
         return this.cookies;
     }
 
-    @Override
     public Map<String, String> getHeaders() {
         return this.headers;
     }
 
-    @Override
-    public InputStream getInputStream() {
-        return this.inputStream;
-    }
-
-    @Override
     public HttpRequestMethod getMethod() {
         return this.method;
     }
 
-    @Override
     public Map<String, List<String>> getParameters() {
         return this.parms;
     }
 
-    @Override
     public String getQueryParameterString() {
         return this.queryParameterString;
     }
@@ -697,7 +582,6 @@ public final class HttpSessionImpl implements HttpSession {
         }
     }
 
-    @Override
     public String getUri() {
         return this.uri;
     }
@@ -716,7 +600,6 @@ public final class HttpSessionImpl implements HttpSession {
         return 0;
     }
 
-    @Override
     public void parseBody(Map<String, String> files) throws IOException, HttpResponseException {
         RandomAccessFile randomAccessFile = null;
         try {
@@ -810,7 +693,6 @@ public final class HttpSessionImpl implements HttpSession {
         return path;
     }
 
-    @Override
     public String getRemoteIpAddress() {
         return this.remoteIp;
     }

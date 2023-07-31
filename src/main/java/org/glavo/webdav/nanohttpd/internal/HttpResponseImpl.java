@@ -8,9 +8,10 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.*;
 
+@SuppressWarnings("unchecked")
 public final class HttpResponseImpl implements HttpResponse {
 
-    final Map<String, String> headers = new HashMap<>();
+    final Map<String, Object /* String|List<String> */> headers = new HashMap<>();
 
     Status status;
     Instant date;
@@ -51,7 +52,7 @@ public final class HttpResponseImpl implements HttpResponse {
     }
 
     @Override
-    public HttpResponse setHeader(String name, String value) {
+    public HttpResponse addHeader(String name, String value) {
         Objects.requireNonNull(value);
 
         name = name.toLowerCase(Locale.ROOT);
@@ -80,7 +81,21 @@ public final class HttpResponseImpl implements HttpResponse {
                 this.date = Instant.from(Constants.HTTP_TIME_FORMATTER.parse(value));
                 break;
             default:
-                headers.put(name, value);
+                headers.compute(name, (key, oldValue) -> {
+                    if (oldValue == null) {
+                        return value;
+                    }
+
+                    List<String> list;
+                    if (oldValue instanceof String) {
+                        list = new ArrayList<>(4);
+                        list.add((String) oldValue);
+                    } else {
+                        list = (List<String>) oldValue;
+                    }
+                    list.add(value);
+                    return list;
+                });
         }
 
         return this;

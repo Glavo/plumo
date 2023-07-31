@@ -9,37 +9,6 @@ public final class ParameterParser {
         this.offset = offset;
     }
 
-    private static boolean isSeparator(char ch) {
-        switch (ch) {
-            case '(':
-            case ')':
-            case '<':
-            case '>':
-            case '@':
-            case ',':
-            case ';':
-            case ':':
-            case '\\':
-            case '"':
-            case '/':
-            case '[':
-            case ']':
-            case '?':
-            case '=':
-            case '{':
-            case '}':
-            case ' ':
-            case '\t':
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private static boolean isRegular(char ch) {
-        return ch > 31 && ch < 127 && !isSeparator(ch);
-    }
-
     private void skipInvalid() {
         int i = input.indexOf(';');
         offset = i < 0 ? input.length() : i + 1;
@@ -53,7 +22,7 @@ public final class ParameterParser {
                 continue;
             }
 
-            if (!isRegular(ch)) {
+            if (ch > 127 || !IOUtils.isTokenPart((byte) ch)) {
                 skipInvalid();
                 continue;
             }
@@ -64,7 +33,7 @@ public final class ParameterParser {
             offset++;
             while (offset < input.length()) {
                 ch = input.charAt(offset);
-                if (isRegular(ch)) {
+                if (ch < 127 && IOUtils.isTokenPart((byte) ch)) {
                     builder.append(ch);
                     offset++;
                 } else {

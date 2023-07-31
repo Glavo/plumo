@@ -11,12 +11,12 @@ public final class WebDAVServer {
     }
 
     public static void main(String[] args) throws Throwable {
-        HttpServer.create(Path.of("D:\\unix-domain-socket"))
-                .setUseVirtualThreadExecutor()
-                .setHttpHandler(session -> {
-                    System.out.println("======" + session.getMethod() + "======");
-                    System.out.println(session.getUri());
-                    System.out.println(session.getHeaders());
+        HttpServer.create(Path.of("D:\\unix-domain-socket"), true)
+                .setHttpHandler(request -> {
+                    System.out.println("======" + request.getMethod() + "======");
+                    System.out.println(request.getUri());
+                    System.out.println(request.getRawUri());
+                    System.out.println(request.getHeaders());
                     return HttpResponse.newResponse(HttpResponse.Status.OK)
                             .setContentType(HttpContentType.HTML)
                             .setBody("<body>Hello World!</body>");
