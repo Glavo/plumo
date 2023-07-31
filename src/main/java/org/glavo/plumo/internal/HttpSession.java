@@ -13,6 +13,7 @@ import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -216,10 +217,10 @@ public final class HttpSession {
             String value;
 
             if (sep >= 0) {
-                key = Utils.decodePercent(e.substring(0, sep)).trim();
-                value = Utils.decodePercent(e.substring(sep + 1));
+                key = URLDecoder.decode(e.substring(0, sep), StandardCharsets.UTF_8).trim();
+                value = URLDecoder.decode(e.substring(sep + 1), StandardCharsets.UTF_8);
             } else {
-                key = Utils.decodePercent(e).trim();
+                key = URLDecoder.decode(e, StandardCharsets.UTF_8).trim();
                 value = "";
             }
 
