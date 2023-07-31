@@ -2,7 +2,6 @@ package org.glavo.webdav.nanohttpd.internal;
 
 import org.glavo.webdav.nanohttpd.HttpHeaders;
 import org.glavo.webdav.nanohttpd.HttpRequest;
-import org.glavo.webdav.nanohttpd.HttpRequestMethod;
 
 import java.io.InputStream;
 import java.net.*;
@@ -14,7 +13,7 @@ public final class HttpRequestImpl implements HttpRequest, HttpHeaders {
 
     final Map<String, Object> headers = new HashMap<>();
 
-    HttpRequestMethod method;
+    Method method;
     String rawUri;
     String httpVersion;
 
@@ -113,7 +112,7 @@ public final class HttpRequestImpl implements HttpRequest, HttpHeaders {
     }
 
     @Override
-    public HttpRequestMethod getMethod() {
+    public Method getMethod() {
         return method;
     }
 

@@ -1,6 +1,6 @@
 package org.glavo.webdav.nanohttpd.internal;
 
-import org.glavo.webdav.nanohttpd.HttpRequestMethod;
+import org.glavo.webdav.nanohttpd.HttpRequest;
 import org.glavo.webdav.nanohttpd.HttpResponse;
 import org.glavo.webdav.nanohttpd.HttpResponseException;
 
@@ -204,7 +204,7 @@ public class HttpRequestReader implements Closeable {
         return -1;
     }
 
-    private static final HttpRequestMethod[] METHODS = HttpRequestMethod.values();
+    private static final HttpRequest.Method[] METHODS = HttpRequest.Method.values();
     private static final byte[][] METHOD_NAMES = new byte[METHODS.length][];
 
     static {
@@ -219,7 +219,7 @@ public class HttpRequestReader implements Closeable {
             throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST);
         }
 
-        HttpRequestMethod method = null;
+        HttpRequest.Method method = null;
         for (int i = 0; i < METHOD_NAMES.length; i++) {
             byte[] methodName = METHOD_NAMES[i];
 

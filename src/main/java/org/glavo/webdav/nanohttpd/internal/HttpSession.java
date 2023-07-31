@@ -65,7 +65,6 @@ import javax.net.ssl.SSLException;
 
 import org.glavo.webdav.nanohttpd.*;
 import org.glavo.webdav.nanohttpd.content.Cookie;
-import org.glavo.webdav.nanohttpd.HttpRequestMethod;
 import org.glavo.webdav.nanohttpd.HttpContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
@@ -95,7 +94,7 @@ public final class HttpSession {
 
     private String uri;
 
-    private HttpRequestMethod method;
+    private HttpRequest.Method method;
 
     private final Map<String, List<String>> parms = new HashMap<>();
 
@@ -490,11 +489,11 @@ public final class HttpSession {
             out.writeHttpHeader("content-length", Long.toString(contentLength));
         }
 
-        if (this.method != HttpRequestMethod.HEAD && chunkedTransfer) {
+        if (this.method != HttpRequest.Method.HEAD && chunkedTransfer) {
             out.writeHttpHeader("transfer-encoding", "chunked");
         }
         out.writeCRLF();
-        if (method != HttpRequestMethod.HEAD && (input != null || data != null)) {
+        if (method != HttpRequest.Method.HEAD && (input != null || data != null)) {
             if (input != null || chunkedTransfer) {
                 long pending;
 
@@ -560,7 +559,7 @@ public final class HttpSession {
         return this.headers;
     }
 
-    public HttpRequestMethod getMethod() {
+    public HttpRequest.Method getMethod() {
         return this.method;
     }
 
