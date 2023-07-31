@@ -11,9 +11,8 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Locale;
 
-import static org.glavo.webdav.nanohttpd.internal.HttpSessionImpl.HEADER_BUFFER_SIZE;
+import static org.glavo.webdav.nanohttpd.internal.HttpSession.HEADER_BUFFER_SIZE;
 
 public class HttpRequestReader implements Closeable {
 
@@ -51,7 +50,7 @@ public class HttpRequestReader implements Closeable {
         in.close();
     }
 
-    public HttpRequestImpl beginRead() throws IOException, HttpResponseException {
+    public HttpRequestImpl read() throws IOException, HttpResponseException {
         byte[] buf = this.headBuf;
 
         HttpRequestImpl request = new HttpRequestImpl();
@@ -113,6 +112,32 @@ public class HttpRequestReader implements Closeable {
         }
 
         throw new HttpResponseException(HttpResponse.Status.REQUEST_HEADER_FIELDS_TOO_LARGE);
+    }
+
+    private InputStream newBondul() {
+        return new InputStream() {
+            private boolean closed = false;
+
+            private long totalRead = 0;
+            private long limit;
+
+            private void checkStatus() throws IOException {
+                if (closed) {
+                    throw new IOException("Stream closed");
+                }
+            }
+
+            @Override
+            public void close() throws IOException {
+
+            }
+
+            @Override
+            public int read() throws IOException {
+
+                return 0;
+            }
+        };
     }
 
     private static int findLineEnd(byte[] buf, int lineStart, int bufEnd) {

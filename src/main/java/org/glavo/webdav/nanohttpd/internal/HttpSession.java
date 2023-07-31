@@ -55,7 +55,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
@@ -70,7 +69,7 @@ import org.glavo.webdav.nanohttpd.HttpRequestMethod;
 import org.glavo.webdav.nanohttpd.HttpContentType;
 import org.glavo.webdav.nanohttpd.content.CookieHandler;
 
-public final class HttpSessionImpl {
+public final class HttpSession {
 
     public static final String POST_DATA = "postData";
 
@@ -110,11 +109,11 @@ public final class HttpSessionImpl {
 
     private String protocolVersion;
 
-    public HttpSessionImpl(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
+    public HttpSession(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
         this(handler, tempFileManager, inputStream, outputStream, InetAddress.getLoopbackAddress());
     }
 
-    public HttpSessionImpl(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
+    public HttpSession(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
         this.handler = handler;
         this.tempFileManager = tempFileManager;
         this.inputStream = new HttpRequestReader(inputStream);
@@ -278,7 +277,7 @@ public final class HttpSessionImpl {
             HttpRequestImpl request;
 
             try {
-                request = inputStream.beginRead();
+                request = inputStream.read();
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {

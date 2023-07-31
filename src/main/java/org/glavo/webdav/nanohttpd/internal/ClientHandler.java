@@ -81,7 +81,7 @@ public final class ClientHandler implements Runnable {
     public void run() {
         try {
             TempFileManager tempFileManager = httpd.tempFileManagerFactory.get();
-            HttpSessionImpl session = new HttpSessionImpl(httpd.httpHandler, tempFileManager, this.inputStream, outputStream, inetAddress);
+            HttpSession session = new HttpSession(httpd.httpHandler, tempFileManager, this.inputStream, outputStream, inetAddress);
 
             if (this.acceptSocket instanceof Socket) {
                 Socket socket = (Socket) this.acceptSocket;
