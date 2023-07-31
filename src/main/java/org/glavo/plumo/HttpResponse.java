@@ -34,7 +34,7 @@ public /*sealed*/ interface HttpResponse {
 
     HttpResponse setBody(InputStream data, long contentLength);
 
-    HttpResponse setDataUnknownSize(InputStream data);
+    HttpResponse setBodyUnknownSize(InputStream data);
 
     static HttpResponse newResponse() {
         return new HttpResponseImpl();

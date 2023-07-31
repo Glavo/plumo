@@ -164,7 +164,7 @@ public final class HttpResponseImpl implements HttpResponse {
     }
 
     @Override
-    public HttpResponse setDataUnknownSize(InputStream data) {
+    public HttpResponse setBodyUnknownSize(InputStream data) {
         this.body = data;
         this.contentLength = -1;
         return this;
