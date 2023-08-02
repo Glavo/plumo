@@ -1,15 +1,6 @@
 package org.glavo.plumo.internal;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutput;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -103,7 +94,6 @@ public final class HttpSession {
                 fbuf.get(partHeaderBuff, 0, len);
                 BufferedReader in =
                         new BufferedReader(new InputStreamReader(new ByteArrayInputStream(partHeaderBuff, 0, len), contentType.getCharset()), len);
-
 
 
                 int headerLines = 0;
@@ -359,12 +349,11 @@ public final class HttpSession {
             throw new Error("sendResponse(): Status can't be null.");
         }
 
-        HttpContentType contentType = response.contentType;
-
         out.writeASCII("HTTP/1.1 ");
         out.writeStatus(response.status);
         out.writeCRLF();
 
+        HttpContentType contentType = response.contentType;
         if (contentType != null) {
             out.writeHttpHeader("content-type", contentType.toString());
         }
@@ -400,118 +389,169 @@ public final class HttpSession {
             out.writeHttpHeader("connection", response.connection);
         }
 
-        // body
+        long inputLength;
+        Object preprocessedData;
 
-        Boolean useGzip = null;
-        if (response.contentEncoding == null) {
-            if (!acceptGzip || response.contentType == null) {
+        Object body = response.body;
+        if (body == null) {
+            preprocessedData = null;
+            inputLength = 0L;
+        } else if (body instanceof InputStream) {
+            preprocessedData = body;
+            inputLength = response.contentLength;
+        } else if (body instanceof byte[]) {
+            preprocessedData = body;
+            inputLength = ((byte[]) body).length;
+        } else if (body instanceof String) {
+            byte[] ba = ((String) body).getBytes(contentType == null ? StandardCharsets.UTF_8 : contentType.getCharset());
+            preprocessedData = ba;
+            inputLength = ba.length;
+        } else {
+            throw new InternalError("unexpected types: " + body.getClass());
+        }
+
+        boolean useGzip;
+        if (!acceptGzip) {
+            useGzip = false;
+        } else if (response.contentEncoding == null) {
+            if (response.contentType == null || (inputLength >= 0 && inputLength <= 512)) { // TODO: magic number
                 useGzip = false;
             } else {
                 String type = response.contentType.getMimeType();
                 useGzip = type.startsWith("text/") || type.endsWith("json");
             }
-
         } else if (response.contentEncoding.isEmpty() || "identity".equals(response.contentEncoding)) {
             useGzip = false;
         } else if ("gzip".equals(response.contentEncoding)) {
-            useGzip = acceptGzip;
+            useGzip = true;
         } else {
             HttpServerImpl.LOG.log(Level.WARNING, "Unsupported content encoding: " + response.contentEncoding);
             useGzip = false;
-        }
-
-        long contentLength;
-        boolean chunkedTransfer;
-        InputStream input = null;
-        byte[] data = null;
-
-        Object body = response.body;
-        if (body == null) {
-            contentLength = 0L;
-            chunkedTransfer = false;
-            if (useGzip == null) useGzip = false;
-        } else if (body instanceof InputStream) {
-            input = (InputStream) body;
-            contentLength = response.contentLength;
-            chunkedTransfer = contentLength < 0;
-        } else if (body instanceof byte[]) {
-            data = (byte[]) body;
-            contentLength = data.length;
-            chunkedTransfer = useGzip;
-        } else if (body instanceof String) {
-            data = ((String) body).getBytes(contentType == null ? StandardCharsets.UTF_8 : contentType.getCharset());
-            contentLength = data.length;
-            chunkedTransfer = useGzip;
-        } else {
-            throw new InternalError("unexpected types: " + body.getClass());
         }
 
         if (useGzip) {
             out.writeHttpHeader("content-encoding", "gzip");
         }
 
-        if (contentLength >= 0) {
-            out.writeHttpHeader("content-length", Long.toString(contentLength));
+        long outputLength;
+        boolean useGzipOutputStream;
+        if (useGzip) {
+            if (inputLength >= 0 && inputLength < 8192) { // TODO: magic number
+                ByteArrayOutputStream bao = new ByteArrayOutputStream((int) inputLength);
+                try (GZIPOutputStream go = new GZIPOutputStream(bao)) {
+                    if (preprocessedData == null || inputLength == 0) {
+                        // do nothing
+                    } else if (preprocessedData instanceof InputStream) {
+                        InputStream input = (InputStream) preprocessedData;
+
+                        int count = 0;
+                        byte[] buffer = new byte[128];
+                        while (count < inputLength) {
+                            int read = input.read(buffer, 0, Math.min((int) inputLength - count, buffer.length));
+                            if (read <= 0) {
+                                throw new EOFException();
+                            }
+                            go.write(buffer, 0, read);
+                            count += read;
+                        }
+                    } else {
+                        byte[] ba = (byte[]) preprocessedData;
+                        go.write(ba, 0, (int) inputLength);
+                    }
+                }
+
+                byte[] compressedData = bao.toByteArray();
+
+                preprocessedData = compressedData;
+                inputLength = compressedData.length;
+                outputLength = inputLength;
+                useGzipOutputStream = false;
+            } else {
+                outputLength = -1;
+                useGzipOutputStream = true;
+            }
+        } else {
+            outputLength = inputLength;
+            useGzipOutputStream = false;
         }
 
-        if (this.method != HttpRequest.Method.HEAD && chunkedTransfer) {
+        if (outputLength >= 0) {
+            out.writeHttpHeader("content-length", Long.toString(outputLength));
+        }
+
+        if (this.method != HttpRequest.Method.HEAD && (outputLength < 0)) {
             out.writeHttpHeader("transfer-encoding", "chunked");
         }
         out.writeCRLF();
-        if (method != HttpRequest.Method.HEAD && (input != null || data != null)) {
-            if (input != null || chunkedTransfer) {
-                long pending;
-
-                if (input == null) {
-                    input = new ByteArrayInputStream(data);
-                    pending = Long.MAX_VALUE;
-                } else {
-                    pending = contentLength >= 0 ? contentLength : Long.MAX_VALUE;
-                }
-
-                OutputStream o = out;
-
-                ChunkedOutputStream chunkedOutputStream = null;
-                GZIPOutputStream gzipOutputStream = null;
-
-                if (chunkedTransfer) {
-                    o = chunkedOutputStream = new ChunkedOutputStream(o);
-                }
-                if (useGzip) {
-                    o = gzipOutputStream = new GZIPOutputStream(o);
-                }
-
-                sendBody(input, o, pending);
-
-                if (useGzip) {
-                    gzipOutputStream.finish();
-                }
-                if (chunkedTransfer) {
-                    chunkedOutputStream.finish();
-                }
-            } else {
-                sendBody(data, outputStream);
-            }
+        if (method != HttpRequest.Method.HEAD && outputLength != 0) {
+            sendBody(out, preprocessedData, inputLength, outputLength, useGzipOutputStream);
         }
         out.flush();
     }
 
-    private void sendBody(InputStream input, OutputStream outputStream, long pending) throws IOException {
-        long BUFFER_SIZE = 16 * 1024;
-        byte[] buff = new byte[(int) BUFFER_SIZE];
-        while (pending > 0) {
-            long bytesToRead = Math.min(pending, BUFFER_SIZE);
-            int read = input.read(buff, 0, (int) bytesToRead);
-            if (read <= 0) {
-                break;
-            }
-            outputStream.write(buff, 0, read);
-            pending -= read;
+    private void sendBody(UnsyncBufferedOutputStream out,
+            /* InputStream | byte[] */ Object preprocessedData,
+                          long inputLength, long outputLength,
+                          boolean useGzipOutputStream) throws IOException {
+        if (preprocessedData == null) {
+            throw new InternalError();
         }
-    }
 
-    private void sendBody(byte[] data, OutputStream outputStream) throws IOException {
-        outputStream.write(data);
+        if (preprocessedData instanceof InputStream || useGzipOutputStream) {
+            InputStream input;
+
+            if (preprocessedData instanceof InputStream) {
+                input = (InputStream) preprocessedData;
+            } else {
+                input = new ByteArrayInputStream((byte[]) preprocessedData);
+            }
+
+            OutputStream o = out;
+
+            ChunkedOutputStream chunkedOutputStream = null;
+            GZIPOutputStream gzipOutputStream = null;
+
+            if (outputLength < 0) {
+                o = chunkedOutputStream = new ChunkedOutputStream(o);
+            }
+            if (useGzipOutputStream) {
+                o = gzipOutputStream = new GZIPOutputStream(o);
+            }
+
+            final int BUFFER_SIZE = 8 * 1024;
+            byte[] buff = new byte[BUFFER_SIZE];
+
+            if (inputLength > 0) {
+                while (inputLength > 0) {
+                    long bytesToRead = Math.min(inputLength, BUFFER_SIZE);
+                    int read = input.read(buff, 0, (int) bytesToRead);
+                    if (read <= 0) {
+                        break;
+                    }
+                    o.write(buff, 0, read);
+                    inputLength -= read;
+                }
+
+                if (inputLength > 0) {
+                    throw new EOFException();
+                }
+
+            } else {
+                int read;
+                while ((read = input.read(buff)) > 0) {
+                    o.write(buff, 0, read);
+                }
+            }
+
+            if (gzipOutputStream != null) {
+                gzipOutputStream.finish();
+            }
+            if (chunkedOutputStream != null) {
+                chunkedOutputStream.finish();
+            }
+        } else {
+            out.write((byte[]) preprocessedData, 0, (int) inputLength);
+        }
     }
 
     // --- API ---
