@@ -266,7 +266,7 @@ public final class HttpSession {
             } catch (IOException ioe) {
                 HttpServerImpl.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
                 IOUtils.safeClose(this.outputStream);
-                return;
+                throw ServerShutdown.shutdown();
             }
 
             if (!keepAlive || r.needCloseConnection()) {
