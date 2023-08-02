@@ -3,6 +3,7 @@ package org.glavo.plumo.internal.util;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 
 @SuppressWarnings("unchecked")
 public final class MultiStringMap extends AbstractMap<String, List<String>> {
@@ -70,6 +71,23 @@ public final class MultiStringMap extends AbstractMap<String, List<String>> {
     @Override
     public boolean containsKey(Object key) {
         return map.containsKey(key);
+    }
+
+    public void forEachPair(BiConsumer<String, String> consumer) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+
+            if (value instanceof String) {
+                consumer.accept(key, (String) value);
+            } else {
+                @SuppressWarnings("unchecked")
+                List<String> list = (List<String>) value;
+                for (String v : list) {
+                    consumer.accept(key, v);
+                }
+            }
+        }
     }
 
     private final class EntrySet extends AbstractSet<Entry<String, List<String>>> {

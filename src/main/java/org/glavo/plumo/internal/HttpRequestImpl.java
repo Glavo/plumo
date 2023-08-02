@@ -6,7 +6,6 @@ import org.glavo.plumo.internal.util.MultiStringMap;
 import java.io.InputStream;
 import java.net.*;
 import java.util.*;
-import java.util.function.BiConsumer;
 
 @SuppressWarnings("unchecked")
 public final class HttpRequestImpl implements HttpRequest {
@@ -43,23 +42,6 @@ public final class HttpRequestImpl implements HttpRequest {
     @Override
     public List<String> getHeaders(String name) {
         return headers.get(name.toLowerCase(Locale.ROOT));
-    }
-
-    public void forEachHeader(BiConsumer<String, String> consumer) {
-        for (Map.Entry<String, Object> entry : headers.map.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-
-            if (value instanceof String) {
-                consumer.accept(key, (String) value);
-            } else {
-                @SuppressWarnings("unchecked")
-                List<String> list = (List<String>) value;
-                for (String v : list) {
-                    consumer.accept(key, v);
-                }
-            }
-        }
     }
 
     @Override
@@ -142,7 +124,7 @@ public final class HttpRequestImpl implements HttpRequest {
                 .append("local-address=").append(localAddress)
                 .append("] {\n");
         builder.append("    ").append(method).append(' ').append(rawUri).append(' ').append(httpVersion).append('\n');
-        forEachHeader((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
+        headers.forEachPair((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
         builder.append("}");
         return builder.toString();
     }
