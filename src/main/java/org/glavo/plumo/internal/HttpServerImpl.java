@@ -39,7 +39,7 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
     private final Executor executor;
     private final boolean shutdownExecutor;
 
-    private volatile ClientHandler firstHandle, lastHandle;
+    private volatile HttpSession firstSession, lastSession;
 
     public HttpServerImpl(Closeable ss,
                           HttpHandler httpHandler, Supplier<TempFileManager> tempFileManagerFactory,
@@ -59,57 +59,57 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
         }
     }
 
-    void close(ClientHandler handler) {
+    void close(HttpSession session) {
         lock.lock();
         try {
             if (closed) {
                 return;
             }
 
-            ClientHandler next = handler.next;
-            ClientHandler prev = handler.prev;
+            HttpSession next = session.next;
+            HttpSession prev = session.prev;
 
             if (prev == null) {
-                firstHandle = next;
+                firstSession = next;
             } else {
                 prev.next = next;
-                handler.prev = null;
+                session.prev = null;
             }
 
             if (next == null) {
-                lastHandle = prev;
+                lastSession = prev;
             } else {
                 next.prev = prev;
-                handler.next = null;
+                session.next = null;
             }
         } finally {
             lock.unlock();
-            handler.closeSocket();
+            session.closeSocket();
         }
     }
 
-    void exec(ClientHandler handler) {
+    void exec(HttpSession session) {
         lock.lock();
         try {
             if (closed) {
                 throw new IllegalStateException("Runner is closed");
             }
 
-            ClientHandler last = this.lastHandle;
+            HttpSession last = this.lastSession;
 
             if (last == null) {
-                firstHandle = handler;
+                firstSession = session;
             } else {
-                last.next = handler;
-                handler.prev = last;
+                last.next = session;
+                session.prev = last;
             }
 
-            lastHandle = handler;
+            lastSession = session;
         } finally {
             lock.unlock();
         }
 
-        executor.execute(handler);
+        executor.execute(session);
     }
 
     @Override
@@ -122,15 +122,15 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
 
             closed = true;
 
-            ClientHandler handler = firstHandle;
+            HttpSession session = firstSession;
 
-            while (handler != null) {
-                handler.closeSocket();
-                handler = handler.next;
+            while (session != null) {
+                session.closeSocket();
+                session = session.next;
             }
 
-            firstHandle = null;
-            lastHandle = null;
+            firstSession = null;
+            lastSession = null;
 
             if (shutdownExecutor) {
                 ((ExecutorService) executor).shutdown();
@@ -152,7 +152,7 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
                     if (timeout > 0) {
                         finalAccept.setSoTimeout(timeout);
                     }
-                    exec(new ClientHandler(this,
+                    exec(new HttpSession(this,
                             finalAccept.getLocalAddress(),
                             finalAccept.getInputStream(), finalAccept.getOutputStream(),
                             finalAccept));
@@ -166,7 +166,7 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
             do {
                 try {
                     final SocketChannel finalAccept = serverSocketChannel.accept();
-                    exec(new ClientHandler(this,
+                    exec(new HttpSession(this,
                             InetAddress.getLoopbackAddress(),
                             Channels.newInputStream(finalAccept),
                             Channels.newOutputStream(finalAccept),

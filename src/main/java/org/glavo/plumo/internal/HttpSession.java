@@ -1,12 +1,10 @@
 package org.glavo.plumo.internal;
 
 import java.io.*;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.URLDecoder;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -25,7 +23,7 @@ import javax.net.ssl.SSLException;
 import org.glavo.plumo.*;
 import org.glavo.plumo.content.Cookie;
 
-public final class HttpSession {
+public final class HttpSession implements Runnable {
 
     public static final String POST_DATA = "postData";
 
@@ -37,13 +35,13 @@ public final class HttpSession {
 
     public static final int MAX_HEADER_SIZE = 1024;
 
-    private final HttpHandler handler;
-
+    private final HttpServerImpl server;
+    private final InetAddress inetAddress;
+    private final Closeable socket;
     private final TempFileManager tempFileManager;
 
+    private final HttpRequestReader requestReader;
     private final UnsyncBufferedOutputStream outputStream;
-
-    private final HttpRequestReader inputStream;
 
     private int splitbyte;
 
@@ -55,16 +53,53 @@ public final class HttpSession {
 
     private String queryParameterString;
 
-    private String remoteIp;
+    // Use in HttpServerImpl
+    volatile HttpSession prev, next;
 
-    public HttpSession(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
-        this.handler = handler;
-        this.tempFileManager = tempFileManager;
-        this.inputStream = new HttpRequestReader(inputStream);
+    public HttpSession(HttpServerImpl server, InetAddress inetAddress, InputStream inputStream, OutputStream outputStream, Closeable acceptSocket) {
+        this.server = server;
+        this.inetAddress = inetAddress;
+        this.requestReader = new HttpRequestReader(inputStream);
         this.outputStream = new UnsyncBufferedOutputStream(outputStream, 1024);
-        this.remoteIp = inetAddress.isAnyLocalAddress() ? InetAddress.getLoopbackAddress().getHostAddress() : inetAddress.getHostAddress();
+        this.socket = acceptSocket;
+
+        this.tempFileManager = server.tempFileManagerFactory.get();
     }
 
+    @Override
+    public void run() {
+        try {
+            if (this.socket instanceof Socket) {
+                Socket socket = (Socket) this.socket;
+                while (!socket.isClosed()) {
+                    execute();
+                }
+            } else {
+                SocketChannel socketChannel = (SocketChannel) this.socket;
+                while (socketChannel.isOpen()) {
+                    execute();
+                }
+            }
+        } catch (ServerShutdown | SocketTimeoutException ignored) {
+            // When the socket is closed by the client,
+            // we throw our own SocketException
+            // to break the "keep alive" loop above. If
+            // the exception was anything other
+            // than the expected SocketException OR a
+            // SocketTimeoutException, print the
+            // stacktrace
+        } catch (Exception e) {
+            HttpServerImpl.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
+        } finally {
+            server.close(this);
+        }
+    }
+
+    void closeSocket() {
+        IOUtils.safeClose(this.outputStream);
+        IOUtils.safeClose(this.requestReader);
+        IOUtils.safeClose(this.socket);
+    }
 
     /**
      * Decodes the Multipart Body data and put it into Key/Value pairs.
@@ -222,11 +257,11 @@ public final class HttpSession {
             HttpRequestImpl request;
 
             try {
-                request = inputStream.read();
+                request = requestReader.read();
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {
-                IOUtils.safeClose(this.inputStream);
+                IOUtils.safeClose(this.requestReader);
                 IOUtils.safeClose(this.outputStream);
                 throw ServerShutdown.shutdown();
             }
@@ -241,7 +276,7 @@ public final class HttpSession {
 
             // Ok, now do the serve()
 
-            r = (HttpResponseImpl) handler.handle(request);
+            r = (HttpResponseImpl) server.httpHandler.handle(request);
 
             if (r == null) {
                 throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
@@ -586,7 +621,7 @@ public final class HttpSession {
             // Read all the body and write it to request_data_output
             byte[] buf = new byte[REQUEST_BUFFER_LEN];
             while (this.rlen >= 0 && size > 0) {
-                this.rlen = this.inputStream.read(buf, 0, (int) Math.min(size, REQUEST_BUFFER_LEN));
+                this.rlen = this.requestReader.read(buf, 0, (int) Math.min(size, REQUEST_BUFFER_LEN));
                 size -= this.rlen;
                 if (this.rlen > 0) {
                     requestDataOutput.write(buf, 0, this.rlen);
