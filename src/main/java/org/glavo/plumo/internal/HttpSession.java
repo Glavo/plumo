@@ -479,19 +479,21 @@ public final class HttpSession {
             out.writeHttpHeader("content-length", Long.toString(outputLength));
         }
 
-        if (this.method != HttpRequest.Method.HEAD && (outputLength < 0)) {
+        boolean chunkedTransfer = outputLength < 0;
+
+        if (this.method != HttpRequest.Method.HEAD && chunkedTransfer) {
             out.writeHttpHeader("transfer-encoding", "chunked");
         }
         out.writeCRLF();
         if (method != HttpRequest.Method.HEAD && outputLength != 0) {
-            sendBody(out, preprocessedData, inputLength, outputLength, useGzipOutputStream);
+            sendBody(out, preprocessedData, inputLength, chunkedTransfer, useGzipOutputStream);
         }
         out.flush();
     }
 
     private void sendBody(UnsyncBufferedOutputStream out,
             /* InputStream | byte[] */ Object preprocessedData,
-                          long inputLength, long outputLength,
+                          long inputLength, boolean chunkedTransfer,
                           boolean useGzipOutputStream) throws IOException {
         if (preprocessedData == null) {
             throw new InternalError();
@@ -511,7 +513,7 @@ public final class HttpSession {
             ChunkedOutputStream chunkedOutputStream = null;
             GZIPOutputStream gzipOutputStream = null;
 
-            if (outputLength < 0) {
+            if (chunkedTransfer) {
                 o = chunkedOutputStream = new ChunkedOutputStream(o);
             }
             if (useGzipOutputStream) {
@@ -543,10 +545,10 @@ public final class HttpSession {
                 }
             }
 
-            if (gzipOutputStream != null) {
+            if (useGzipOutputStream) {
                 gzipOutputStream.finish();
             }
-            if (chunkedOutputStream != null) {
+            if (chunkedTransfer) {
                 chunkedOutputStream.finish();
             }
         } else {
