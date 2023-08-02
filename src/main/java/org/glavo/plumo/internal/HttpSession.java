@@ -269,13 +269,10 @@ public final class HttpSession {
             }
 
             String acceptEncoding = request.headers.getFirst("accept-encoding");
-            if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
-                r.setContentEncoding("");
-            }
-            r.setKeepAlive(keepAlive);
+            boolean acceptGzip = acceptEncoding != null && acceptEncoding.contains("gzip");
 
             try {
-                send(r, this.outputStream);
+                send(r, this.outputStream, acceptGzip, keepAlive);
             } catch (IOException ioe) {
                 HttpServerImpl.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
                 IOUtils.safeClose(this.outputStream);
@@ -298,7 +295,7 @@ public final class HttpSession {
                 resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
             }
 
-            send((HttpResponseImpl) resp, this.outputStream);
+            send((HttpResponseImpl) resp, this.outputStream, false, false);
             IOUtils.safeClose(this.outputStream);
         } finally {
             if (r != null) {
@@ -357,25 +354,9 @@ public final class HttpSession {
     /**
      * Sends given response to the socket.
      */
-    public void send(HttpResponseImpl response, UnsyncBufferedOutputStream out) throws IOException {
+    public void send(HttpResponseImpl response, UnsyncBufferedOutputStream out, boolean acceptGzip, boolean keepAlive) throws IOException {
         if (response.status == null) {
             throw new Error("sendResponse(): Status can't be null.");
-        }
-
-        boolean useGzip;
-        if (response.contentEncoding == null) {
-            if (response.contentType == null) {
-                useGzip = false;
-            } else {
-                String type = response.contentType.getMimeType();
-                useGzip = type.startsWith("text/") || type.endsWith("json");
-            }
-        } else if (response.contentEncoding.isEmpty() || "identity".equals(response.contentEncoding)) {
-            useGzip = false;
-        } else if ("gzip".equals(response.contentEncoding)) {
-            useGzip = true;
-        } else {
-            throw new Error("unsupported content encoding: " + response.contentEncoding);
         }
 
         HttpContentType contentType = response.contentType;
@@ -413,12 +394,30 @@ public final class HttpSession {
             }
         }
 
-        if (response.connection != null) {
+        if (!keepAlive) {
+            out.writeHttpHeader("connection", "close");
+        } else if (response.connection != null) {
             out.writeHttpHeader("connection", response.connection);
         }
 
-        if (useGzip) {
-            out.writeHttpHeader("content-encoding", "gzip");
+        // body
+
+        Boolean useGzip = null;
+        if (response.contentEncoding == null) {
+            if (!acceptGzip || response.contentType == null) {
+                useGzip = false;
+            } else {
+                String type = response.contentType.getMimeType();
+                useGzip = type.startsWith("text/") || type.endsWith("json");
+            }
+
+        } else if (response.contentEncoding.isEmpty() || "identity".equals(response.contentEncoding)) {
+            useGzip = false;
+        } else if ("gzip".equals(response.contentEncoding)) {
+            useGzip = acceptGzip;
+        } else {
+            HttpServerImpl.LOG.log(Level.WARNING, "Unsupported content encoding: " + response.contentEncoding);
+            useGzip = false;
         }
 
         long contentLength;
@@ -430,6 +429,7 @@ public final class HttpSession {
         if (body == null) {
             contentLength = 0L;
             chunkedTransfer = false;
+            if (useGzip == null) useGzip = false;
         } else if (body instanceof InputStream) {
             input = (InputStream) body;
             contentLength = response.contentLength;
@@ -444,6 +444,10 @@ public final class HttpSession {
             chunkedTransfer = useGzip;
         } else {
             throw new InternalError("unexpected types: " + body.getClass());
+        }
+
+        if (useGzip) {
+            out.writeHttpHeader("content-encoding", "gzip");
         }
 
         if (contentLength >= 0) {

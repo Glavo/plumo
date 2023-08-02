@@ -56,6 +56,11 @@ public final class HttpRequestImpl implements HttpRequest {
         }
     }
 
+    @Override
+    public Map<String, List<String>> getCookies() {
+        return null; // TODO
+    }
+
     // request
 
     @Override
