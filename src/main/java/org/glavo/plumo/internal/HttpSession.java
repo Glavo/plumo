@@ -39,8 +39,10 @@ public final class HttpSession implements AutoCloseable, Runnable {
     public static final int MAX_HEADER_SIZE = 1024;
 
     private final HttpServerImpl server;
-    private final InetAddress inetAddress;
     private final Closeable socket;
+    private final SocketAddress remoteAddress;
+    private final SocketAddress localAddress;
+
     private final TempFileManager tempFileManager;
 
     private final HttpRequestReader requestReader;
@@ -56,9 +58,12 @@ public final class HttpSession implements AutoCloseable, Runnable {
     private final Map<String, String> headers = new HashMap<>();
     private String queryParameterString;
 
-    public HttpSession(HttpServerImpl server, InetAddress inetAddress, InputStream inputStream, OutputStream outputStream, Closeable acceptSocket) {
+    public HttpSession(HttpServerImpl server, Closeable acceptSocket,
+                       SocketAddress remoteAddress, SocketAddress localAddress,
+                       InputStream inputStream, OutputStream outputStream) {
         this.server = server;
-        this.inetAddress = inetAddress;
+        this.remoteAddress = remoteAddress;
+        this.localAddress = localAddress;
         this.requestReader = new HttpRequestReader(inputStream);
         this.outputStream = new UnsyncBufferedOutputStream(outputStream, 1024);
         this.socket = acceptSocket;
@@ -255,10 +260,10 @@ public final class HttpSession implements AutoCloseable, Runnable {
             this.splitbyte = 0;
             this.rlen = 0;
 
-            HttpRequestImpl request;
+            HttpRequestImpl request = new HttpRequestImpl(remoteAddress, localAddress);
 
             try {
-                request = requestReader.read();
+                requestReader.readHeader(request);
             } catch (SSLException e) {
                 throw e;
             } catch (IOException e) {

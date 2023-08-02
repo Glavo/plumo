@@ -6,6 +6,9 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 public final class Constants {
+
+    public static final boolean DEBUG = Boolean.getBoolean("org.glavo.plumo.debug");
+
     public static final byte[] CRLF = {'\r', '\n'};
 
     public static final byte[] HTTP_HEADER_SEPARATOR = {':', ' '};

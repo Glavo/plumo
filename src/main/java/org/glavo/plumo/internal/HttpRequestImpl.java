@@ -17,11 +17,16 @@ public final class HttpRequestImpl implements HttpRequest {
     String rawUri;
     String httpVersion;
 
-    SocketAddress remoteAddress;
-    SocketAddress localAddress;
+    private final SocketAddress remoteAddress;
+    private final SocketAddress localAddress;
 
     private URI decodedUri;
     private boolean illegalUri = false;
+
+    public HttpRequestImpl(SocketAddress remoteAddress, SocketAddress localAddress) {
+        this.remoteAddress = remoteAddress;
+        this.localAddress = localAddress;
+    }
 
     // headers
 
@@ -132,7 +137,10 @@ public final class HttpRequestImpl implements HttpRequest {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("HttpRequest {\n");
+        builder.append("HttpRequest[remote-address=").append(remoteAddress)
+                .append(", ")
+                .append("local-address=").append(localAddress)
+                .append("] {\n");
         builder.append("    ").append(method).append(' ').append(rawUri).append(' ').append(httpVersion).append('\n');
         forEachHeader((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
         builder.append("}");

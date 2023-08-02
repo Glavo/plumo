@@ -49,10 +49,10 @@ public class HttpRequestReader implements Closeable {
         in.close();
     }
 
-    public HttpRequestImpl read() throws IOException, HttpResponseException {
+    public void readHeader(HttpRequestImpl request) throws IOException, HttpResponseException {
         byte[] buf = this.headBuf;
 
-        HttpRequestImpl request = new HttpRequestImpl();
+        // HttpRequestImpl request = new HttpRequestImpl();
 
         int read = headRemaining;
         if (headOff > 0) {
@@ -93,7 +93,7 @@ public class HttpRequestReader implements Closeable {
                         headRemaining = 0;
                     }
 
-                    return request;
+                    return;
                 }
 
                 assert lineEnd > 0;

@@ -149,14 +149,13 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
             ServerSocket serverSocket = (ServerSocket) ss;
             do {
                 try {
-                    final Socket finalAccept = serverSocket.accept();
+                    final Socket socket = serverSocket.accept();
                     if (timeout > 0) {
-                        finalAccept.setSoTimeout(timeout);
+                        socket.setSoTimeout(timeout);
                     }
-                    exec(new HttpSession(this,
-                            finalAccept.getLocalAddress(),
-                            finalAccept.getInputStream(), finalAccept.getOutputStream(),
-                            finalAccept));
+                    exec(new HttpSession(this, socket,
+                            socket.getRemoteSocketAddress(), socket.getLocalSocketAddress(),
+                            socket.getInputStream(), socket.getOutputStream()));
                 } catch (IOException e) {
                     HttpServerImpl.LOG.log(Level.FINE, "Communication with the client broken", e);
                 }
@@ -166,12 +165,11 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
 
             do {
                 try {
-                    final SocketChannel finalAccept = serverSocketChannel.accept();
-                    exec(new HttpSession(this,
-                            InetAddress.getLoopbackAddress(),
-                            Channels.newInputStream(finalAccept),
-                            Channels.newOutputStream(finalAccept),
-                            finalAccept));
+                    final SocketChannel socketChannel = serverSocketChannel.accept();
+                    exec(new HttpSession(this, socketChannel,
+                            socketChannel.getRemoteAddress(), socketChannel.getLocalAddress(),
+                            Channels.newInputStream(socketChannel),
+                            Channels.newOutputStream(socketChannel)));
                 } catch (IOException e) {
                     HttpServerImpl.LOG.log(Level.FINE, "Communication with the client broken", e);
                 }
