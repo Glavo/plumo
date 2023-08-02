@@ -177,7 +177,6 @@ public final class HttpServer {
                 throw new IllegalStateException("Server has started");
             }
             started = true;
-            AsyncRunner asyncRunner = executor == null ? new AsyncRunner() : new AsyncRunner(executor, shutdownExecutor);
 
             HttpHandler httpHandler = this.httpHandler;
             if (httpHandler == null) {
@@ -226,7 +225,8 @@ public final class HttpServer {
             this.impl = impl = new HttpServerImpl(
                     s,
                     httpHandler, tempFileManagerFactory,
-                    timeout, asyncRunner
+                    executor, shutdownExecutor,
+                    timeout
             );
         }
 
@@ -283,7 +283,7 @@ public final class HttpServer {
 
         this.impl = null;
 
-        impl.stop();
+        impl.close();
         if (thread != null && thread.isAlive()) {
             try {
                 thread.join();

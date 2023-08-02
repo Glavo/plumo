@@ -16,8 +16,7 @@ import org.glavo.plumo.TempFileManager;
  */
 public final class ClientHandler implements Runnable {
 
-    private final HttpServerImpl httpd;
-    private final AsyncRunner asyncRunner;
+    private final HttpServerImpl server;
     private final InetAddress inetAddress;
 
     private final InputStream inputStream;
@@ -27,11 +26,10 @@ public final class ClientHandler implements Runnable {
 
     volatile ClientHandler prev, next;
 
-    public ClientHandler(HttpServerImpl httpd, AsyncRunner asyncRunner, InetAddress inetAddress,
+    public ClientHandler(HttpServerImpl server, InetAddress inetAddress,
                          InputStream inputStream, OutputStream outputStream,
                          Closeable acceptSocket) {
-        this.httpd = httpd;
-        this.asyncRunner = asyncRunner;
+        this.server = server;
         this.inetAddress = inetAddress;
         this.inputStream = inputStream;
         this.outputStream = outputStream;
@@ -47,8 +45,8 @@ public final class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            TempFileManager tempFileManager = httpd.tempFileManagerFactory.get();
-            HttpSession session = new HttpSession(httpd.httpHandler, tempFileManager, this.inputStream, outputStream, inetAddress);
+            TempFileManager tempFileManager = server.tempFileManagerFactory.get();
+            HttpSession session = new HttpSession(server.httpHandler, tempFileManager, this.inputStream, outputStream, inetAddress);
 
             if (this.acceptSocket instanceof Socket) {
                 Socket socket = (Socket) this.acceptSocket;
@@ -72,7 +70,7 @@ public final class ClientHandler implements Runnable {
         } catch (Exception e) {
             HttpServerImpl.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
         } finally {
-            asyncRunner.close(this);
+            server.close(this);
         }
     }
 }
