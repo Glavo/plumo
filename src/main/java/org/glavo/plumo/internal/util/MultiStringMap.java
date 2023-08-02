@@ -1,4 +1,4 @@
-package org.glavo.plumo.internal;
+package org.glavo.plumo.internal.util;
 
 import org.jetbrains.annotations.NotNull;
 

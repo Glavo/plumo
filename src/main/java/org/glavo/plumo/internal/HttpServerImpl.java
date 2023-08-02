@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.TempFileManager;
+import org.glavo.plumo.internal.util.IOUtils;
 import org.jetbrains.annotations.NotNull;
 
 public final class HttpServerImpl implements Runnable, AutoCloseable {

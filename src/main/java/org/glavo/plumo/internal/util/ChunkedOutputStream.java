@@ -1,4 +1,6 @@
-package org.glavo.plumo.internal;
+package org.glavo.plumo.internal.util;
+
+import org.glavo.plumo.internal.Constants;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;

@@ -1,6 +1,8 @@
 package org.glavo.plumo;
 
 import org.glavo.plumo.internal.*;
+import org.glavo.plumo.internal.util.IOUtils;
+import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
 
 import javax.net.ssl.*;
 import java.io.Closeable;

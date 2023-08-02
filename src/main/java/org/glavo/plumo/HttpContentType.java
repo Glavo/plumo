@@ -1,7 +1,7 @@
 package org.glavo.plumo;
 
-import org.glavo.plumo.internal.Pair;
-import org.glavo.plumo.internal.ParameterParser;
+import org.glavo.plumo.internal.util.Pair;
+import org.glavo.plumo.internal.util.ParameterParser;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;

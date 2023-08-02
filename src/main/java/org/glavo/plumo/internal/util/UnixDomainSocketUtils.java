@@ -1,4 +1,4 @@
-package org.glavo.plumo.internal;
+package org.glavo.plumo.internal.util;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;

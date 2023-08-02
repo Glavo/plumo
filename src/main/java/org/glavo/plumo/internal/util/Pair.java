@@ -1,4 +1,4 @@
-package org.glavo.plumo.internal;
+package org.glavo.plumo.internal.util;
 
 public final class Pair<K, V> {
     private final K key;

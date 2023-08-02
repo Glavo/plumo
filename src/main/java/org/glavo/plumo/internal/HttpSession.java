@@ -22,6 +22,9 @@ import javax.net.ssl.SSLException;
 
 import org.glavo.plumo.*;
 import org.glavo.plumo.Cookie;
+import org.glavo.plumo.internal.util.ChunkedOutputStream;
+import org.glavo.plumo.internal.util.IOUtils;
+import org.glavo.plumo.internal.util.UnsyncBufferedOutputStream;
 
 public final class HttpSession implements AutoCloseable, Runnable {
 

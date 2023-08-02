@@ -1,6 +1,7 @@
 package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpRequest;
+import org.glavo.plumo.internal.util.MultiStringMap;
 
 import java.io.InputStream;
 import java.net.*;

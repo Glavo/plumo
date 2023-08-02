@@ -3,6 +3,8 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.HttpContentType;
 import org.glavo.plumo.Cookie;
+import org.glavo.plumo.internal.util.IOUtils;
+import org.glavo.plumo.internal.util.MultiStringMap;
 
 import java.io.InputStream;
 import java.time.Instant;

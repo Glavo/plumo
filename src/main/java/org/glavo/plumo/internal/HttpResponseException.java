@@ -1,4 +1,6 @@
-package org.glavo.plumo;
+package org.glavo.plumo.internal;
+
+import org.glavo.plumo.HttpResponse;
 
 public final class HttpResponseException extends Exception {
 

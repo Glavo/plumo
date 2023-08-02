@@ -1,4 +1,6 @@
-package org.glavo.plumo.internal;
+package org.glavo.plumo.internal.util;
+
+import org.glavo.plumo.internal.HttpServerImpl;
 
 import java.io.Closeable;
 import java.io.IOException;

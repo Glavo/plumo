@@ -1,6 +1,7 @@
-package org.glavo.plumo.internal;
+package org.glavo.plumo.internal.util;
 
 import org.glavo.plumo.HttpResponse;
+import org.glavo.plumo.internal.Constants;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;

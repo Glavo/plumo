@@ -1,4 +1,7 @@
-package org.glavo.plumo.internal;
+package org.glavo.plumo.internal.util;
+
+import org.glavo.plumo.internal.util.IOUtils;
+import org.glavo.plumo.internal.util.Pair;
 
 public final class ParameterParser {
     private final String input;
