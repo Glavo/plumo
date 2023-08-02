@@ -43,18 +43,16 @@ public final class HttpSession implements Runnable {
     private final HttpRequestReader requestReader;
     private final UnsyncBufferedOutputStream outputStream;
 
-    private int splitbyte;
-
-    private int rlen;
-
-    private final Map<String, List<String>> parms = new HashMap<>();
-
-    private final Map<String, String> headers = new HashMap<>();
-
-    private String queryParameterString;
-
     // Use in HttpServerImpl
     volatile HttpSession prev, next;
+
+
+    // legacy
+    private int splitbyte;
+    private int rlen;
+    private final Map<String, List<String>> parms = new HashMap<>();
+    private final Map<String, String> headers = new HashMap<>();
+    private String queryParameterString;
 
     public HttpSession(HttpServerImpl server, InetAddress inetAddress, InputStream inputStream, OutputStream outputStream, Closeable acceptSocket) {
         this.server = server;
