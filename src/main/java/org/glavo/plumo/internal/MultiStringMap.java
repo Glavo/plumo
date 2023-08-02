@@ -6,24 +6,6 @@ import java.util.*;
 
 @SuppressWarnings("unchecked")
 public final class MultiStringMap extends AbstractMap<String, List<String>> {
-    public static void add(Map<String, Object> map, String key, String value) {
-        map.compute(key, (ignored, oldValue) -> {
-            if (oldValue == null) {
-                return value;
-            }
-
-            List<String> list;
-            if (oldValue instanceof String) {
-                list = new ArrayList<>(4);
-                list.add((String) oldValue);
-            } else {
-                list = (List<String>) oldValue;
-            }
-            list.add(value);
-            return list;
-        });
-    }
-
     public final HashMap<String, Object> map;
 
     public MultiStringMap() {
@@ -65,6 +47,24 @@ public final class MultiStringMap extends AbstractMap<String, List<String>> {
         } else {
             return ((List<String>) v).get(0);
         }
+    }
+
+    public void add(String key, String value) {
+        map.compute(key, (ignored, oldValue) -> {
+            if (oldValue == null) {
+                return value;
+            }
+
+            List<String> list;
+            if (oldValue instanceof String) {
+                list = new ArrayList<>(4);
+                list.add((String) oldValue);
+            } else {
+                list = (List<String>) oldValue;
+            }
+            list.add(value);
+            return list;
+        });
     }
 
     @Override

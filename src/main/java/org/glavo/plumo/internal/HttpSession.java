@@ -347,7 +347,7 @@ public final class HttpSession {
         Instant date = response.date == null ? Instant.now() : response.date;
         out.writeHttpHeader("date", Constants.HTTP_TIME_FORMATTER.format(date));
 
-        for (Map.Entry<String, Object> entry : response.headers.entrySet()) {
+        for (Map.Entry<String, Object> entry : response.headers.map.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
 

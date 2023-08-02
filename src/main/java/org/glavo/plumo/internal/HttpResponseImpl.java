@@ -11,7 +11,7 @@ import java.util.*;
 @SuppressWarnings("unchecked")
 public final class HttpResponseImpl implements HttpResponse {
 
-    final Map<String, Object /* String|List<String> */> headers = new HashMap<>();
+    final MultiStringMap headers = new MultiStringMap();
 
     Status status;
     Instant date;
@@ -81,7 +81,7 @@ public final class HttpResponseImpl implements HttpResponse {
                 this.date = Instant.from(Constants.HTTP_TIME_FORMATTER.parse(value));
                 break;
             default:
-                MultiStringMap.add(headers, name, value);
+                headers.add(name, value);
         }
 
         return this;

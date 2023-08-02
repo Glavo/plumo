@@ -287,6 +287,6 @@ public class HttpRequestReader implements Closeable {
 
         String value = off < 0 ? "" : new String(buf, off, end - off, HEADER_ENCODING).trim();
 
-        MultiStringMap.add(request.headers, name.toLowerCase(Locale.ROOT), value);
+        request.headers.add(name.toLowerCase(Locale.ROOT), value);
     }
 }
