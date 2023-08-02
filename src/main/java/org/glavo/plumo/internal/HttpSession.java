@@ -49,10 +49,6 @@ public final class HttpSession {
 
     private int rlen;
 
-    private String uri;
-
-    private HttpRequest.Method method;
-
     private final Map<String, List<String>> parms = new HashMap<>();
 
     private final Map<String, String> headers = new HashMap<>();
@@ -60,12 +56,6 @@ public final class HttpSession {
     private String queryParameterString;
 
     private String remoteIp;
-
-    private String protocolVersion;
-
-    public HttpSession(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream) {
-        this(handler, tempFileManager, inputStream, outputStream, InetAddress.getLoopbackAddress());
-    }
 
     public HttpSession(HttpHandler handler, TempFileManager tempFileManager, InputStream inputStream, OutputStream outputStream, InetAddress inetAddress) {
         this.handler = handler;
@@ -241,7 +231,6 @@ public final class HttpSession {
                 throw ServerShutdown.shutdown();
             }
 
-
 //            if (null != this.remoteIp) {
 //                this.headers.put("remote-addr", this.remoteIp);
 //                this.headers.put("http-client-ip", this.remoteIp);
@@ -258,11 +247,8 @@ public final class HttpSession {
                 throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
             }
 
-            String acceptEncoding = request.headers.getFirst("accept-encoding");
-            boolean acceptGzip = acceptEncoding != null && acceptEncoding.contains("gzip");
-
             try {
-                send(r, this.outputStream, acceptGzip, keepAlive);
+                send(request, r, this.outputStream,  keepAlive);
             } catch (IOException ioe) {
                 HttpServerImpl.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
                 IOUtils.safeClose(this.outputStream);
@@ -285,7 +271,7 @@ public final class HttpSession {
                 resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
             }
 
-            send((HttpResponseImpl) resp, this.outputStream, false, false);
+            send(null, (HttpResponseImpl) resp, this.outputStream, false);
             IOUtils.safeClose(this.outputStream);
         } finally {
             if (r != null) {
@@ -344,7 +330,7 @@ public final class HttpSession {
     /**
      * Sends given response to the socket.
      */
-    public void send(HttpResponseImpl response, UnsyncBufferedOutputStream out, boolean acceptGzip, boolean keepAlive) throws IOException {
+    public void send(HttpRequestImpl request, HttpResponseImpl response, UnsyncBufferedOutputStream out, boolean keepAlive) throws IOException {
         if (response.status == null) {
             throw new Error("sendResponse(): Status can't be null.");
         }
@@ -411,7 +397,8 @@ public final class HttpSession {
         }
 
         boolean useGzip;
-        if (!acceptGzip) {
+        String acceptEncoding = request != null ? request.headers.getFirst("accept-encoding") : null;
+        if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
             useGzip = false;
         } else if (response.contentEncoding == null) {
             if (response.contentType == null || (inputLength >= 0 && inputLength <= 512)) { // TODO: magic number
@@ -480,8 +467,9 @@ public final class HttpSession {
         }
 
         boolean chunkedTransfer = outputLength < 0;
+        HttpRequest.Method method = request != null ? request.method : null;
 
-        if (this.method != HttpRequest.Method.HEAD && chunkedTransfer) {
+        if (method != HttpRequest.Method.HEAD && chunkedTransfer) {
             out.writeHttpHeader("transfer-encoding", "chunked");
         }
         out.writeCRLF();
@@ -556,24 +544,6 @@ public final class HttpSession {
         }
     }
 
-    // --- API ---
-
-    public Map<String, String> getHeaders() {
-        return this.headers;
-    }
-
-    public HttpRequest.Method getMethod() {
-        return this.method;
-    }
-
-    public Map<String, List<String>> getParameters() {
-        return this.parms;
-    }
-
-    public String getQueryParameterString() {
-        return this.queryParameterString;
-    }
-
     private RandomAccessFile getTmpBucket() {
         try {
             Path tempFile = this.tempFileManager.createTempFile(null);
@@ -581,10 +551,6 @@ public final class HttpSession {
         } catch (Exception e) {
             throw new Error(e); // we won't recover, so throw an error
         }
-    }
-
-    public String getUri() {
-        return this.uri;
     }
 
     /**
@@ -601,7 +567,7 @@ public final class HttpSession {
         return 0;
     }
 
-    public void parseBody(Map<String, String> files) throws IOException, HttpResponseException {
+    public void parseBody(HttpRequest.Method method, Map<String, String> files) throws IOException, HttpResponseException {
         RandomAccessFile randomAccessFile = null;
         try {
             long size = getBodySize();
@@ -637,7 +603,7 @@ public final class HttpSession {
 
             // If the method is POST, there may be parameters
             // in data section, too, read it:
-            switch (this.method) {
+            switch (method) {
                 case POST:
                     HttpContentType contentType = new HttpContentType(this.headers.get("content-type"));
                     if (contentType.isMultipart()) {
@@ -692,9 +658,5 @@ public final class HttpSession {
             }
         }
         return path;
-    }
-
-    public String getRemoteIpAddress() {
-        return this.remoteIp;
     }
 }
