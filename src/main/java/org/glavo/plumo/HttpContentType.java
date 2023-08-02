@@ -47,7 +47,7 @@ public final class HttpContentType {
                     if ("charset".equalsIgnoreCase(next.getKey())) {
                         charsetName = next.getValue();
                     } else if ("boundary".equalsIgnoreCase(next.getKey())) {
-                        charsetName = next.getValue();
+                        boundary = next.getValue();
                     }
                 }
 
