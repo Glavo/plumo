@@ -203,13 +203,66 @@ public class HttpRequestReader implements Closeable {
         return -1;
     }
 
-    private static final HttpRequest.Method[] METHODS = HttpRequest.Method.values();
-    private static final byte[][] METHOD_NAMES = new byte[METHODS.length][];
+    // Quick lookup table based on the method name length
+    private static final int MAX_METHOD_NAME_LENGTH;
+    private static final byte[][][] METHOD_NAME_LOOKUP;
+    private static final HttpRequest.Method[][] METHOD_VALUE_LOOKUP;
 
     static {
-        for (int i = 0; i < METHODS.length; i++) {
-            METHOD_NAMES[i] = METHODS[i].name().getBytes(StandardCharsets.ISO_8859_1);
+        HttpRequest.Method[] methods = HttpRequest.Method.values();
+
+        int maxLength = 0;
+        for (HttpRequest.Method method : methods) {
+            int len = method.name().length();
+            if (len > maxLength) {
+                maxLength = len;
+            }
         }
+
+        HttpRequest.Method[][] valueLookup = new HttpRequest.Method[maxLength + 1][];
+        for (HttpRequest.Method method : methods) {
+            int len = method.name().length();
+
+            HttpRequest.Method[] arr = valueLookup[len];
+            if (arr == null) {
+                arr = new HttpRequest.Method[]{method};
+            } else {
+                arr = Arrays.copyOf(arr, arr.length + 1);
+                arr[arr.length - 1] = method;
+            }
+            valueLookup[len] = arr;
+        }
+
+        byte[][][] nameLookup = new byte[valueLookup.length][][];
+        for (int i = 0; i < valueLookup.length; i++) {
+            HttpRequest.Method[] values = valueLookup[i];
+            if (values != null) {
+                byte[][] names = new byte[values.length][];
+                for (int j = 0; j < values.length; j++) {
+                    names[j] = values[j].name().getBytes(StandardCharsets.ISO_8859_1);
+                }
+                nameLookup[i] = names;
+            }
+        }
+
+        MAX_METHOD_NAME_LENGTH = maxLength;
+        METHOD_NAME_LOOKUP = nameLookup;
+        METHOD_VALUE_LOOKUP = valueLookup;
+    }
+
+    private static HttpRequest.Method lookupMethod(byte[] arr, int off, int end) {
+        int len = end - off;
+
+        byte[][] names;
+        if (len <= MAX_METHOD_NAME_LENGTH && (names = METHOD_NAME_LOOKUP[len]) != null) {
+            for (int i = 0; i < names.length; i++) {
+                if (Arrays.equals(names[i], 0, len, arr, off, end)) {
+                    return METHOD_VALUE_LOOKUP[len][i];
+                }
+            }
+        }
+
+        return null;
     }
 
     private static void processStartLine(HttpRequestImpl request, byte[] buf, int off, int lineEnd) throws HttpResponseException {
@@ -218,16 +271,7 @@ public class HttpRequestReader implements Closeable {
             throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST);
         }
 
-        HttpRequest.Method method = null;
-        for (int i = 0; i < METHOD_NAMES.length; i++) {
-            byte[] methodName = METHOD_NAMES[i];
-
-            if (Arrays.equals(methodName, 0, methodName.length, buf, off, end)) {
-                method = METHODS[i];
-                break;
-            }
-        }
-
+        HttpRequest.Method method = lookupMethod(buf, off, end);
         if (method == null) {
             throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST,
                     "BAD REQUEST: Syntax error. HTTP verb " + new String(buf, off, end - off, HEADER_ENCODING) + " unhandled.");

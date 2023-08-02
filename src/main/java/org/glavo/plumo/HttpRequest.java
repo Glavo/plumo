@@ -67,17 +67,6 @@ public interface HttpRequest {
         LOCK,
         UNLOCK,
         NOTIFY,
-        SUBSCRIBE;
-
-        public static Method lookup(String method) {
-            if (method == null)
-                return null;
-
-            try {
-                return valueOf(method);
-            } catch (IllegalArgumentException e) {
-                return null;
-            }
-        }
+        SUBSCRIBE
     }
 }

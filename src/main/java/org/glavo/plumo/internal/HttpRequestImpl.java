@@ -10,14 +10,14 @@ import java.util.*;
 @SuppressWarnings("unchecked")
 public final class HttpRequestImpl implements HttpRequest {
 
+    private final SocketAddress remoteAddress;
+    private final SocketAddress localAddress;
+
     final MultiStringMap headers = new MultiStringMap();
 
     Method method;
     String rawUri;
     String httpVersion;
-
-    private final SocketAddress remoteAddress;
-    private final SocketAddress localAddress;
 
     private URI decodedUri;
     private boolean illegalUri = false;
