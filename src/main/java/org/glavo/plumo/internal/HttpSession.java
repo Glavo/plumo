@@ -21,7 +21,7 @@ import java.util.zip.GZIPOutputStream;
 import javax.net.ssl.SSLException;
 
 import org.glavo.plumo.*;
-import org.glavo.plumo.content.Cookie;
+import org.glavo.plumo.Cookie;
 
 public final class HttpSession implements AutoCloseable, Runnable {
 

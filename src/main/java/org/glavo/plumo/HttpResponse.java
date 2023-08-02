@@ -1,7 +1,6 @@
 package org.glavo.plumo;
 
 import org.glavo.plumo.internal.HttpResponseImpl;
-import org.glavo.plumo.content.Cookie;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.io.IOException;

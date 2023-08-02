@@ -2,7 +2,7 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.HttpContentType;
-import org.glavo.plumo.content.Cookie;
+import org.glavo.plumo.Cookie;
 
 import java.io.InputStream;
 import java.time.Instant;
