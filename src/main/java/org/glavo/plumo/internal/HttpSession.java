@@ -23,7 +23,7 @@ import javax.net.ssl.SSLException;
 import org.glavo.plumo.*;
 import org.glavo.plumo.content.Cookie;
 
-public final class HttpSession implements Runnable {
+public final class HttpSession implements AutoCloseable, Runnable {
 
     public static final String POST_DATA = "postData";
 
@@ -45,7 +45,6 @@ public final class HttpSession implements Runnable {
 
     // Use in HttpServerImpl
     volatile HttpSession prev, next;
-
 
     // legacy
     private int splitbyte;
@@ -93,7 +92,8 @@ public final class HttpSession implements Runnable {
         }
     }
 
-    void closeSocket() {
+    @Override
+    public void close() {
         IOUtils.safeClose(this.outputStream);
         IOUtils.safeClose(this.requestReader);
         IOUtils.safeClose(this.socket);
@@ -264,11 +264,6 @@ public final class HttpSession implements Runnable {
                 throw ServerShutdown.shutdown();
             }
 
-//            if (null != this.remoteIp) {
-//                this.headers.put("remote-addr", this.remoteIp);
-//                this.headers.put("http-client-ip", this.remoteIp);
-//            }
-//
             String connection = request.headers.getFirst("connection");
             boolean keepAlive = "HTTP/1.1".equals(request.httpVersion) && (connection == null || !connection.equals("close"));
 

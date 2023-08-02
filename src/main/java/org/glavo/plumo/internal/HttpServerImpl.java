@@ -84,7 +84,7 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
             }
         } finally {
             lock.unlock();
-            session.closeSocket();
+            session.close();
         }
     }
 
@@ -125,7 +125,7 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
             HttpSession session = firstSession;
 
             while (session != null) {
-                session.closeSocket();
+                session.close();
                 session = session.next;
             }
 
