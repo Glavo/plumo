@@ -3,6 +3,7 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.internal.util.IOUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Closeable;
 import java.io.EOFException;
@@ -17,31 +18,14 @@ public class HttpRequestReader implements Closeable {
 
     private static final Charset HEADER_ENCODING = StandardCharsets.UTF_8;
 
-    private final byte[] headBuf = new byte[HttpSession.HEADER_BUFFER_SIZE];
-    private int headOff;
-    private int headRemaining;
+    private final byte[] lineBuffer = new byte[Constants.LINE_BUFFER_LENGTH];
+    private int bufferOff;
+    private int bufferRemaining;
 
     private final InputStream in;
 
     public HttpRequestReader(InputStream in) {
         this.in = in;
-    }
-
-    public int read(byte[] b, int off, int len) throws IOException {
-        if (headRemaining > 0) {
-            int r = Math.min(headRemaining, len);
-            System.arraycopy(headBuf, headOff, b, off, r);
-
-            headRemaining -= r;
-
-            if (headRemaining == 0) {
-                headOff = 0;
-            }
-
-            return r;
-        }
-
-        return in.read(b, off, len);
     }
 
     @Override
@@ -50,93 +34,206 @@ public class HttpRequestReader implements Closeable {
     }
 
     public void readHeader(HttpRequestImpl request) throws IOException, HttpResponseException {
-        byte[] buf = this.headBuf;
+        byte[] buf = this.lineBuffer;
 
-        // HttpRequestImpl request = new HttpRequestImpl();
-
-        int read = headRemaining;
-        if (headOff > 0) {
-            System.arraycopy(buf, headOff, buf, 0, read);
-            headOff = 0;
-        } else {
-            read = in.read(buf, 0, HttpSession.HEADER_BUFFER_SIZE);
-
+        int read = bufferRemaining;
+        if (read == 0) {
+            read = in.read(buf, 0, Constants.LINE_BUFFER_LENGTH);
             if (read == -1) {
                 throw new EOFException();
             }
+
+            assert bufferOff == 0;
+            bufferRemaining = read;
         }
 
-        int count = 0;
-
-        int lineStart = 0;
+        boolean firstLine = true;
         while (read > 0) {
-            count += read;
-
             while (true) {
-                int lineEnd = findLineEnd(buf, lineStart, count);
-                int tokenStart = findTokenStart(buf, lineStart, lineEnd);
+                int lineEnd = findLineEnd(buf, bufferOff, bufferOff + bufferRemaining);
 
                 if (lineEnd < 0) {
+                    if (bufferOff + bufferRemaining == Constants.LINE_BUFFER_LENGTH) {
+                        if (bufferOff > 0) {
+                            System.arraycopy(buf, bufferOff, buf, 0, bufferRemaining);
+                            bufferOff = 0;
+                        } else {
+                            // line buffer is full
+                            throw new HttpResponseException(HttpResponse.Status.REQUEST_HEADER_FIELDS_TOO_LARGE);
+                        }
+                    }
+
                     // need more input
                     break;
                 }
 
-                if (tokenStart < 0) {
-                    // end of http header
+                int lineSeparatorEnd = findLineSeparatorEnd(buf, lineEnd);
+                int tokenStart = findTokenStart(buf, bufferOff, lineEnd);
 
-                    int off = findLineSeparatorEnd(buf, lineEnd);
-                    if (off < count) {
-                        headOff = off;
-                        headRemaining = count - off;
-                    } else {
-                        headOff = 0;
-                        headRemaining = 0;
-                    }
-
-                    return;
-                }
-
-                assert lineEnd > 0;
-
-                if (lineStart == 0) {
-                    processStartLine(request, buf, tokenStart, lineEnd);
+                int lineWithSeparatorLength = lineSeparatorEnd - bufferOff;
+                if (lineWithSeparatorLength < bufferRemaining) {
+                    bufferOff = lineSeparatorEnd;
+                    bufferRemaining -= lineWithSeparatorLength;
                 } else {
-                    processHeaderLine(request, buf, tokenStart, lineEnd);
+                    bufferOff = 0;
+                    bufferRemaining = 0;
                 }
 
-                lineStart = findLineSeparatorEnd(buf, lineEnd);
+                // end of http header
+                if (tokenStart < 0) {
+                    return;
+                } else {
+                    assert lineEnd > 0;
+
+                    if (firstLine) {
+                        firstLine = false;
+                        processStartLine(request, buf, tokenStart, lineEnd);
+                    } else {
+                        processHeaderLine(request, buf, tokenStart, lineEnd);
+                    }
+                }
             }
 
-            read = in.read(buf, count, HttpSession.HEADER_BUFFER_SIZE - count);
+            int off = bufferOff + bufferRemaining;
+            read = in.read(buf, off, Constants.LINE_BUFFER_LENGTH - off);
         }
 
         throw new HttpResponseException(HttpResponse.Status.REQUEST_HEADER_FIELDS_TOO_LARGE);
     }
 
-    private InputStream newBondul() {
-        return new InputStream() {
-            private boolean closed = false;
+    public int read() throws IOException {
+        if (bufferRemaining > 0) {
+            int res = lineBuffer[bufferOff] & 0xff;
 
-            private long totalRead = 0;
-            private long limit;
+            bufferRemaining--;
 
-            private void checkStatus() throws IOException {
-                if (closed) {
-                    throw new IOException("Stream closed");
+            if (bufferRemaining == 0) {
+                bufferOff = 0;
+            } else {
+                bufferOff++;
+            }
+
+            return res;
+        }
+
+        return in.read();
+    }
+
+    public int read(byte[] b, int off, int len) throws IOException {
+        if (bufferRemaining > 0) {
+            int r = Math.min(bufferRemaining, len);
+            System.arraycopy(lineBuffer, bufferOff, b, off, r);
+
+            bufferRemaining -= r;
+
+            if (bufferRemaining == 0) {
+                bufferOff = 0;
+            } else {
+                bufferOff += r;
+            }
+
+            return r;
+        }
+
+        return in.read(b, off, len);
+    }
+
+    public long skip(long n) throws IOException {
+        if (n <= 0) {
+            return 0;
+        }
+
+        if (bufferRemaining > 0) {
+            int r = (int) Math.min(bufferRemaining, n);
+
+            bufferRemaining -= r;
+
+            if (bufferRemaining == 0) {
+                bufferOff = 0;
+            } else {
+                bufferOff += r;
+            }
+
+            return r;
+        }
+
+        return in.skip(n);
+    }
+
+
+    private final class BoundedInputStream extends InputStream {
+        private boolean closed = false;
+
+        private final long limit;
+        private long totalRead = 0;
+
+        BoundedInputStream(long limit) {
+            this.limit = limit;
+        }
+
+        private void checkStatus() throws IOException {
+            if (closed) {
+                throw new IOException("Stream closed");
+            }
+        }
+
+        @Override
+        public int read() throws IOException {
+            checkStatus();
+
+            if (totalRead < limit) {
+                int res = HttpRequestReader.this.read();
+                if (res >= 0) {
+                    totalRead++;
                 }
+                return res;
+            } else {
+                return -1;
             }
+        }
 
-            @Override
-            public void close() throws IOException {
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            checkStatus();
 
-            }
-
-            @Override
-            public int read() throws IOException {
-
+            if (len == 0) {
                 return 0;
             }
-        };
+
+            long maxRead = limit - totalRead;
+            if (maxRead > 0) {
+                int nTryRead = (int) Math.min(len, maxRead);
+
+                int res = HttpRequestReader.this.read(b, off, nTryRead);
+                if (res > 0) {
+                    assert res <= nTryRead;
+                    totalRead += res;
+                    return res;
+                } else {
+                    return -1;
+                }
+            } else {
+                return -1;
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (closed) {
+                return;
+            }
+
+            long remaining;
+            while ((remaining = limit - totalRead) > 0) {
+                long n = HttpRequestReader.this.skip(remaining);
+                if (n <= 0) {
+                    break;// TODO: ?
+                }
+                totalRead += n;
+            }
+
+            this.closed = true;
+        }
     }
 
     private static int findLineEnd(byte[] buf, int lineStart, int bufEnd) {

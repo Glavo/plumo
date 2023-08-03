@@ -7,7 +7,11 @@ import java.util.regex.Pattern;
 
 public final class Constants {
 
-    public static final boolean DEBUG = Boolean.getBoolean("org.glavo.plumo.debug");
+    private static final String PROPERTY_PREFIX = "org.glavo.plumo.";
+
+    public static final boolean DEBUG = Boolean.getBoolean(PROPERTY_PREFIX + "debug");
+
+    public static final int LINE_BUFFER_LENGTH = Integer.getInteger(PROPERTY_PREFIX + "lineBufferLength", 8192);
 
     public static final byte[] CRLF = {'\r', '\n'};
 

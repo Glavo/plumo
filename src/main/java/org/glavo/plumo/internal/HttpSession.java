@@ -26,15 +26,13 @@ import org.glavo.plumo.internal.util.ChunkedOutputStream;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.UnsyncBufferedOutputStream;
 
-public final class HttpSession implements AutoCloseable, Runnable {
+public final class HttpSession implements Closeable, Runnable {
 
     public static final String POST_DATA = "postData";
 
     private static final int REQUEST_BUFFER_LEN = 512;
 
     private static final int MEMORY_STORE_LIMIT = 1024;
-
-    public static final int HEADER_BUFFER_SIZE = 8192;
 
     public static final int MAX_HEADER_SIZE = 1024;
 
@@ -74,16 +72,8 @@ public final class HttpSession implements AutoCloseable, Runnable {
     @Override
     public void run() {
         try {
-            if (this.socket instanceof Socket) {
-                Socket socket = (Socket) this.socket;
-                while (!socket.isClosed()) {
-                    execute();
-                }
-            } else {
-                SocketChannel socketChannel = (SocketChannel) this.socket;
-                while (socketChannel.isOpen()) {
-                    execute();
-                }
+            while (isOpen()) {
+                execute();
             }
         } catch (ServerShutdown | SocketTimeoutException ignored) {
             // When the socket is closed by the client,
@@ -105,6 +95,12 @@ public final class HttpSession implements AutoCloseable, Runnable {
         IOUtils.safeClose(this.outputStream);
         IOUtils.safeClose(this.requestReader);
         IOUtils.safeClose(this.socket);
+    }
+
+    private boolean isOpen() {
+        return socket instanceof Socket
+                ? !((Socket) socket).isClosed()
+                : ((SocketChannel) socket).isOpen();
     }
 
     /**
@@ -248,15 +244,9 @@ public final class HttpSession implements AutoCloseable, Runnable {
         }
     }
 
-    public void execute() throws IOException {
+    private void execute() throws IOException {
         HttpResponseImpl r = null;
         try {
-            // Read the first 8192 bytes.
-            // The full header should fit in here.
-            // Apache's default header limit is 8KB.
-            // Do NOT assume that a single read will get the entire header
-            // at once!
-
             this.splitbyte = 0;
             this.rlen = 0;
 
@@ -264,11 +254,7 @@ public final class HttpSession implements AutoCloseable, Runnable {
 
             try {
                 requestReader.readHeader(request);
-            } catch (SSLException e) {
-                throw e;
-            } catch (IOException e) {
-                IOUtils.safeClose(this.requestReader);
-                IOUtils.safeClose(this.outputStream);
+            } catch (EOFException e) {
                 throw ServerShutdown.shutdown();
             }
 
@@ -284,10 +270,9 @@ public final class HttpSession implements AutoCloseable, Runnable {
             }
 
             try {
-                send(request, r, this.outputStream,  keepAlive);
+                send(request, r, this.outputStream, keepAlive);
             } catch (IOException ioe) {
                 HttpServerImpl.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
-                IOUtils.safeClose(this.outputStream);
                 throw ServerShutdown.shutdown();
             }
 
@@ -308,7 +293,6 @@ public final class HttpSession implements AutoCloseable, Runnable {
             }
 
             send(null, (HttpResponseImpl) resp, this.outputStream, false);
-            IOUtils.safeClose(this.outputStream);
         } finally {
             if (r != null) {
                 r.finish();
