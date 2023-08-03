@@ -3,7 +3,6 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.internal.util.IOUtils;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.Closeable;
 import java.io.EOFException;
@@ -138,9 +137,11 @@ public class HttpRequestReader implements Closeable {
         return in.read(b, off, len);
     }
 
-    public long skip(long n) throws IOException {
+    private byte[] skipBuffer;
+
+    public void forceSkip(long n) throws IOException {
         if (n <= 0) {
-            return 0;
+            return;
         }
 
         if (bufferRemaining > 0) {
@@ -154,10 +155,24 @@ public class HttpRequestReader implements Closeable {
                 bufferOff += r;
             }
 
-            return r;
+            n -= r;
         }
 
-        return in.skip(n);
+        if (n > 0) {
+            if (skipBuffer == null) {
+                skipBuffer = new byte[2048];
+            }
+
+            while (n > 0) {
+                int read = in.read(skipBuffer, 0, (int) Math.min(skipBuffer.length, n));
+                if (read <= 0) {
+                    in.close();
+                    throw new EOFException(); // TODO: ???
+                }
+
+                n -= read;
+            }
+        }
     }
 
 
@@ -223,13 +238,9 @@ public class HttpRequestReader implements Closeable {
                 return;
             }
 
-            long remaining;
-            while ((remaining = limit - totalRead) > 0) {
-                long n = HttpRequestReader.this.skip(remaining);
-                if (n <= 0) {
-                    break;// TODO: ?
-                }
-                totalRead += n;
+            if (totalRead < limit) {
+                forceSkip(limit - totalRead);
+                totalRead = limit;
             }
 
             this.closed = true;
