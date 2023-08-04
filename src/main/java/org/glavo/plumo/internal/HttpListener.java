@@ -52,7 +52,11 @@ public final class HttpListener implements Runnable, AutoCloseable {
         this.timeout = timeout;
 
         if (executor == null) {
-            this.executor = VirtualThreadExecutor.AVAILABLE ? new VirtualThreadExecutor() : new DefaultExecutor();
+            if (Constants.USE_VIRTUAL_THREAD == Boolean.TRUE || (Constants.USE_VIRTUAL_THREAD == null && VirtualThreadExecutor.AVAILABLE)) {
+                this.executor = new VirtualThreadExecutor();
+            } else {
+                this.executor = new DefaultExecutor();
+            }
             this.shutdownExecutor = false;
         } else {
             this.executor = executor;
@@ -85,8 +89,9 @@ public final class HttpListener implements Runnable, AutoCloseable {
             }
         } finally {
             lock.unlock();
-            session.close();
         }
+
+        session.close();
     }
 
     void exec(HttpSession session) {
@@ -219,17 +224,14 @@ public final class HttpListener implements Runnable, AutoCloseable {
             newThread = newThreadHandle;
         }
 
-        public static void checkAvailable() {
+        private long requestCount;
+
+        public VirtualThreadExecutor() {
             if (!AVAILABLE) {
                 throw new UnsupportedOperationException(NEED_ENABLE_PREVIEW
                         ? "Preview Features not enabled, need to run with --enable-preview"
                         : "Please upgrade to Java 19+");
             }
-        }
-
-        private long requestCount;
-
-        public VirtualThreadExecutor() {
         }
 
         @Override

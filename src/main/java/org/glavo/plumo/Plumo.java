@@ -25,8 +25,6 @@ import java.util.logging.Level;
 
 public final class Plumo {
 
-    public static final int SOCKET_READ_TIMEOUT = 5000;
-
     public static Plumo create(int port) {
         return create(new InetSocketAddress(port));
     }
@@ -44,6 +42,8 @@ public final class Plumo {
     }
 
     public static Plumo create(Path path, boolean deleteIfExists) {
+        Objects.requireNonNull(path);
+
         UnixDomainSocketUtils.checkAvailable();
 
         if (deleteIfExists) {
@@ -67,7 +67,7 @@ public final class Plumo {
     private Supplier<TempFileManager> tempFileManagerFactory;
     private Executor executor;
     private boolean shutdownExecutor;
-    private int timeout = SOCKET_READ_TIMEOUT;
+    private int timeout = Constants.SOCKET_TIMEOUT;
     private SSLContext sslContext;
     private String[] sslProtocols;
 
