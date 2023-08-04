@@ -289,7 +289,7 @@ public final class HttpSession implements Closeable, Runnable {
         } catch (SocketException | SocketTimeoutException e) {
             // throw it out to close socket object (finalAccept)
             throw e;
-        } catch (IOException | HttpResponseException e) {
+        } catch (IOException | UncheckedIOException | HttpResponseException e) {
             HttpResponse resp;
             if (e instanceof HttpResponseException) {
                 resp = HttpResponse.newPlainTextResponse(((HttpResponseException) e).getStatus(), e.getMessage());
