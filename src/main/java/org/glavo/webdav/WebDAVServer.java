@@ -11,9 +11,10 @@ public final class WebDAVServer {
     }
 
     public static void main(String[] args) throws Throwable {
-        HttpServer.create(Path.of("D:\\unix-domain-socket"), true)
+        HttpServer.create(10001)
                 .setHttpHandler(request -> {
                     System.out.println(request);
+                    System.out.println(request.getCookies());
                     return HttpResponse.newResponse(HttpResponse.Status.OK)
                             .setContentType(HttpContentType.HTML)
                             .setBody("<body>Hello World!</body>");
