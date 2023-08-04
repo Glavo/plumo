@@ -4,6 +4,7 @@ import org.glavo.plumo.HttpContentType;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.MultiStringMap;
+import org.glavo.plumo.internal.util.ParameterParser;
 
 import java.io.InputStream;
 import java.net.*;
@@ -56,9 +57,27 @@ public final class HttpRequestImpl implements HttpRequest {
         return headers.get(name.toLowerCase(Locale.ROOT));
     }
 
+    private Map<String, List<String>> cookies;
+
     @Override
     public Map<String, List<String>> getCookies() {
-        return null; // TODO
+        if (cookies == null) {
+            String cookie = headers.getFirst("cookie");
+            if (cookie == null) {
+                cookies = Collections.emptyMap();
+            } else {
+                MultiStringMap msm =  new MultiStringMap();
+                ParameterParser parser = new ParameterParser(cookie, ',');
+                Map.Entry<String, String> pair;
+                while ((pair = parser.nextParameter()) != null) {
+                    String value = pair.getValue();
+                    msm.add(pair.getKey(), value == null ? "" : value);
+                }
+                cookies = msm;
+            }
+        }
+
+        return cookies;
     }
 
     @Override
