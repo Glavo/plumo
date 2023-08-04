@@ -1,7 +1,7 @@
 package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.HttpContentType;
+import org.glavo.plumo.ContentType;
 import org.glavo.plumo.Cookie;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.MultiStringMap;
@@ -23,7 +23,7 @@ public final class HttpResponseImpl implements HttpResponse {
     // InputStream | String | byte[]
     Object body;
     long contentLength;
-    HttpContentType contentType;
+    ContentType contentType;
     String contentEncoding;
 
     List<Cookie> cookies;
@@ -35,7 +35,7 @@ public final class HttpResponseImpl implements HttpResponse {
         this.status = status;
     }
 
-    public HttpResponseImpl(Status status, Object body, HttpContentType contentType) {
+    public HttpResponseImpl(Status status, Object body, ContentType contentType) {
         this.status = status;
         this.body = body;
         this.contentType = contentType;
@@ -74,7 +74,7 @@ public final class HttpResponseImpl implements HttpResponse {
                 this.contentLength = len;
                 break;
             case "content-type":
-                this.contentType = new HttpContentType(value);
+                this.contentType = new ContentType(value);
                 break;
             case "content-encoding":
                 this.contentEncoding = value;
@@ -90,14 +90,14 @@ public final class HttpResponseImpl implements HttpResponse {
     }
 
     @Override
-    public HttpResponse setContentType(HttpContentType contentType) {
+    public HttpResponse setContentType(ContentType contentType) {
         this.contentType = contentType;
         return this;
     }
 
     @Override
     public HttpResponse setContentType(String contentType) {
-        this.contentType = new HttpContentType(contentType);
+        this.contentType = new ContentType(contentType);
         return this;
     }
 

@@ -108,7 +108,7 @@ public final class HttpSession implements Closeable, Runnable {
     /**
      * Decodes the Multipart Body data and put it into Key/Value pairs.
      */
-    private void decodeMultipartFormData(HttpContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws HttpResponseException {
+    private void decodeMultipartFormData(ContentType contentType, ByteBuffer fbuf, Map<String, List<String>> parms, Map<String, String> files) throws HttpResponseException {
         int pcount = 0;
         try {
             int[] boundaryIdxs = getBoundaryPositions(fbuf, contentType.getBoundary().getBytes(StandardCharsets.UTF_8));
@@ -366,7 +366,7 @@ public final class HttpSession implements Closeable, Runnable {
         out.writeStatus(response.status);
         out.writeCRLF();
 
-        HttpContentType contentType = response.contentType;
+        ContentType contentType = response.contentType;
         if (contentType != null) {
             out.writeHttpHeader("content-type", contentType.toString());
         }
@@ -632,7 +632,7 @@ public final class HttpSession implements Closeable, Runnable {
             // in data section, too, read it:
             switch (method) {
                 case POST:
-                    HttpContentType contentType = new HttpContentType(this.headers.get("content-type"));
+                    ContentType contentType = new ContentType(this.headers.get("content-type"));
                     if (contentType.isMultipart()) {
                         String boundary = contentType.getBoundary();
                         if (boundary == null) {

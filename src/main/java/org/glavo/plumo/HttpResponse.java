@@ -15,7 +15,7 @@ public /*sealed*/ interface HttpResponse {
 
     HttpResponse setDate(Instant time);
 
-    HttpResponse setContentType(HttpContentType contentType);
+    HttpResponse setContentType(ContentType contentType);
 
     HttpResponse setContentType(String contentType);
 
@@ -44,19 +44,19 @@ public /*sealed*/ interface HttpResponse {
     }
 
     static HttpResponse newPlainTextResponse(String data) {
-        return new HttpResponseImpl(Status.OK, data, HttpContentType.PLAIN_TEXT);
+        return new HttpResponseImpl(Status.OK, data, ContentType.PLAIN_TEXT);
     }
 
     static HttpResponse newPlainTextResponse(Status status, String data) {
-        return new HttpResponseImpl(status, data, HttpContentType.PLAIN_TEXT);
+        return new HttpResponseImpl(status, data, ContentType.PLAIN_TEXT);
     }
 
     static HttpResponse newHtmlResponse(String html) {
-        return new HttpResponseImpl(Status.OK, html, HttpContentType.HTML);
+        return new HttpResponseImpl(Status.OK, html, ContentType.HTML);
     }
 
     static HttpResponse newHtmlResponse(Status status, String html) {
-        return new HttpResponseImpl(status, html, HttpContentType.HTML);
+        return new HttpResponseImpl(status, html, ContentType.HTML);
     }
 
     final class Status implements Serializable {

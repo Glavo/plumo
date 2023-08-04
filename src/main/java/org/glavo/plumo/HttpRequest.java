@@ -1,7 +1,6 @@
 package org.glavo.plumo;
 
 import java.io.InputStream;
-import java.net.ContentHandler;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.net.URI;
@@ -40,7 +39,7 @@ public interface HttpRequest {
 
     long getBodySize();
 
-    HttpContentType getContentType();
+    ContentType getContentType();
 
     /**
      * HTTP Request methods, with the ability to decode a <code>String</code> back

@@ -6,13 +6,13 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-public final class HttpContentType {
+public final class ContentType {
 
-    public static final HttpContentType PLAIN_TEXT = new HttpContentType("text/plain", null, null);
-    public static final HttpContentType HTML = new HttpContentType("text/html", null, null);
-    public static final HttpContentType JSON = new HttpContentType("application/json", null, null);
+    public static final ContentType PLAIN_TEXT = new ContentType("text/plain", null, null);
+    public static final ContentType HTML = new ContentType("text/html", null, null);
+    public static final ContentType JSON = new ContentType("application/json", null, null);
 
-    public static final HttpContentType OCTET_STREAM = new HttpContentType("application/octet-stream", null, null);
+    public static final ContentType OCTET_STREAM = new ContentType("application/octet-stream", null, null);
 
     private String contentTypeHeader;
 
@@ -21,7 +21,7 @@ public final class HttpContentType {
     private final Charset charset;
     private final String boundary;
 
-    public HttpContentType(String contentTypeHeader) {
+    public ContentType(String contentTypeHeader) {
         this.contentTypeHeader = contentTypeHeader;
 
         if (contentTypeHeader == null) {
@@ -66,7 +66,7 @@ public final class HttpContentType {
         }
     }
 
-    public HttpContentType(String mimeType, Charset charset, String boundary) {
+    public ContentType(String mimeType, Charset charset, String boundary) {
         this.mimeType = mimeType;
         this.charset = charset;
         this.boundary = boundary;

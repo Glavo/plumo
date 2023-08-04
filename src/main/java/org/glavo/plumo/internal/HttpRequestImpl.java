@@ -1,6 +1,6 @@
 package org.glavo.plumo.internal;
 
-import org.glavo.plumo.HttpContentType;
+import org.glavo.plumo.ContentType;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.MultiStringMap;
@@ -90,17 +90,17 @@ public final class HttpRequestImpl implements HttpRequest {
         return bodySize;
     }
 
-    private HttpContentType contentType;
+    private ContentType contentType;
     private boolean contentTypeInitialized = false;
 
     @Override
-    public HttpContentType getContentType() {
+    public ContentType getContentType() {
         if (!contentTypeInitialized) {
             contentTypeInitialized = true;
 
             String t = headers.getFirst("content-type");
             if (t != null) {
-                contentType = new HttpContentType(t);
+                contentType = new ContentType(t);
             }
         }
 
