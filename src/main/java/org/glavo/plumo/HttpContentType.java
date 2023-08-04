@@ -1,10 +1,10 @@
 package org.glavo.plumo;
 
-import org.glavo.plumo.internal.util.Pair;
 import org.glavo.plumo.internal.util.ParameterParser;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 public final class HttpContentType {
 
@@ -37,13 +37,13 @@ public final class HttpContentType {
             } else {
                 this.mimeType = contentTypeHeader.substring(0, idx).trim();
 
-                ParameterParser parser = new ParameterParser(contentTypeHeader, idx + 1);
+                ParameterParser parser = new ParameterParser(contentTypeHeader, idx + 1, ';');
 
                 String charsetName = null;
                 String boundary = null;
 
-                Pair<String, String> next;
-                while ((next = parser.nextParameter()) != null) {
+                Map.Entry<String, String> next;
+                while ((next = parser.nextParameter(false)) != null) {
                     if ("charset".equalsIgnoreCase(next.getKey())) {
                         charsetName = next.getValue();
                     } else if ("boundary".equalsIgnoreCase(next.getKey())) {

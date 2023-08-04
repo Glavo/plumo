@@ -12,7 +12,7 @@ public final class IOUtils {
     private IOUtils() {
     }
 
-    public static boolean isSeparator(byte ch) {
+    public static boolean isSeparator(int ch) {
         switch (ch) {
             case '(':
             case ')':
@@ -39,7 +39,7 @@ public final class IOUtils {
         }
     }
 
-    public static boolean isTokenPart(byte ch) {
+    public static boolean isTokenPart(int ch) {
         return ch > 31 && ch < 127 && !IOUtils.isSeparator(ch);
     }
 
