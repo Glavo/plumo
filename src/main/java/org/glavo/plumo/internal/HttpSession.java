@@ -46,6 +46,8 @@ public final class HttpSession implements Closeable, Runnable {
     private final HttpRequestReader requestReader;
     private final UnsyncBufferedOutputStream outputStream;
 
+    private HttpRequestImpl lastRequest;
+
     // Use in HttpServerImpl
     volatile HttpSession prev, next;
 
@@ -247,16 +249,21 @@ public final class HttpSession implements Closeable, Runnable {
     private void execute() throws IOException {
         HttpResponseImpl r = null;
         try {
+            if (lastRequest != null) {
+                lastRequest.close();
+                lastRequest = null;
+            }
+
             this.splitbyte = 0;
             this.rlen = 0;
 
             HttpRequestImpl request = new HttpRequestImpl(remoteAddress, localAddress);
-
             try {
                 requestReader.readHeader(request);
             } catch (EOFException e) {
                 throw ServerShutdown.shutdown();
             }
+            lastRequest = request;
 
             String connection = request.headers.getFirst("connection");
             boolean keepAlive = "HTTP/1.1".equals(request.httpVersion) && (connection == null || !connection.equals("close"));

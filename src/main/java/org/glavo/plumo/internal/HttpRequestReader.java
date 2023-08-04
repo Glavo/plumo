@@ -32,6 +32,32 @@ public class HttpRequestReader implements Closeable {
         in.close();
     }
 
+    private void endOfHeader(HttpRequestImpl request) throws HttpResponseException {
+        if (request.method == HttpRequest.Method.POST
+            && request.getContentType() != null
+            && request.getContentType().isMultipart()) {
+            throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "TODO");
+        }
+
+        String contentLength = request.headers.getFirst("content-length");
+        long len;
+
+        if (contentLength != null) {
+            try {
+                len = Long.parseLong(contentLength);
+            } catch (NumberFormatException e) {
+                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST);
+            }
+        } else {
+            len = 0L;
+        }
+
+        request.bodySize = len;
+        if (len > 0) {
+            request.body = new BoundedInputStream(len);
+        }
+    }
+
     public void readHeader(HttpRequestImpl request) throws IOException, HttpResponseException {
         byte[] buf = this.lineBuffer;
 
@@ -80,6 +106,7 @@ public class HttpRequestReader implements Closeable {
 
                 // end of http header
                 if (tokenStart < 0) {
+                    endOfHeader(request);
                     return;
                 } else {
                     assert lineEnd > 0;
@@ -167,83 +194,11 @@ public class HttpRequestReader implements Closeable {
                 int read = in.read(skipBuffer, 0, (int) Math.min(skipBuffer.length, n));
                 if (read <= 0) {
                     in.close();
-                    throw new EOFException(); // TODO: ???
+                    throw new EOFException();
                 }
 
                 n -= read;
             }
-        }
-    }
-
-
-    private final class BoundedInputStream extends InputStream {
-        private boolean closed = false;
-
-        private final long limit;
-        private long totalRead = 0;
-
-        BoundedInputStream(long limit) {
-            this.limit = limit;
-        }
-
-        private void checkStatus() throws IOException {
-            if (closed) {
-                throw new IOException("Stream closed");
-            }
-        }
-
-        @Override
-        public int read() throws IOException {
-            checkStatus();
-
-            if (totalRead < limit) {
-                int res = HttpRequestReader.this.read();
-                if (res >= 0) {
-                    totalRead++;
-                }
-                return res;
-            } else {
-                return -1;
-            }
-        }
-
-        @Override
-        public int read(byte[] b, int off, int len) throws IOException {
-            checkStatus();
-
-            if (len == 0) {
-                return 0;
-            }
-
-            long maxRead = limit - totalRead;
-            if (maxRead > 0) {
-                int nTryRead = (int) Math.min(len, maxRead);
-
-                int res = HttpRequestReader.this.read(b, off, nTryRead);
-                if (res > 0) {
-                    assert res <= nTryRead;
-                    totalRead += res;
-                    return res;
-                } else {
-                    return -1;
-                }
-            } else {
-                return -1;
-            }
-        }
-
-        @Override
-        public void close() throws IOException {
-            if (closed) {
-                return;
-            }
-
-            if (totalRead < limit) {
-                forceSkip(limit - totalRead);
-                totalRead = limit;
-            }
-
-            this.closed = true;
         }
     }
 
@@ -440,5 +395,76 @@ public class HttpRequestReader implements Closeable {
         String value = off < 0 ? "" : new String(buf, off, end - off, HEADER_ENCODING).trim();
 
         request.headers.add(name.toLowerCase(Locale.ROOT), value);
+    }
+
+    private final class BoundedInputStream extends InputStream {
+        private boolean closed = false;
+
+        private final long limit;
+        private long totalRead = 0;
+
+        BoundedInputStream(long limit) {
+            this.limit = limit;
+        }
+
+        private void checkStatus() throws IOException {
+            if (closed) {
+                throw new IOException("Stream closed");
+            }
+        }
+
+        @Override
+        public int read() throws IOException {
+            checkStatus();
+
+            if (totalRead < limit) {
+                int res = HttpRequestReader.this.read();
+                if (res >= 0) {
+                    totalRead++;
+                }
+                return res;
+            } else {
+                return -1;
+            }
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            checkStatus();
+
+            if (len == 0) {
+                return 0;
+            }
+
+            long maxRead = limit - totalRead;
+            if (maxRead > 0) {
+                int nTryRead = (int) Math.min(len, maxRead);
+
+                int res = HttpRequestReader.this.read(b, off, nTryRead);
+                if (res > 0) {
+                    assert res <= nTryRead;
+                    totalRead += res;
+                    return res;
+                } else {
+                    return -1;
+                }
+            } else {
+                return -1;
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (closed) {
+                return;
+            }
+
+            if (totalRead < limit) {
+                forceSkip(limit - totalRead);
+                totalRead = limit;
+            }
+
+            this.closed = true;
+        }
     }
 }

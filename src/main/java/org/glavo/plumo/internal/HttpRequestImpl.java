@@ -1,6 +1,8 @@
 package org.glavo.plumo.internal;
 
+import org.glavo.plumo.HttpContentType;
 import org.glavo.plumo.HttpRequest;
+import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.MultiStringMap;
 
 import java.io.InputStream;
@@ -15,19 +17,29 @@ public final class HttpRequestImpl implements HttpRequest {
 
     final MultiStringMap headers = new MultiStringMap();
 
+    // Initialize in HttpRequestReader
     Method method;
     String rawUri;
     String httpVersion;
-
-    private URI decodedUri;
-    private boolean illegalUri = false;
+    InputStream body;
+    long bodySize;
 
     public HttpRequestImpl(SocketAddress remoteAddress, SocketAddress localAddress) {
         this.remoteAddress = remoteAddress;
         this.localAddress = localAddress;
     }
 
-    // headers
+    public void close() {
+        if (body != null) {
+            IOUtils.safeClose(body);
+            body = null;
+        }
+    }
+
+    @Override
+    public Method getMethod() {
+        return method;
+    }
 
     @Override
     public boolean containsHeader(String name) {
@@ -49,17 +61,35 @@ public final class HttpRequestImpl implements HttpRequest {
         return null; // TODO
     }
 
-    // request
-
     @Override
     public InputStream getBody() {
-        return null;
+        return body;
     }
 
     @Override
-    public Method getMethod() {
-        return method;
+    public long getBodySize() {
+        return bodySize;
     }
+
+    private HttpContentType contentType;
+    private boolean contentTypeInitialized = false;
+
+    @Override
+    public HttpContentType getContentType() {
+        if (!contentTypeInitialized) {
+            contentTypeInitialized = true;
+
+            String t = headers.getFirst("content-type");
+            if (t != null) {
+                contentType = new HttpContentType(t);
+            }
+        }
+
+        return contentType;
+    }
+
+    private URI decodedUri;
+    private boolean illegalUri = false;
 
     @Override
     public URI getURI() {
