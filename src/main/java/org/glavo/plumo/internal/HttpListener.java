@@ -21,12 +21,12 @@ import org.glavo.plumo.TempFileManager;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.jetbrains.annotations.NotNull;
 
-public final class HttpServerImpl implements Runnable, AutoCloseable {
+public final class HttpListener implements Runnable, AutoCloseable {
 
     /**
      * logger to log to.
      */
-    public static final Logger LOG = Logger.getLogger(HttpServerImpl.class.getName());
+    public static final Logger LOG = Logger.getLogger(HttpListener.class.getName());
 
     private final ReentrantLock lock = new ReentrantLock();
     private volatile boolean closed = false;
@@ -42,10 +42,10 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
 
     private volatile HttpSession firstSession, lastSession;
 
-    public HttpServerImpl(Closeable ss,
-                          HttpHandler httpHandler, Supplier<TempFileManager> tempFileManagerFactory,
-                          Executor executor, boolean shutdownExecutor,
-                          int timeout) {
+    public HttpListener(Closeable ss,
+                        HttpHandler httpHandler, Supplier<TempFileManager> tempFileManagerFactory,
+                        Executor executor, boolean shutdownExecutor,
+                        int timeout) {
         this.ss = ss;
         this.httpHandler = httpHandler;
         this.tempFileManagerFactory = tempFileManagerFactory;
@@ -157,7 +157,7 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
                             socket.getRemoteSocketAddress(), socket.getLocalSocketAddress(),
                             socket.getInputStream(), socket.getOutputStream()));
                 } catch (IOException e) {
-                    HttpServerImpl.LOG.log(Level.FINE, "Communication with the client broken", e);
+                    HttpListener.LOG.log(Level.FINE, "Communication with the client broken", e);
                 }
             } while (!serverSocket.isClosed());
         } else {
@@ -171,7 +171,7 @@ public final class HttpServerImpl implements Runnable, AutoCloseable {
                             Channels.newInputStream(socketChannel),
                             Channels.newOutputStream(socketChannel)));
                 } catch (IOException e) {
-                    HttpServerImpl.LOG.log(Level.FINE, "Communication with the client broken", e);
+                    HttpListener.LOG.log(Level.FINE, "Communication with the client broken", e);
                 }
             } while (serverSocketChannel.isOpen());
         }

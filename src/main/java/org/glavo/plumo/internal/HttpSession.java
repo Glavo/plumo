@@ -36,7 +36,7 @@ public final class HttpSession implements Closeable, Runnable {
 
     public static final int MAX_HEADER_SIZE = 1024;
 
-    private final HttpServerImpl server;
+    private final HttpListener server;
     private final Closeable socket;
     private final SocketAddress remoteAddress;
     private final SocketAddress localAddress;
@@ -58,7 +58,7 @@ public final class HttpSession implements Closeable, Runnable {
     private final Map<String, String> headers = new HashMap<>();
     private String queryParameterString;
 
-    public HttpSession(HttpServerImpl server, Closeable acceptSocket,
+    public HttpSession(HttpListener server, Closeable acceptSocket,
                        SocketAddress remoteAddress, SocketAddress localAddress,
                        InputStream inputStream, OutputStream outputStream) {
         this.server = server;
@@ -86,7 +86,7 @@ public final class HttpSession implements Closeable, Runnable {
             // SocketTimeoutException, print the
             // stacktrace
         } catch (Exception e) {
-            HttpServerImpl.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
+            HttpListener.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
         } finally {
             server.close(this);
         }
@@ -279,7 +279,7 @@ public final class HttpSession implements Closeable, Runnable {
             try {
                 send(request, r, this.outputStream, keepAlive);
             } catch (IOException ioe) {
-                HttpServerImpl.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
+                HttpListener.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
                 throw ServerShutdown.shutdown();
             }
 
@@ -439,7 +439,7 @@ public final class HttpSession implements Closeable, Runnable {
         } else if ("gzip".equals(response.contentEncoding)) {
             useGzip = true;
         } else {
-            HttpServerImpl.LOG.log(Level.WARNING, "Unsupported content encoding: " + response.contentEncoding);
+            HttpListener.LOG.log(Level.WARNING, "Unsupported content encoding: " + response.contentEncoding);
             useGzip = false;
         }
 

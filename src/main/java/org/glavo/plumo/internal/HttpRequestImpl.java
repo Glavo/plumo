@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.net.*;
 import java.util.*;
 
-@SuppressWarnings("unchecked")
 public final class HttpRequestImpl implements HttpRequest {
 
     private final SocketAddress remoteAddress;

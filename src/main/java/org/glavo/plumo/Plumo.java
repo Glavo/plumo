@@ -75,7 +75,7 @@ public final class Plumo {
 
     private volatile boolean started = false;
     private volatile boolean stopped = false;
-    private volatile HttpServerImpl impl;
+    private volatile HttpListener listener;
     private final AtomicReference<Thread> deleteUnixDomainSocketFileHook;
     private Thread thread;
 
@@ -172,7 +172,7 @@ public final class Plumo {
     }
 
     private void startImpl(ThreadFactory threadFactory) throws IOException {
-        HttpServerImpl impl;
+        HttpListener impl;
 
         synchronized (this) {
             if (started) {
@@ -224,7 +224,7 @@ public final class Plumo {
                 throw e;
             }
 
-            this.impl = impl = new HttpServerImpl(
+            this.listener = impl = new HttpListener(
                     s,
                     httpHandler, tempFileManagerFactory,
                     executor, shutdownExecutor,
@@ -278,19 +278,19 @@ public final class Plumo {
             stopped = true;
         }
 
-        HttpServerImpl impl = this.impl;
-        if (impl == null) {
+        HttpListener listener = this.listener;
+        if (listener == null) {
             return;
         }
 
-        this.impl = null;
+        this.listener = null;
 
-        impl.close();
+        listener.close();
         if (thread != null && thread.isAlive()) {
             try {
                 thread.join();
             } catch (InterruptedException e) {
-                HttpServerImpl.LOG.log(Level.SEVERE, "Interrupted", e);
+                HttpListener.LOG.log(Level.SEVERE, "Interrupted", e);
             }
         }
 

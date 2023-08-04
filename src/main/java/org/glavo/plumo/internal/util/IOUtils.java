@@ -1,6 +1,6 @@
 package org.glavo.plumo.internal.util;
 
-import org.glavo.plumo.internal.HttpServerImpl;
+import org.glavo.plumo.internal.HttpListener;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -49,7 +49,7 @@ public final class IOUtils {
                 closeable.close();
             }
         } catch (IOException e) {
-            HttpServerImpl.LOG.log(Level.SEVERE, "Could not close", e);
+            HttpListener.LOG.log(Level.SEVERE, "Could not close", e);
         }
     }
 
@@ -57,7 +57,7 @@ public final class IOUtils {
         try {
             Files.deleteIfExists(file);
         } catch (IOException e) {
-            HttpServerImpl.LOG.log(Level.WARNING, "Could not delete file", e);
+            HttpListener.LOG.log(Level.WARNING, "Could not delete file", e);
         }
     }
 }
