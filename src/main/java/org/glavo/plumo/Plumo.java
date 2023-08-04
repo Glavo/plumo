@@ -23,27 +23,27 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-public final class HttpServer {
+public final class Plumo {
 
     public static final int SOCKET_READ_TIMEOUT = 5000;
 
-    public static HttpServer create(int port) {
+    public static Plumo create(int port) {
         return create(new InetSocketAddress(port));
     }
 
-    public static HttpServer create(InetAddress address, int port) {
+    public static Plumo create(InetAddress address, int port) {
         return create(new InetSocketAddress(address, port));
     }
 
-    public static HttpServer create(String hostname, int port) {
+    public static Plumo create(String hostname, int port) {
         return create(new InetSocketAddress(hostname, port));
     }
 
-    public static HttpServer create(Path path) {
+    public static Plumo create(Path path) {
         return create(path, false);
     }
 
-    public static HttpServer create(Path path, boolean deleteIfExists) {
+    public static Plumo create(Path path, boolean deleteIfExists) {
         UnixDomainSocketUtils.checkAvailable();
 
         if (deleteIfExists) {
@@ -54,11 +54,11 @@ public final class HttpServer {
             }
         }
 
-        return new HttpServer(UnixDomainSocketUtils.createUnixDomainSocketAddress(path), path);
+        return new Plumo(UnixDomainSocketUtils.createUnixDomainSocketAddress(path), path);
     }
 
-    public static HttpServer create(InetSocketAddress address) {
-        return new HttpServer(Objects.requireNonNull(address), null);
+    public static Plumo create(InetSocketAddress address) {
+        return new Plumo(Objects.requireNonNull(address), null);
     }
 
     private final SocketAddress address;
@@ -79,13 +79,13 @@ public final class HttpServer {
     private final AtomicReference<Thread> deleteUnixDomainSocketFileHook;
     private Thread thread;
 
-    public HttpServer(SocketAddress address, Path unixDomainSocketPath) {
+    public Plumo(SocketAddress address, Path unixDomainSocketPath) {
         this.address = address;
         this.unixDomainSocketPath = unixDomainSocketPath;
         this.deleteUnixDomainSocketFileHook = unixDomainSocketPath == null ? null : new AtomicReference<>();
     }
 
-    public HttpServer setSocketReadTimeout(int timeout) {
+    public Plumo setSocketReadTimeout(int timeout) {
         if (timeout <= 0) {
             throw new IllegalArgumentException("timeout: " + timeout);
         }
@@ -94,7 +94,7 @@ public final class HttpServer {
         return this;
     }
 
-    public HttpServer setHttpHandler(HttpHandler handler) {
+    public Plumo setHttpHandler(HttpHandler handler) {
         this.httpHandler = Objects.requireNonNull(handler);
         return this;
     }
@@ -104,17 +104,17 @@ public final class HttpServer {
      *
      * @param tempFileManagerFactory new strategy for handling temp files.
      */
-    public HttpServer setTempFileManagerFactory(Supplier<TempFileManager> tempFileManagerFactory) {
+    public Plumo setTempFileManagerFactory(Supplier<TempFileManager> tempFileManagerFactory) {
         this.tempFileManagerFactory = tempFileManagerFactory;
         return this;
     }
 
-    public HttpServer setUseHttps(SSLContext context) {
+    public Plumo setUseHttps(SSLContext context) {
         setUseHttps(context, null);
         return this;
     }
 
-    public HttpServer setUseHttps(SSLContext context, String[] sslProtocols) {
+    public Plumo setUseHttps(SSLContext context, String[] sslProtocols) {
         if (!(address instanceof InetSocketAddress)) {
             throw new UnsupportedOperationException();
         }
@@ -124,7 +124,7 @@ public final class HttpServer {
         return this;
     }
 
-    public HttpServer setUseHttps(KeyStore loadedKeyStore, KeyManager[] keyManagers) throws GeneralSecurityException {
+    public Plumo setUseHttps(KeyStore loadedKeyStore, KeyManager[] keyManagers) throws GeneralSecurityException {
         TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         trustManagerFactory.init(loadedKeyStore);
         SSLContext ctx = SSLContext.getInstance("TLS");
@@ -134,15 +134,15 @@ public final class HttpServer {
         return this;
     }
 
-    public HttpServer setUseHttps(KeyStore loadedKeyStore, KeyManagerFactory loadedKeyFactory) throws GeneralSecurityException {
+    public Plumo setUseHttps(KeyStore loadedKeyStore, KeyManagerFactory loadedKeyFactory) throws GeneralSecurityException {
         setUseHttps(loadedKeyStore, loadedKeyFactory.getKeyManagers());
         return this;
     }
 
-    public HttpServer setUseHttps(String keyAndTrustStoreClasspathPath, char[] passphrase) throws IOException {
+    public Plumo setUseHttps(String keyAndTrustStoreClasspathPath, char[] passphrase) throws IOException {
         try {
             KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-            InputStream keystoreStream = HttpServer.class.getResourceAsStream(keyAndTrustStoreClasspathPath);
+            InputStream keystoreStream = Plumo.class.getResourceAsStream(keyAndTrustStoreClasspathPath);
 
             if (keystoreStream == null) {
                 throw new IOException("Unable to load keystore from classpath: " + keyAndTrustStoreClasspathPath);
@@ -159,13 +159,13 @@ public final class HttpServer {
         return this;
     }
 
-    public HttpServer setExecutor(Executor executor) {
+    public Plumo setExecutor(Executor executor) {
         this.executor = executor;
         this.shutdownExecutor = false;
         return this;
     }
 
-    public HttpServer setExecutor(ExecutorService executor, boolean shutdownOnClose) {
+    public Plumo setExecutor(ExecutorService executor, boolean shutdownOnClose) {
         this.executor = executor;
         this.shutdownExecutor = shutdownOnClose;
         return this;
@@ -240,17 +240,17 @@ public final class HttpServer {
         }
     }
 
-    public HttpServer start() throws IOException {
+    public Plumo start() throws IOException {
         startImpl(null);
         return this;
     }
 
-    public HttpServer startInNewThread() throws IOException {
+    public Plumo startInNewThread() throws IOException {
         startInNewThread(true);
         return this;
     }
 
-    public HttpServer startInNewThread(boolean daemon) throws IOException {
+    public Plumo startInNewThread(boolean daemon) throws IOException {
         startImpl(runnable -> {
             Thread t = new Thread(runnable);
             t.setName("Plumo Main Listener");
@@ -260,7 +260,7 @@ public final class HttpServer {
         return this;
     }
 
-    public HttpServer startInNewThread(ThreadFactory threadFactory) throws IOException {
+    public Plumo startInNewThread(ThreadFactory threadFactory) throws IOException {
         startImpl(Objects.requireNonNull(threadFactory));
         return this;
     }

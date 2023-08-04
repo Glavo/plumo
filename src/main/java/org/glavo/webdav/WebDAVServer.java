@@ -2,14 +2,14 @@ package org.glavo.webdav;
 
 import org.glavo.plumo.ContentType;
 import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.HttpServer;
+import org.glavo.plumo.Plumo;
 
 public final class WebDAVServer {
     private WebDAVServer() {
     }
 
     public static void main(String[] args) throws Throwable {
-        HttpServer.create(10001)
+        Plumo.create(10001)
                 .setHttpHandler(request -> {
                     System.out.println(request);
                     System.out.println(request.getCookies());
