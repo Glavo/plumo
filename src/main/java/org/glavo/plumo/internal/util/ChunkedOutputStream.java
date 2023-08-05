@@ -7,11 +7,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Output stream that will automatically send every write to the wrapped
- * OutputStream according to chunked transfer:
- * http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.6.1
- */
 public class ChunkedOutputStream extends FilterOutputStream {
 
     private static final byte[] FINISH = {'0', '\r', '\n', '\r', '\n'};
@@ -35,7 +30,9 @@ public class ChunkedOutputStream extends FilterOutputStream {
     public void write(byte[] b, int off, int len) throws IOException {
         if (len == 0)
             return;
-        out.write(String.format("%x\r\n", len).getBytes(StandardCharsets.ISO_8859_1));
+
+        out.write(Integer.toHexString(len).getBytes(StandardCharsets.ISO_8859_1));
+        out.write(Constants.CRLF);
         out.write(b, off, len);
         out.write(Constants.CRLF);
     }
