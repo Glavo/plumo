@@ -79,9 +79,34 @@ public final class HttpRequestImpl implements HttpRequest {
         return cookies;
     }
 
+    private BodyType<?, ?, ?> bodyType;
+    private Object decodedBody;
+    private Throwable decodedBodyException;
+
     @Override
-    public InputStream getBody() {
-        return body;
+    @SuppressWarnings("unchecked")
+    public <V, A, E extends Throwable> V getBody(BodyType<V, A, E> type, A arg) throws E {
+        Objects.requireNonNull(type);
+        if (bodyType != null) {
+            if (bodyType.equals(type)) {
+                throw new IllegalArgumentException("The request body has been decoded as " + bodyType);
+            }
+
+            if (decodedBodyException != null) {
+                throw new IllegalStateException("The request body has failed to decode", decodedBodyException);
+            }
+
+            return (V) decodedBody;
+        }
+
+        try {
+            V res = type.decode(this, body, arg);
+            decodedBody = res;
+            return res;
+        } catch (Throwable e) {
+            decodedBodyException = e;
+            throw e;
+        }
     }
 
     @Override

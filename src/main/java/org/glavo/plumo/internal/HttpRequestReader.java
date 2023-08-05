@@ -467,4 +467,28 @@ public class HttpRequestReader implements Closeable {
             this.closed = true;
         }
     }
+
+    private final class MultiPartInputStream extends InputStream {
+        private boolean closed = false;
+
+        private void checkStatus() throws IOException {
+            if (closed) {
+                throw new IOException("Stream closed");
+            }
+        }
+
+        @Override
+        public int read() throws IOException {
+            return 0;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (closed) {
+                return;
+            }
+
+            // TODO
+        }
+    }
 }

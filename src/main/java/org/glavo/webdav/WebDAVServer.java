@@ -15,6 +15,7 @@ public final class WebDAVServer {
                 .setHttpHandler(request -> {
                     System.out.println(request);
                     System.out.println(request.getCookies());
+
                     return HttpResponse.newResponse(HttpResponse.Status.OK)
                             .setContentType(ContentType.HTML)
                             .setBody("<body>Hello World!</body>");
