@@ -79,7 +79,7 @@ public final class Plumo {
     private final AtomicReference<Thread> deleteUnixDomainSocketFileHook;
     private Thread thread;
 
-    public Plumo(SocketAddress address, Path unixDomainSocketPath) {
+    private Plumo(SocketAddress address, Path unixDomainSocketPath) {
         this.address = address;
         this.unixDomainSocketPath = unixDomainSocketPath;
         this.deleteUnixDomainSocketFileHook = unixDomainSocketPath == null ? null : new AtomicReference<>();
