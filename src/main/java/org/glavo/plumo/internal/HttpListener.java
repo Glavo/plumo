@@ -11,6 +11,8 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -54,10 +56,17 @@ public final class HttpListener implements Runnable, AutoCloseable {
         if (executor == null) {
             if (Constants.USE_VIRTUAL_THREAD == Boolean.TRUE || (Constants.USE_VIRTUAL_THREAD == null && VirtualThreadExecutor.AVAILABLE)) {
                 this.executor = new VirtualThreadExecutor();
+                this.shutdownExecutor = false;
             } else {
-                this.executor = new DefaultExecutor();
+                final AtomicLong requestCount = new AtomicLong();
+                this.executor = Executors.newCachedThreadPool(r -> {
+                    Thread t = new Thread(r, "Plumo Request Processor (#" + requestCount.getAndIncrement() + ")");
+                    t.setDaemon(true);
+                    return t;
+                });
+                this.shutdownExecutor = true;
             }
-            this.shutdownExecutor = false;
+
         } else {
             this.executor = executor;
             this.shutdownExecutor = shutdownExecutor;
@@ -150,46 +159,39 @@ public final class HttpListener implements Runnable, AutoCloseable {
 
     @Override
     public void run() {
-        if (ss instanceof ServerSocket) {
-            ServerSocket serverSocket = (ServerSocket) ss;
-            do {
-                try {
-                    final Socket socket = serverSocket.accept();
-                    if (timeout > 0) {
-                        socket.setSoTimeout(timeout);
+        try {
+            if (ss instanceof ServerSocket) {
+                ServerSocket serverSocket = (ServerSocket) ss;
+                do {
+                    try {
+                        final Socket socket = serverSocket.accept();
+                        if (timeout > 0) {
+                            socket.setSoTimeout(timeout);
+                        }
+                        exec(new HttpSession(this, socket,
+                                socket.getRemoteSocketAddress(), socket.getLocalSocketAddress(),
+                                socket.getInputStream(), socket.getOutputStream()));
+                    } catch (IOException e) {
+                        HttpListener.LOG.log(Level.FINE, "Communication with the client broken", e);
                     }
-                    exec(new HttpSession(this, socket,
-                            socket.getRemoteSocketAddress(), socket.getLocalSocketAddress(),
-                            socket.getInputStream(), socket.getOutputStream()));
-                } catch (IOException e) {
-                    HttpListener.LOG.log(Level.FINE, "Communication with the client broken", e);
-                }
-            } while (!serverSocket.isClosed());
-        } else {
-            ServerSocketChannel serverSocketChannel = (ServerSocketChannel) ss;
+                } while (!serverSocket.isClosed());
+            } else {
+                ServerSocketChannel serverSocketChannel = (ServerSocketChannel) ss;
 
-            do {
-                try {
-                    final SocketChannel socketChannel = serverSocketChannel.accept();
-                    exec(new HttpSession(this, socketChannel,
-                            socketChannel.getRemoteAddress(), socketChannel.getLocalAddress(),
-                            Channels.newInputStream(socketChannel),
-                            Channels.newOutputStream(socketChannel)));
-                } catch (IOException e) {
-                    HttpListener.LOG.log(Level.FINE, "Communication with the client broken", e);
-                }
-            } while (serverSocketChannel.isOpen());
-        }
-    }
-
-    private static final class DefaultExecutor implements Executor {
-        private long requestCount;
-
-        @Override
-        public void execute(@NotNull Runnable command) {
-            Thread t = new Thread(command, "Plumo Request Processor (#" + this.requestCount++ + ")");
-            t.setDaemon(true);
-            t.start();
+                do {
+                    try {
+                        final SocketChannel socketChannel = serverSocketChannel.accept();
+                        exec(new HttpSession(this, socketChannel,
+                                socketChannel.getRemoteAddress(), socketChannel.getLocalAddress(),
+                                Channels.newInputStream(socketChannel),
+                                Channels.newOutputStream(socketChannel)));
+                    } catch (IOException e) {
+                        HttpListener.LOG.log(Level.FINE, "Communication with the client broken", e);
+                    }
+                } while (serverSocketChannel.isOpen());
+            }
+        } finally {
+            close();
         }
     }
 
