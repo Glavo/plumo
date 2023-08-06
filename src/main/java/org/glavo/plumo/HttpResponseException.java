@@ -1,4 +1,4 @@
-package org.glavo.plumo.internal;
+package org.glavo.plumo;
 
 import org.glavo.plumo.HttpResponse;
 

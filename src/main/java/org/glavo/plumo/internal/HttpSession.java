@@ -270,7 +270,7 @@ public final class HttpSession implements Closeable, Runnable {
 
             // Ok, now do the serve()
 
-            r = (HttpResponseImpl) server.httpHandler.handle(request);
+            r = (HttpResponseImpl) server.handler.handle(request);
 
             if (r == null) {
                 throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");

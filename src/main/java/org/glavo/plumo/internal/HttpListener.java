@@ -9,7 +9,6 @@ import java.net.*;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,9 +17,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
-import org.glavo.plumo.HttpHandler;
+import org.glavo.plumo.Plumo;
 import org.glavo.plumo.TempFileManager;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +35,7 @@ public final class HttpListener implements Runnable, AutoCloseable {
 
     final Closeable ss;
 
-    final HttpHandler httpHandler;
+    final Plumo.Handler handler;
     final Supplier<TempFileManager> tempFileManagerFactory;
     final int timeout;
 
@@ -47,11 +45,11 @@ public final class HttpListener implements Runnable, AutoCloseable {
     private volatile HttpSession firstSession, lastSession;
 
     public HttpListener(Closeable ss,
-                        HttpHandler httpHandler, Supplier<TempFileManager> tempFileManagerFactory,
+                        Plumo.Handler handler, Supplier<TempFileManager> tempFileManagerFactory,
                         Executor executor, boolean shutdownExecutor,
                         int timeout) {
         this.ss = ss;
-        this.httpHandler = httpHandler;
+        this.handler = handler;
         this.tempFileManagerFactory = tempFileManagerFactory;
         this.timeout = timeout;
 

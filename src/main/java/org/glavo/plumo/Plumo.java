@@ -63,7 +63,7 @@ public final class Plumo {
 
     private final SocketAddress address;
 
-    private HttpHandler httpHandler;
+    private Handler handler;
     private Supplier<TempFileManager> tempFileManagerFactory;
     private Executor executor;
     private boolean shutdownExecutor;
@@ -94,8 +94,8 @@ public final class Plumo {
         return this;
     }
 
-    public Plumo setHttpHandler(HttpHandler handler) {
-        this.httpHandler = Objects.requireNonNull(handler);
+    public Plumo setHttpHandler(Handler handler) {
+        this.handler = Objects.requireNonNull(handler);
         return this;
     }
 
@@ -180,9 +180,9 @@ public final class Plumo {
             }
             started = true;
 
-            HttpHandler httpHandler = this.httpHandler;
-            if (httpHandler == null) {
-                httpHandler = session ->
+            Handler handler = this.handler;
+            if (handler == null) {
+                handler = session ->
                         HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND).setBody("Not Found");
             }
 
@@ -226,7 +226,7 @@ public final class Plumo {
 
             this.listener = impl = new HttpListener(
                     s,
-                    httpHandler, tempFileManagerFactory,
+                    handler, tempFileManagerFactory,
                     executor, shutdownExecutor,
                     timeout
             );
@@ -311,5 +311,10 @@ public final class Plumo {
                 IOUtils.deleteIfExists(unixDomainSocketPath);
             }
         }
+    }
+
+    @FunctionalInterface
+    public interface Handler {
+        HttpResponse handle(HttpRequest request) throws IOException, HttpResponseException;
     }
 }

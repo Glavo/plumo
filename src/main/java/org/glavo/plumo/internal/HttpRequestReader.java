@@ -2,6 +2,7 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
+import org.glavo.plumo.HttpResponseException;
 import org.glavo.plumo.internal.util.IOUtils;
 
 import java.io.Closeable;
