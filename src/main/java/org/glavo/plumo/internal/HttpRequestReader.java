@@ -407,15 +407,21 @@ public class HttpRequestReader implements Closeable {
             this.limit = limit;
         }
 
-        private void checkStatus() throws IOException {
+        private void ensureOpen() throws IOException {
             if (closed) {
                 throw new IOException("Stream closed");
             }
         }
 
         @Override
+        public int available() throws IOException {
+            ensureOpen();
+            return (int) Math.min(limit - totalRead, Integer.MAX_VALUE);
+        }
+
+        @Override
         public int read() throws IOException {
-            checkStatus();
+            ensureOpen();
 
             if (totalRead < limit) {
                 int res = HttpRequestReader.this.read();
@@ -430,7 +436,7 @@ public class HttpRequestReader implements Closeable {
 
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
-            checkStatus();
+            ensureOpen();
 
             if (len == 0) {
                 return 0;

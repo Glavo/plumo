@@ -11,6 +11,8 @@ public final class Constants {
 
     public static final byte[] HTTP_HEADER_SEPARATOR = {':', ' '};
 
+    public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+
     public static final int MAX_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
 
     public static final String CONTENT_DISPOSITION_REGEX = "([ |\t]*Content-Disposition[ |\t]*:)(.*)";

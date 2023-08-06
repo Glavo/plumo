@@ -65,7 +65,7 @@ public final class HttpRequestImpl implements HttpRequest {
             if (cookie == null) {
                 cookies = Collections.emptyMap();
             } else {
-                MultiStringMap msm =  new MultiStringMap();
+                MultiStringMap msm = new MultiStringMap();
                 ParameterParser parser = new ParameterParser(cookie, ',');
                 Map.Entry<String, String> pair;
                 while ((pair = parser.nextParameter()) != null) {
@@ -79,34 +79,18 @@ public final class HttpRequestImpl implements HttpRequest {
         return cookies;
     }
 
-    private BodyType<?, ?, ?> bodyType;
-    private Object decodedBody;
-    private Throwable decodedBodyException;
+    private BodyFormat<?, ?, ?> bodyFormat;
 
     @Override
     @SuppressWarnings("unchecked")
-    public <V, A, E extends Throwable> V getBody(BodyType<V, A, E> type, A arg) throws E {
+    public <V, A, E extends Throwable> V getBody(BodyFormat<V, A, E> type, A arg) throws E {
         Objects.requireNonNull(type);
-        if (bodyType != null) {
-            if (bodyType.equals(type)) {
-                throw new IllegalArgumentException("The request body has been decoded as " + bodyType);
-            }
-
-            if (decodedBodyException != null) {
-                throw new IllegalStateException("The request body has failed to decode", decodedBodyException);
-            }
-
-            return (V) decodedBody;
+        if (bodyFormat != null) {
+            throw new IllegalStateException("The request body has been decoded as " + bodyFormat);
         }
 
-        try {
-            V res = type.decode(this, body, arg);
-            decodedBody = res;
-            return res;
-        } catch (Throwable e) {
-            decodedBodyException = e;
-            throw e;
-        }
+        bodyFormat = type;
+        return type.decode(this, body, arg);
     }
 
     @Override

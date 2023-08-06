@@ -16,6 +16,10 @@ repositories {
     mavenCentral()
 }
 
+tasks.compileJava {
+    options.compilerArgs.add("--enable-preview")
+}
+
 tasks.jar {
     manifest.attributes(
         "Main-Class" to mainClassName

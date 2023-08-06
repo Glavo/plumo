@@ -9,6 +9,7 @@ import java.net.*;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,6 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.TempFileManager;
@@ -226,7 +228,7 @@ public final class HttpListener implements Runnable, AutoCloseable {
             newThread = newThreadHandle;
         }
 
-        private long requestCount;
+        private final AtomicLong requestCount = new AtomicLong();
 
         public VirtualThreadExecutor() {
             if (!AVAILABLE) {
@@ -240,7 +242,10 @@ public final class HttpListener implements Runnable, AutoCloseable {
         public void execute(@NotNull Runnable command) {
             try {
                 Thread t = (Thread) newThread.invokeExact(command);
-                t.setName("Plumo Request Processor (#" + this.requestCount++ + ")");
+
+
+                // System.out.println("!!! " + Arrays.stream(Thread.currentThread().getStackTrace()).map(Object::toString).collect(Collectors.joining("\n")));
+                t.setName("Plumo Request Processor (#" + this.requestCount.getAndIncrement() + ")");
                 t.start();
             } catch (Throwable e) {
                 throw new InternalError(e);
