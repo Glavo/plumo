@@ -1,11 +1,12 @@
 package org.glavo.plumo.internal;
 
 import org.glavo.plumo.ContentType;
+import org.glavo.plumo.HttpDataFormat;
 import org.glavo.plumo.HttpRequest;
-import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.MultiStringMap;
 import org.glavo.plumo.internal.util.ParameterParser;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
 import java.util.*;
@@ -29,10 +30,13 @@ public final class HttpRequestImpl implements HttpRequest {
         this.localAddress = localAddress;
     }
 
-    public void close() {
+    public void close() throws IOException {
         if (body != null) {
-            IOUtils.safeClose(body);
-            body = null;
+            try {
+                body.close();
+            } finally {
+                body = null;
+            }
         }
     }
 
@@ -79,17 +83,17 @@ public final class HttpRequestImpl implements HttpRequest {
         return cookies;
     }
 
-    private BodyFormat<?, ?, ?> bodyFormat;
+    private boolean hasGetBody = false;
 
     @Override
     @SuppressWarnings("unchecked")
-    public <V, A, E extends Throwable> V getBody(BodyFormat<V, A, E> type, A arg) throws E {
+    public <V, A, E extends Throwable> V getBody(HttpDataFormat<V, A, E> type, A arg) throws E {
         Objects.requireNonNull(type);
-        if (bodyFormat != null) {
-            throw new IllegalStateException("The request body has been decoded as " + bodyFormat);
+        if (hasGetBody) {
+            throw new IllegalStateException();
         }
 
-        bodyFormat = type;
+        hasGetBody = true;
         return type.decode(this, body, arg);
     }
 

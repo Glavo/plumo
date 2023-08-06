@@ -54,7 +54,7 @@ public final class Constants {
     static {
         if (LINE_BUFFER_LENGTH < 0) {
             throw new Error("line buffer length cannot be negative");
-        } else if (LINE_BUFFER_LENGTH <= 2) {
+        } else if (LINE_BUFFER_LENGTH < 80) {
             throw new Error("line buffer length is too small");
         }
     }

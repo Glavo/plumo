@@ -240,9 +240,6 @@ public final class HttpListener implements Runnable, AutoCloseable {
         public void execute(@NotNull Runnable command) {
             try {
                 Thread t = (Thread) newThread.invokeExact(command);
-
-
-                // System.out.println("!!! " + Arrays.stream(Thread.currentThread().getStackTrace()).map(Object::toString).collect(Collectors.joining("\n")));
                 t.setName("Plumo Request Processor (#" + this.requestCount.getAndIncrement() + ")");
                 t.start();
             } catch (Throwable e) {

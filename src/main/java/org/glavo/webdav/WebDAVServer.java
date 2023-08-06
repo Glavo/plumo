@@ -1,9 +1,6 @@
 package org.glavo.webdav;
 
-import org.glavo.plumo.ContentType;
-import org.glavo.plumo.HttpRequest;
-import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.Plumo;
+import org.glavo.plumo.*;
 
 public final class WebDAVServer {
     private WebDAVServer() {
@@ -14,7 +11,7 @@ public final class WebDAVServer {
                 .setHttpHandler(request -> {
                     System.out.println(Thread.currentThread());
                     System.out.println(request);
-                    System.out.println(request.getBody(HttpRequest.BodyFormat.TEXT));
+                    System.out.println(request.getBody(HttpDataFormat.TEXT));
 
                     return HttpResponse.newResponse(HttpResponse.Status.OK)
                             .setContentType(ContentType.HTML)

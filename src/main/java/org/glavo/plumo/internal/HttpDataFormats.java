@@ -1,6 +1,7 @@
 package org.glavo.plumo.internal;
 
 import org.glavo.plumo.ContentType;
+import org.glavo.plumo.HttpDataFormat;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.IOUtils;
 
@@ -11,9 +12,9 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public final class BodyFormats {
+public final class HttpDataFormats {
 
-    public static final HttpRequest.BodyFormat<InputStream, Object, RuntimeException> INPUT_STREAM = new HttpRequest.BodyFormat<InputStream, Object, RuntimeException>() {
+    public static final HttpDataFormat<InputStream, Object, RuntimeException> INPUT_STREAM = new HttpDataFormat<InputStream, Object, RuntimeException>() {
         @Override
         public InputStream decode(HttpRequest request, InputStream input, Object arg) {
             return input == null ? IOUtils.nullInputStream() : input;
@@ -25,7 +26,7 @@ public final class BodyFormats {
         }
     };
 
-    public static final HttpRequest.BodyFormat<String, Object, IOException> TEXT = new HttpRequest.BodyFormat<String, Object, IOException>() {
+    public static final HttpDataFormat<String, Object, IOException> TEXT = new HttpDataFormat<String, Object, IOException>() {
         @Override
         public String decode(HttpRequest response, InputStream input, Object arg) throws IOException {
             long size = response.getBodySize();
@@ -74,7 +75,7 @@ public final class BodyFormats {
         }
     };
 
-    public static final HttpRequest.BodyFormat<byte[], Object, IOException> BYTES = new HttpRequest.BodyFormat<byte[], Object, IOException>() {
+    public static final HttpDataFormat<byte[], Object, IOException> BYTES = new HttpDataFormat<byte[], Object, IOException>() {
         @Override
         public byte[] decode(HttpRequest response, InputStream input, Object arg) throws IOException {
             long size = response.getBodySize();
@@ -140,6 +141,6 @@ public final class BodyFormats {
         }
     };
 
-    private BodyFormats(){
+    private HttpDataFormats(){
     }
 }

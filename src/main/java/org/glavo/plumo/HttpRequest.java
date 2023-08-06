@@ -1,9 +1,5 @@
 package org.glavo.plumo;
 
-import org.glavo.plumo.internal.BodyFormats;
-
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.net.URI;
@@ -38,11 +34,11 @@ public interface HttpRequest {
 
     String getHost();
 
-    default <V, E extends Throwable> V getBody(BodyFormat<V, ?, E> type) throws E {
+    default <V, E extends Throwable> V getBody(HttpDataFormat<V, ?, E> type) throws E {
         return getBody(type, null);
     }
 
-    <V, A, E extends Throwable> V getBody(BodyFormat<V, A, E> type, A arg) throws E;
+    <V, A, E extends Throwable> V getBody(HttpDataFormat<V, A, E> type, A arg) throws E;
 
     long getBodySize();
 
@@ -73,11 +69,4 @@ public interface HttpRequest {
         SUBSCRIBE
     }
 
-    interface BodyFormat<V, A, E extends Throwable> {
-        BodyFormat<InputStream, ?, RuntimeException> INPUT_STREAM = BodyFormats.INPUT_STREAM;
-        BodyFormat<String, ?, IOException> TEXT = BodyFormats.TEXT;
-        BodyFormat<byte[], ?, IOException> BYTES = BodyFormats.BYTES;
-
-        V decode(HttpRequest request, InputStream input, A arg) throws E;
-    }
 }

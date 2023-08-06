@@ -296,7 +296,8 @@ public final class HttpSession implements Closeable, Runnable {
             } else if (e instanceof SSLException) {
                 resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
             } else {
-                resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + e.getMessage());
+                HttpListener.LOG.log(Level.WARNING, "Server internal error", e);
+                resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR ");
             }
 
             send(null, (HttpResponseImpl) resp, this.outputStream, false);
