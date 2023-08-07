@@ -33,32 +33,6 @@ public class HttpRequestReader implements Closeable {
         in.close();
     }
 
-    private void endOfHeader(HttpRequestImpl request) throws HttpResponseException {
-        if (request.method == HttpRequest.Method.POST
-            && request.getContentType() != null
-            && request.getContentType().isMultipart()) {
-            throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "TODO");
-        }
-
-        String contentLength = request.headers.getFirst("content-length");
-        long len;
-
-        if (contentLength != null) {
-            try {
-                len = Long.parseLong(contentLength);
-            } catch (NumberFormatException e) {
-                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST);
-            }
-        } else {
-            len = 0L;
-        }
-
-        request.bodySize = len;
-        if (len > 0) {
-            request.body = new BoundedInputStream(len);
-        }
-    }
-
     public void readHeader(HttpRequestImpl request) throws IOException, HttpResponseException {
         byte[] buf = this.lineBuffer;
 
@@ -126,6 +100,34 @@ public class HttpRequestReader implements Closeable {
         }
 
         throw new HttpResponseException(HttpResponse.Status.REQUEST_HEADER_FIELDS_TOO_LARGE);
+    }
+
+    private void endOfHeader(HttpRequestImpl request) throws HttpResponseException {
+        if (request.getContentType() != null && request.getContentType().isMultipart()) {
+            if (request.method == HttpRequest.Method.POST) {
+                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "TODO"); // TODO: Multipart Body
+            } else {
+                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Invalid Content-Type.");
+            }
+        }
+
+        String contentLength = request.headers.getFirst("content-length");
+        long len;
+
+        if (contentLength != null) {
+            try {
+                len = Long.parseLong(contentLength);
+            } catch (NumberFormatException e) {
+                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Invalid Content-Length.");
+            }
+        } else {
+            len = 0L;
+        }
+
+        request.bodySize = len;
+        if (len > 0) {
+            request.body = new BoundedInputStream(len);
+        }
     }
 
     public int read() throws IOException {
