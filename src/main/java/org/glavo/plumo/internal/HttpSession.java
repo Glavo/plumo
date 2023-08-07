@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.zip.GZIPOutputStream;
 
@@ -86,7 +85,7 @@ public final class HttpSession implements Closeable, Runnable {
             // SocketTimeoutException, print the
             // stacktrace
         } catch (Exception e) {
-            HttpListener.LOG.log(Level.SEVERE, "Communication with the client broken, or an bug in the handler code", e);
+            Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Communication with the client broken, or an bug in the handler code", e);
         } finally {
             server.close(this);
         }
@@ -279,7 +278,7 @@ public final class HttpSession implements Closeable, Runnable {
             try {
                 send(request, r, this.outputStream, keepAlive);
             } catch (IOException ioe) {
-                HttpListener.LOG.log(Level.SEVERE, "Could not send response to the client", ioe);
+                Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Could not send response to the client", ioe);
                 throw ServerShutdown.shutdown();
             }
 
@@ -296,7 +295,7 @@ public final class HttpSession implements Closeable, Runnable {
             } else if (e instanceof SSLException) {
                 resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
             } else {
-                HttpListener.LOG.log(Level.WARNING, "Server internal error", e);
+                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Server internal error", e);
                 resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR ");
             }
 
@@ -440,7 +439,7 @@ public final class HttpSession implements Closeable, Runnable {
         } else if ("gzip".equals(response.contentEncoding)) {
             useGzip = true;
         } else {
-            HttpListener.LOG.log(Level.WARNING, "Unsupported content encoding: " + response.contentEncoding);
+            Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Unsupported content encoding: " + response.contentEncoding);
             useGzip = false;
         }
 

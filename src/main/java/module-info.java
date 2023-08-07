@@ -1,6 +1,7 @@
 module org.glavo.webdav {
     requires jdk.httpserver;
-    requires java.logging;
+
+    uses org.glavo.plumo.Plumo.LoggerProvider;
 
     requires static org.jetbrains.annotations;
 }

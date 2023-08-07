@@ -1,13 +1,12 @@
 package org.glavo.plumo.internal.util;
 
+import org.glavo.plumo.Plumo;
 import org.glavo.plumo.internal.Constants;
-import org.glavo.plumo.internal.HttpListener;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.logging.Level;
 
 public final class IOUtils {
     private IOUtils() {
@@ -50,7 +49,7 @@ public final class IOUtils {
                 closeable.close();
             }
         } catch (IOException e) {
-            HttpListener.LOG.log(Level.SEVERE, "Could not close", e);
+            Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Could not close", e);
         }
     }
 
@@ -58,7 +57,7 @@ public final class IOUtils {
         try {
             Files.deleteIfExists(file);
         } catch (IOException e) {
-            HttpListener.LOG.log(Level.WARNING, "Could not delete file", e);
+            Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Could not delete file", e);
         }
     }
 

@@ -1,5 +1,6 @@
 package org.glavo.plumo.internal;
 
+import org.glavo.plumo.Plumo;
 import org.glavo.plumo.TempFileManager;
 
 import java.io.File;
@@ -10,7 +11,6 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 
 /**
  * Default strategy for creating and cleaning up temporary files.
@@ -53,7 +53,7 @@ public final class DefaultTempFileManager implements TempFileManager {
                 d.delete();
             }));
         } catch (IOException e) {
-            HttpListener.LOG.log(Level.WARNING, "Failed to create temporary dir", e);
+            Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Failed to create temporary dir", e);
             dir = Paths.get(System.getProperty("java.io.tmpdir"));
             fallback = true;
         }
@@ -80,7 +80,7 @@ public final class DefaultTempFileManager implements TempFileManager {
             try {
                 Files.deleteIfExists(file);
             } catch (Exception e) {
-                HttpListener.LOG.log(Level.WARNING, "Could not delete temporary file", e);
+                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Could not delete temporary file", e);
             }
         }
         tempFiles = null;

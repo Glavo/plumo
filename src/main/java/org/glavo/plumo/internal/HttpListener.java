@@ -15,8 +15,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.glavo.plumo.Plumo;
 import org.glavo.plumo.TempFileManager;
@@ -24,11 +22,6 @@ import org.glavo.plumo.internal.util.IOUtils;
 import org.jetbrains.annotations.NotNull;
 
 public final class HttpListener implements Runnable, AutoCloseable {
-
-    /**
-     * logger to log to.
-     */
-    public static final Logger LOG = Logger.getLogger(HttpListener.class.getName());
 
     private final ReentrantLock lock = new ReentrantLock();
     private volatile boolean closed = false;
@@ -172,7 +165,7 @@ public final class HttpListener implements Runnable, AutoCloseable {
                                 socket.getRemoteSocketAddress(), socket.getLocalSocketAddress(),
                                 socket.getInputStream(), socket.getOutputStream()));
                     } catch (IOException e) {
-                        HttpListener.LOG.log(Level.FINE, "Communication with the client broken", e);
+                        Plumo.LOGGER.log(Plumo.Logger.Level.INFO, "Communication with the client broken", e);
                     }
                 } while (!serverSocket.isClosed());
             } else {
@@ -186,7 +179,7 @@ public final class HttpListener implements Runnable, AutoCloseable {
                                 Channels.newInputStream(socketChannel),
                                 Channels.newOutputStream(socketChannel)));
                     } catch (IOException e) {
-                        HttpListener.LOG.log(Level.FINE, "Communication with the client broken", e);
+                        Plumo.LOGGER.log(Plumo.Logger.Level.INFO, "Communication with the client broken", e);
                     }
                 } while (serverSocketChannel.isOpen());
             }

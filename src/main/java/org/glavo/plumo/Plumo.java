@@ -5,25 +5,36 @@ import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
 
 import javax.net.ssl.*;
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
+import java.io.*;
 import java.net.*;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.util.Iterator;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 
 public final class Plumo {
+
+    public static final Logger LOGGER;
+
+    static {
+        Iterator<LoggerProvider> providerIterator = ServiceLoader.load(LoggerProvider.class).iterator();
+
+        if (providerIterator.hasNext()) {
+            // TODO: Provider Name?
+            LOGGER = providerIterator.next().getLogger();
+        } else {
+            LOGGER = new DefaultLogger(System.out);
+        }
+    }
 
     public static Plumo create(int port) {
         return create(new InetSocketAddress(port));
@@ -290,7 +301,7 @@ public final class Plumo {
             try {
                 thread.join();
             } catch (InterruptedException e) {
-                HttpListener.LOG.log(Level.SEVERE, "Interrupted", e);
+                Plumo.LOGGER.log(Logger.Level.ERROR, "Interrupted", e);
             }
         }
 
@@ -311,6 +322,38 @@ public final class Plumo {
                 IOUtils.deleteIfExists(unixDomainSocketPath);
             }
         }
+    }
+
+    public interface Logger {
+        enum Level {
+            ALL(Integer.MIN_VALUE),
+            TRACE(400),
+            DEBUG(500),
+            INFO(800),
+            WARNING(900),
+            ERROR(1000),
+            OFF(Integer.MAX_VALUE);
+
+            private final int severity;
+
+            Level(int severity) {
+                this.severity = severity;
+            }
+
+            public int getSeverity() {
+                return severity;
+            }
+        }
+
+        default void log(Level level, String message) {
+            log(level, message, null);
+        }
+
+        void log(Level level, String message, Throwable exception);
+    }
+
+    public interface LoggerProvider {
+        Logger getLogger();
     }
 
     @FunctionalInterface
