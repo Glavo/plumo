@@ -24,9 +24,7 @@ public final class DefaultLogger implements Plumo.Logger {
         StringBuilder builder = new StringBuilder();
         builder.append('[');
         DateTimeFormatter.ISO_OFFSET_DATE_TIME.formatTo(ZonedDateTime.now(), builder);
-        builder.append("] ");
-
-        builder.append(level).append(": ").append(message == null ? "" : message);
+        builder.append('/').append(level).append("] ").append(message == null ? "" : message);
 
         if (exception != null) {
             builder.append('\n');
@@ -41,7 +39,6 @@ public final class DefaultLogger implements Plumo.Logger {
                 stackTraceBufferLock.unlock();
             }
         }
-        builder.append('\n');
 
         out.println(builder);
     }
