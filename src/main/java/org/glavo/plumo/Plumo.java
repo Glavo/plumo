@@ -181,8 +181,10 @@ public final class Plumo {
 
             Handler handler = this.handler;
             if (handler == null) {
-                handler = session ->
-                        HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND).setBody("Not Found");
+                handler = session -> HttpResponse.newBuilder()
+                        .setStatus(HttpResponse.Status.NOT_FOUND)
+                        .setBody("Not Found")
+                        .build();
             }
 
             Closeable s = null;
@@ -351,9 +353,7 @@ public final class Plumo {
                     System.out.println(request);
                     System.out.println(request.getBody(HttpDataFormat.TEXT));
 
-                    return HttpResponse.newResponse(HttpResponse.Status.OK)
-                            .setContentType(ContentType.HTML)
-                            .setBody("<body>Hello World!</body>");
+                    return HttpResponse.newHtmlResponse("<body>Hello World!</body>");
                 }).start();
     }
 }

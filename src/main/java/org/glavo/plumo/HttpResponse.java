@@ -9,38 +9,18 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.time.Instant;
 
+
 public /*sealed*/ interface HttpResponse {
 
-    HttpResponse setStatus(Status status);
-
-    HttpResponse setDate(Instant time);
-
-    HttpResponse setContentType(ContentType contentType);
-
-    HttpResponse setContentType(String contentType);
-
-    HttpResponse setContentEncoding(String contentEncoding);
-
-    HttpResponse setKeepAlive(boolean keepAlive);
-
-    HttpResponse addHeader(String name, String value);
-
-    HttpResponse addCookies(Iterable<? extends Cookie> cookies);
-
-    HttpResponse setBody(byte[] data);
-
-    HttpResponse setBody(String data);
-
-    HttpResponse setBody(InputStream data, long contentLength);
-
-    HttpResponse setBodyUnknownSize(InputStream data);
-
-    static HttpResponse newResponse() {
-        return new HttpResponseImpl();
+    static Builder newBuilder() {
+        return new HttpResponseImpl.BuilderImpl();
     }
 
-    static HttpResponse newResponse(Status status) {
-        return new HttpResponseImpl(status);
+    static Builder newBuilder(HttpResponse base) {
+        if (!base.isReusable()) {
+            throw new UnsupportedOperationException();
+        }
+        return new HttpResponseImpl.BuilderImpl(base);
     }
 
     static HttpResponse newPlainTextResponse(String data) {
@@ -58,6 +38,8 @@ public /*sealed*/ interface HttpResponse {
     static HttpResponse newHtmlResponse(Status status, String html) {
         return new HttpResponseImpl(status, html, ContentType.HTML);
     }
+
+    boolean isReusable();
 
     final class Status implements Serializable {
         private static final long serialVersionUID = 0L;
@@ -175,5 +157,34 @@ public /*sealed*/ interface HttpResponse {
         public void writeTo(OutputStream out) throws IOException {
             out.write(binary);
         }
+    }
+
+    interface Builder {
+
+        HttpResponse build();
+
+        Builder setStatus(Status status);
+
+        Builder setDate(Instant time);
+
+        Builder setContentType(ContentType contentType);
+
+        Builder setContentType(String contentType);
+
+        Builder setContentEncoding(String contentEncoding);
+
+        Builder setKeepAlive(boolean keepAlive);
+
+        Builder addHeader(String name, String value);
+
+        Builder addCookies(Iterable<? extends Cookie> cookies);
+
+        Builder setBody(byte[] data);
+
+        Builder setBody(String data);
+
+        Builder setBody(InputStream data, long contentLength);
+
+        Builder setBodyUnknownSize(InputStream data);
     }
 }
