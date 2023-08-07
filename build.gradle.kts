@@ -6,10 +6,11 @@ plugins {
 group = "org.glavo"
 version = "0.1.0" + "-SNAPSHOT"
 
-val mainClassName = "org.glavo.webdav.WebDAVServer"
+val mainClassName = "org.glavo.plumo.Plumo"
 
 application {
     mainClass.set(mainClassName)
+    applicationDefaultJvmArgs = listOf("--enable-preview")
 }
 
 repositories {

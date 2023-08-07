@@ -12,7 +12,6 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.Locale;
 
 public class HttpRequestReader implements Closeable {
@@ -477,11 +476,7 @@ public class HttpRequestReader implements Closeable {
     }
 
     private final class MultiPartInputStream extends InputStream {
-        private enum Status {
-
-        }
-
-        private boolean closed = false;
+       private boolean closed = false;
 
         private void ensureOpen() throws IOException {
             if (closed) {
@@ -489,8 +484,13 @@ public class HttpRequestReader implements Closeable {
             }
         }
 
-        void readHead() {
+        private final byte[] boundary;
 
+        private long partCount = 0;
+        private int scanOffset;
+
+        MultiPartInputStream(byte[] boundary) {
+            this.boundary = boundary;
         }
 
         @Override
