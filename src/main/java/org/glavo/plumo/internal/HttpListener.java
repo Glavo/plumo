@@ -14,10 +14,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
 
 import org.glavo.plumo.Plumo;
-import org.glavo.plumo.TempFileManager;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,7 +27,6 @@ public final class HttpListener implements Runnable, AutoCloseable {
     final Closeable ss;
 
     final Plumo.Handler handler;
-    final Supplier<TempFileManager> tempFileManagerFactory;
     final int timeout;
 
     private final Executor executor;
@@ -38,12 +35,11 @@ public final class HttpListener implements Runnable, AutoCloseable {
     private volatile HttpSession firstSession, lastSession;
 
     public HttpListener(Closeable ss,
-                        Plumo.Handler handler, Supplier<TempFileManager> tempFileManagerFactory,
+                        Plumo.Handler handler,
                         Executor executor, boolean shutdownExecutor,
                         int timeout) {
         this.ss = ss;
         this.handler = handler;
-        this.tempFileManagerFactory = tempFileManagerFactory;
         this.timeout = timeout;
 
         if (executor == null) {

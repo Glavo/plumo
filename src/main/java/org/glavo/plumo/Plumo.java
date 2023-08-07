@@ -19,7 +19,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 public final class Plumo {
 
@@ -75,7 +74,6 @@ public final class Plumo {
     private final SocketAddress address;
 
     private Handler handler;
-    private Supplier<TempFileManager> tempFileManagerFactory;
     private Executor executor;
     private boolean shutdownExecutor;
     private int timeout = Constants.SOCKET_TIMEOUT;
@@ -107,16 +105,6 @@ public final class Plumo {
 
     public Plumo setHttpHandler(Handler handler) {
         this.handler = Objects.requireNonNull(handler);
-        return this;
-    }
-
-    /**
-     * Pluggable strategy for creating and cleaning up temporary files.
-     *
-     * @param tempFileManagerFactory new strategy for handling temp files.
-     */
-    public Plumo setTempFileManagerFactory(Supplier<TempFileManager> tempFileManagerFactory) {
-        this.tempFileManagerFactory = tempFileManagerFactory;
         return this;
     }
 
@@ -197,11 +185,6 @@ public final class Plumo {
                         HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND).setBody("Not Found");
             }
 
-            Supplier<TempFileManager> tempFileManagerFactory = this.tempFileManagerFactory;
-            if (tempFileManagerFactory == null) {
-                tempFileManagerFactory = DefaultTempFileManager::new;
-            }
-
             Closeable s = null;
 
             try {
@@ -237,7 +220,7 @@ public final class Plumo {
 
             this.listener = impl = new HttpListener(
                     s,
-                    handler, tempFileManagerFactory,
+                    handler,
                     executor, shutdownExecutor,
                     timeout
             );
