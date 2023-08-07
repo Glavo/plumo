@@ -15,7 +15,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
@@ -112,7 +111,12 @@ public final class HttpSession implements Closeable, Runnable {
             r = (HttpResponseImpl) server.handler.handle(request);
 
             if (r == null) {
-                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: Serve() returned a null response.");
+                throw ServerShutdown.shutdown();
+            }
+
+            if (!r.isAvailable()) {
+                Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "The handler returned a response that has already been used");
+                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
             }
 
             try {
@@ -136,13 +140,13 @@ public final class HttpSession implements Closeable, Runnable {
                 resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
             } else {
                 Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Server internal error", e);
-                resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR ");
+                resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
             }
 
             send(null, (HttpResponseImpl) resp, this.outputStream, false);
         } finally {
             if (r != null) {
-                r.finish();
+                r.close();
             }
         }
     }

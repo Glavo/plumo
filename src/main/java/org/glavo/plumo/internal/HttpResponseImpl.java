@@ -27,6 +27,8 @@ public final class HttpResponseImpl implements HttpResponse, Cloneable {
 
     List<Cookie> cookies;
 
+    private boolean closed = false;
+
     public HttpResponseImpl() {
     }
 
@@ -50,7 +52,16 @@ public final class HttpResponseImpl implements HttpResponse, Cloneable {
         return "close".equals(connection);
     }
 
-    void finish() {
+    boolean isAvailable() {
+        return isReusable() || !closed;
+    }
+
+    void close() {
+        if (isReusable() || closed) {
+            return;
+        }
+
+        closed = true;
         if (body instanceof InputStream) {
             IOUtils.safeClose((InputStream) body);
         }
