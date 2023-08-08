@@ -9,7 +9,6 @@ import java.net.SocketAddress;
 import java.net.StandardProtocolFamily;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicReference;
 
 public final class UnixDomainSocketUtils {
     private static final boolean AVAILABLE;
@@ -74,23 +73,6 @@ public final class UnixDomainSocketUtils {
         } catch (Throwable e) {
             throw new InternalError(e);
         }
-    }
-
-    public static AtomicReference<Thread> registerShutdownHook(Path file) {
-        AtomicReference<Thread> ref = new AtomicReference<>();
-        Thread hook = new Thread(() -> {
-            synchronized (ref) {
-                if (ref.get() == null) {
-                    return;
-                }
-                ref.set(null);
-            }
-
-            IOUtils.deleteIfExists(file);
-        });
-        ref.set(hook);
-        Runtime.getRuntime().addShutdownHook(hook);
-        return ref;
     }
 
     private UnixDomainSocketUtils() {

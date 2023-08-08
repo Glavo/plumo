@@ -1,21 +1,27 @@
 package org.glavo.plumo;
 
-import org.glavo.plumo.internal.*;
+import org.glavo.plumo.internal.Constants;
+import org.glavo.plumo.internal.DefaultLogger;
+import org.glavo.plumo.internal.HttpListener;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
 import org.glavo.plumo.internal.util.VirtualThreadUtils;
 
 import javax.net.ssl.*;
-import java.io.*;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.*;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.Objects;
-import java.util.concurrent.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public final class Plumo {
 
@@ -159,7 +165,7 @@ public final class Plumo {
         public Builder listen(Path path, boolean deleteIfExists) {
             ensureAvailable();
             try {
-                this.address = UnixDomainSocketAddress.of(path);
+                this.address = UnixDomainSocketUtils.createUnixDomainSocketAddress(path);
                 this.unixDomainSocketPath = path;
                 this.deleteUnixDomainSocketFileIfExists = deleteIfExists;
             } catch (Throwable e) {
@@ -386,7 +392,6 @@ public final class Plumo {
 
             Closeable s = null;
 
-            AtomicReference<Thread> deleteUnixDomainSocketFileHook;
             try {
                 if (this.unixDomainSocketPath == null) {
                     ServerSocket serverSocket;
@@ -406,7 +411,6 @@ public final class Plumo {
                     }
                     serverSocket.setReuseAddress(true);
                     serverSocket.bind(this.address);
-                    deleteUnixDomainSocketFileHook = null;
                 } else {
                     if (deleteUnixDomainSocketFileIfExists) {
                         IOUtils.deleteIfExists(unixDomainSocketPath);
@@ -415,8 +419,6 @@ public final class Plumo {
                     ServerSocketChannel serverSocketChannel = UnixDomainSocketUtils.openUnixDomainServerSocketChannel();
                     s = serverSocketChannel;
                     serverSocketChannel.bind(this.address);
-
-                    deleteUnixDomainSocketFileHook = UnixDomainSocketUtils.registerShutdownHook(unixDomainSocketPath);
                 }
             } catch (Throwable e) {
                 IOUtils.safeClose(s);
@@ -428,7 +430,7 @@ public final class Plumo {
 
             this.listener = listener = new HttpListener(
                     s,
-                    unixDomainSocketPath, deleteUnixDomainSocketFileHook,
+                    unixDomainSocketPath,
                     sslContext == null ? "http" : "https",
                     handler,
                     executor, shutdownExecutor,

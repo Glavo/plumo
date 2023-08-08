@@ -1,18 +1,19 @@
 package org.glavo.plumo.internal;
 
+import org.glavo.plumo.Plumo;
+import org.glavo.plumo.internal.util.IOUtils;
+
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-
-import org.glavo.plumo.Plumo;
-import org.glavo.plumo.internal.util.IOUtils;
 
 public final class HttpListener implements Runnable {
 
@@ -23,7 +24,6 @@ public final class HttpListener implements Runnable {
 
     final Closeable ss;
     final Path unixDomainSocketPath;
-    final AtomicReference<Thread> deleteUnixDomainSocketFileHook;
 
     final String protocol;
     final Plumo.Handler handler;
@@ -34,14 +34,12 @@ public final class HttpListener implements Runnable {
 
     private volatile HttpSession firstSession, lastSession;
 
-    public HttpListener(Closeable ss,
-                        Path unixDomainSocketPath, AtomicReference<Thread> deleteUnixDomainSocketFileHook,
+    public HttpListener(Closeable ss, Path unixDomainSocketPath,
                         String protocol, Plumo.Handler handler,
                         Executor executor, boolean shutdownExecutor,
                         int timeout) {
         this.ss = ss;
         this.unixDomainSocketPath = unixDomainSocketPath;
-        this.deleteUnixDomainSocketFileHook = deleteUnixDomainSocketFileHook;
         this.protocol = protocol;
         this.handler = handler;
         this.timeout = timeout;
@@ -127,25 +125,7 @@ public final class HttpListener implements Runnable {
             }
 
             IOUtils.safeClose(this.ss);
-
-            AtomicReference<Thread> hookHolder = this.deleteUnixDomainSocketFileHook;
-            if (hookHolder != null) {
-                boolean needDelete = false;
-                Thread hook;
-                synchronized (hookHolder) {
-                    hook = hookHolder.get();
-                    if (hook != null) {
-                        needDelete = true;
-                        hookHolder.set(null);
-                    }
-                }
-
-                if (needDelete) {
-                    Runtime.getRuntime().removeShutdownHook(hook);
-                    IOUtils.deleteIfExists(unixDomainSocketPath);
-                }
-            }
-
+            IOUtils.deleteIfExists(unixDomainSocketPath);
         } finally {
             lock.unlock();
         }

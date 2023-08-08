@@ -58,8 +58,10 @@ public final class IOUtils {
 
     public static void deleteIfExists(Path file) {
         try {
-            Files.deleteIfExists(file);
-        } catch (IOException e) {
+            if (file != null) {
+                Files.deleteIfExists(file);
+            }
+        } catch (Throwable e) {
             Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Could not delete file", e);
         }
     }
