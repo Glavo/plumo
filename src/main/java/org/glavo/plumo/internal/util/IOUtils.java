@@ -7,6 +7,9 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public final class IOUtils {
     private IOUtils() {
@@ -58,6 +61,32 @@ public final class IOUtils {
             Files.deleteIfExists(file);
         } catch (IOException e) {
             Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Could not delete file", e);
+        }
+    }
+
+    public static void shutdown(Executor executor) {
+        if (!(executor instanceof ExecutorService)) {
+            return;
+        }
+
+        ExecutorService es = (ExecutorService) executor;
+        boolean terminated = es.isTerminated();
+        if (!terminated) {
+            es.shutdown();
+            boolean interrupted = false;
+            while (!terminated) {
+                try {
+                    terminated = es.awaitTermination(1L, TimeUnit.DAYS);
+                } catch (InterruptedException e) {
+                    if (!interrupted) {
+                        es.shutdownNow();
+                        interrupted = true;
+                    }
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

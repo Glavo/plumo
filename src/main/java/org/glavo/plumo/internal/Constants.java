@@ -44,12 +44,10 @@ public final class Constants {
     }
 
     public static final boolean DEBUG = Boolean.getBoolean(PROPERTY_PREFIX + "debug");
-
     public static final int LINE_BUFFER_LENGTH = Integer.getInteger(PROPERTY_PREFIX + "lineBufferLength", 8192);
-
     public static final int SOCKET_TIMEOUT = Integer.getInteger(PROPERTY_PREFIX + "socketTimeout", 5000);
-
     public static final Boolean USE_VIRTUAL_THREAD = getBoolean(PROPERTY_PREFIX + "useVirtualThread", null);
+    public static final String LOGGER_PROVIDER = System.getProperty(PROPERTY_PREFIX + "loggerProvider");
 
     static {
         if (LINE_BUFFER_LENGTH < 0) {

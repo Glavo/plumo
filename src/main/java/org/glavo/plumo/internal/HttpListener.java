@@ -6,16 +6,15 @@ import java.net.*;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Path;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.glavo.plumo.Plumo;
 import org.glavo.plumo.internal.util.IOUtils;
 
-public final class HttpListener implements Runnable, AutoCloseable {
+public final class HttpListener implements Runnable {
 
     public final ReentrantLock runningLock = new ReentrantLock();
 
@@ -23,7 +22,10 @@ public final class HttpListener implements Runnable, AutoCloseable {
     private volatile boolean closed = false;
 
     final Closeable ss;
+    final Path unixDomainSocketPath;
+    final AtomicReference<Thread> deleteUnixDomainSocketFileHook;
 
+    final String protocol;
     final Plumo.Handler handler;
     final int timeout;
 
@@ -33,10 +35,14 @@ public final class HttpListener implements Runnable, AutoCloseable {
     private volatile HttpSession firstSession, lastSession;
 
     public HttpListener(Closeable ss,
-                        Plumo.Handler handler,
+                        Path unixDomainSocketPath, AtomicReference<Thread> deleteUnixDomainSocketFileHook,
+                        String protocol, Plumo.Handler handler,
                         Executor executor, boolean shutdownExecutor,
                         int timeout) {
         this.ss = ss;
+        this.unixDomainSocketPath = unixDomainSocketPath;
+        this.deleteUnixDomainSocketFileHook = deleteUnixDomainSocketFileHook;
+        this.protocol = protocol;
         this.handler = handler;
         this.timeout = timeout;
         this.executor = executor;
@@ -97,7 +103,6 @@ public final class HttpListener implements Runnable, AutoCloseable {
         executor.execute(session);
     }
 
-    @Override
     public void close() {
         lock.lock();
         try {
@@ -118,12 +123,45 @@ public final class HttpListener implements Runnable, AutoCloseable {
             lastSession = null;
 
             if (shutdownExecutor) {
-                ((ExecutorService) executor).shutdown();
+                IOUtils.shutdown(executor);
             }
 
             IOUtils.safeClose(this.ss);
+
+            AtomicReference<Thread> hookHolder = this.deleteUnixDomainSocketFileHook;
+            if (hookHolder != null) {
+                boolean needDelete = false;
+                Thread hook;
+                synchronized (hookHolder) {
+                    hook = hookHolder.get();
+                    if (hook != null) {
+                        needDelete = true;
+                        hookHolder.set(null);
+                    }
+                }
+
+                if (needDelete) {
+                    Runtime.getRuntime().removeShutdownHook(hook);
+                    IOUtils.deleteIfExists(unixDomainSocketPath);
+                }
+            }
+
         } finally {
             lock.unlock();
+        }
+    }
+
+    public SocketAddress getLocalAddress() {
+        if (ss instanceof ServerSocket) {
+            ServerSocket serverSocket = (ServerSocket) ss;
+            return !serverSocket.isClosed() ? serverSocket.getLocalSocketAddress() : null;
+        } else {
+            ServerSocketChannel serverSocketChannel  = (ServerSocketChannel) ss;
+            try {
+                return serverSocketChannel.isOpen() ? serverSocketChannel.getLocalAddress() : null;
+            } catch (IOException e) {
+                return null;
+            }
         }
     }
 

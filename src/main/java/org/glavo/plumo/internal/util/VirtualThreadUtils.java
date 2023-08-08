@@ -1,15 +1,12 @@
-package org.glavo.plumo.internal;
-
-import org.jetbrains.annotations.NotNull;
+package org.glavo.plumo.internal.util;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicLong;
 
-public final class VirtualThreadExecutor implements Executor {
+public final class VirtualThreadUtils {
     public static final boolean AVAILABLE;
+
     private static final boolean NEED_ENABLE_PREVIEW;
 
     private static final MethodHandle newThread;
@@ -39,9 +36,7 @@ public final class VirtualThreadExecutor implements Executor {
         newThread = newThreadHandle;
     }
 
-    private final AtomicLong requestCount = new AtomicLong();
-
-    public VirtualThreadExecutor() {
+    public static void checkAvailable() {
         if (!AVAILABLE) {
             throw new UnsupportedOperationException(NEED_ENABLE_PREVIEW
                     ? "Preview Features not enabled, need to run with --enable-preview"
@@ -49,14 +44,15 @@ public final class VirtualThreadExecutor implements Executor {
         }
     }
 
-    @Override
-    public void execute(@NotNull Runnable command) {
+    public static Thread newVirtualThread(Runnable command) {
         try {
-            Thread t = (Thread) newThread.invokeExact(command);
-            t.setName("Plumo Request Processor (#" + this.requestCount.getAndIncrement() + ")");
-            t.start();
+            return (Thread) newThread.invokeExact(command);
         } catch (Throwable e) {
             throw new InternalError(e);
         }
+    }
+
+
+    private VirtualThreadUtils() {
     }
 }

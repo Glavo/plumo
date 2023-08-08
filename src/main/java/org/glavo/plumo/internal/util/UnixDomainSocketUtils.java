@@ -76,7 +76,8 @@ public final class UnixDomainSocketUtils {
         }
     }
 
-    public static void registerShutdownHook(AtomicReference<Thread> ref, Path file) {
+    public static AtomicReference<Thread> registerShutdownHook(Path file) {
+        AtomicReference<Thread> ref = new AtomicReference<>();
         Thread hook = new Thread(() -> {
             synchronized (ref) {
                 if (ref.get() == null) {
@@ -89,6 +90,7 @@ public final class UnixDomainSocketUtils {
         });
         ref.set(hook);
         Runtime.getRuntime().addShutdownHook(hook);
+        return ref;
     }
 
     private UnixDomainSocketUtils() {

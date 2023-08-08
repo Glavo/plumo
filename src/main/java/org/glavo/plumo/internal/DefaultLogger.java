@@ -19,7 +19,17 @@ public final class DefaultLogger implements Plumo.Logger {
         StringBuilder builder = new StringBuilder();
         builder.append('[');
         DateTimeFormatter.ISO_OFFSET_DATE_TIME.formatTo(ZonedDateTime.now(), builder);
-        builder.append('/').append(level).append("] ").append(message == null ? "" : message);
+        builder.append(']');
+
+        Thread thread = Thread.currentThread();
+        String threadName = Thread.currentThread().getName();
+        if (threadName == null || threadName.isEmpty()) {
+            threadName = thread.toString();
+        }
+
+        builder.append(" [").append(threadName).append('/').append(level).append("] ");
+
+        builder.append(message == null ? "" : message);
 
         if (exception != null) {
             builder.append('\n');
