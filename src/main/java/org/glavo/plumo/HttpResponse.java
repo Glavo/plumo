@@ -23,6 +23,35 @@ public /*sealed*/ interface HttpResponse {
         return new HttpResponseImpl.BuilderImpl(base);
     }
 
+    interface Builder {
+
+        HttpResponse build();
+
+        Builder setStatus(Status status);
+
+        Builder setDate(Instant time);
+
+        Builder setContentType(ContentType contentType);
+
+        Builder setContentType(String contentType);
+
+        Builder setContentEncoding(String contentEncoding);
+
+        Builder setKeepAlive(boolean keepAlive);
+
+        Builder addHeader(String name, String value);
+
+        Builder addCookies(Iterable<? extends Cookie> cookies);
+
+        Builder setBody(byte[] data);
+
+        Builder setBody(String data);
+
+        Builder setBody(InputStream data, long contentLength);
+
+        Builder setBodyUnknownSize(InputStream data);
+    }
+
     static HttpResponse newPlainTextResponse(String data) {
         return new HttpResponseImpl(Status.OK, data, ContentType.PLAIN_TEXT);
     }
@@ -157,34 +186,5 @@ public /*sealed*/ interface HttpResponse {
         public void writeTo(OutputStream out) throws IOException {
             out.write(binary);
         }
-    }
-
-    interface Builder {
-
-        HttpResponse build();
-
-        Builder setStatus(Status status);
-
-        Builder setDate(Instant time);
-
-        Builder setContentType(ContentType contentType);
-
-        Builder setContentType(String contentType);
-
-        Builder setContentEncoding(String contentEncoding);
-
-        Builder setKeepAlive(boolean keepAlive);
-
-        Builder addHeader(String name, String value);
-
-        Builder addCookies(Iterable<? extends Cookie> cookies);
-
-        Builder setBody(byte[] data);
-
-        Builder setBody(String data);
-
-        Builder setBody(InputStream data, long contentLength);
-
-        Builder setBodyUnknownSize(InputStream data);
     }
 }

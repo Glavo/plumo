@@ -115,14 +115,14 @@ public final class HttpSession implements Closeable, Runnable {
             }
 
             if (!r.isAvailable()) {
-                Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "The handler returned a response that has already been used");
+                Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "The response has been sent before");
                 throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
             }
 
             try {
                 send(request, r, this.outputStream, keepAlive);
             } catch (IOException ioe) {
-                Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Could not send response to the client", ioe);
+                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Could not send response to the client", ioe);
                 throw ServerShutdown.shutdown();
             }
 

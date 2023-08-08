@@ -8,19 +8,247 @@ import javax.net.ssl.*;
 import java.io.*;
 import java.net.*;
 import java.nio.channels.ServerSocketChannel;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.ServiceLoader;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class Plumo {
+
+    public static Builder newBuilder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private SocketAddress address;
+        private Path unixDomainSocketPath;
+        private boolean deleteUnixDomainSocketFileIfExists;
+
+        private Handler handler;
+        private int timeout = Constants.SOCKET_TIMEOUT;
+        private SSLContext sslContext;
+        private String[] sslProtocols;
+
+        private Executor executor;
+        private boolean shutdownExecutor;
+        private boolean holdExecutor;
+
+        private void shutdownExecutorIfNecessary() {
+            if (shutdownExecutor && holdExecutor) {
+                ((ExecutorService) executor).shutdown();
+            }
+        }
+
+        private <T> T safeCheckNull(T t) throws NullPointerException {
+            if (t == null) {
+                shutdownExecutorIfNecessary();
+                throw new NullPointerException();
+            }
+
+            return t;
+        }
+
+        Builder() {
+        }
+
+        public Plumo build() {
+            if (shutdownExecutor && !holdExecutor) {
+                throw new IllegalStateException("Need to reset the executor");
+            }
+
+            Executor executor = this.executor;
+            boolean shutdownExecutor = this.shutdownExecutor;
+            try {
+                if (executor == null) {
+                    if (Constants.USE_VIRTUAL_THREAD == Boolean.TRUE || (Constants.USE_VIRTUAL_THREAD == null && VirtualThreadExecutor.AVAILABLE)) {
+                        shutdownExecutor = false;
+                        executor = new VirtualThreadExecutor();
+                    } else {
+                        shutdownExecutor = true;
+
+                        final AtomicLong requestCount = new AtomicLong();
+                        executor = Executors.newCachedThreadPool(r -> {
+                            Thread t = new Thread(r, "Plumo Request Processor (#" + requestCount.getAndIncrement() + ")");
+                            t.setDaemon(true);
+                            return t;
+                        });
+                    }
+                }
+
+                Handler handler = this.handler;
+                if (handler == null) {
+                    handler = session -> HttpResponse.newBuilder()
+                            .setStatus(HttpResponse.Status.NOT_FOUND)
+                            .setBody("Not Found")
+                            .build();
+                }
+
+                if (this.executor != null && shutdownExecutor) {
+                    holdExecutor = false;
+                }
+
+                return new Plumo(address, unixDomainSocketPath, deleteUnixDomainSocketFileIfExists,
+                        handler,
+                        executor, shutdownExecutor,
+                        timeout, sslContext, sslProtocols);
+            } catch (Throwable e) {
+                if (shutdownExecutor && executor != null) {
+                    ((ExecutorService) executor).shutdown();
+                }
+                throw e;
+            }
+        }
+
+        public Builder setAddress(int port) {
+            try {
+                this.address = new InetSocketAddress(port);
+                this.unixDomainSocketPath = null;
+            } catch (Throwable e) {
+                shutdownExecutorIfNecessary();
+                throw e;
+            }
+            return this;
+        }
+
+        public Builder setAddress(InetAddress inetAddress, int port) {
+            try {
+                this.address = new InetSocketAddress(inetAddress, port);
+                this.unixDomainSocketPath = null;
+            } catch (Throwable e) {
+                shutdownExecutorIfNecessary();
+                throw e;
+            }
+            return this;
+        }
+
+        public Builder setAddress(String hostName, int port) {
+            try {
+                this.address = new InetSocketAddress(hostName, port);
+                this.unixDomainSocketPath = null;
+            } catch (Throwable e) {
+                shutdownExecutorIfNecessary();
+                throw e;
+            }
+            return this;
+        }
+
+        public Builder setAddress(InetSocketAddress address) {
+            this.address = safeCheckNull(address);
+            this.unixDomainSocketPath = null;
+            return this;
+        }
+
+        public Builder setAddress(Path path) {
+            setAddress(path, false);
+            return this;
+        }
+
+        public Builder setAddress(Path path, boolean deleteIfExists) {
+            try {
+                this.address = UnixDomainSocketAddress.of(path);
+                this.unixDomainSocketPath = path;
+                this.deleteUnixDomainSocketFileIfExists = deleteIfExists;
+            } catch (Throwable e) {
+                shutdownExecutorIfNecessary();
+                throw e;
+            }
+            return this;
+        }
+
+        public Builder setSocketReadTimeout(int timeout) {
+            if (timeout <= 0) {
+                shutdownExecutorIfNecessary();
+                throw new IllegalArgumentException("timeout: " + timeout);
+            }
+
+            this.timeout = timeout;
+            return this;
+        }
+
+        public Builder setHandler(Handler handler) {
+            this.handler = safeCheckNull(handler);
+            return this;
+        }
+
+        public Builder setUseHttps(SSLContext context) {
+            setUseHttps(context, null);
+            return this;
+        }
+
+        public Builder setUseHttps(SSLContext context, String[] sslProtocols) {
+            this.sslContext = safeCheckNull(context);
+            this.sslProtocols = sslProtocols;
+            return this;
+        }
+
+        public Builder setUseHttps(KeyStore loadedKeyStore, KeyManager[] keyManagers) throws GeneralSecurityException {
+            try {
+                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                trustManagerFactory.init(loadedKeyStore);
+                SSLContext ctx = SSLContext.getInstance("TLS");
+                ctx.init(keyManagers, trustManagerFactory.getTrustManagers(), null);
+                setUseHttps(ctx);
+            } catch (Throwable e) {
+                shutdownExecutorIfNecessary();
+                throw e;
+            }
+
+            return this;
+        }
+
+        public Builder setUseHttps(KeyStore loadedKeyStore, KeyManagerFactory loadedKeyFactory) throws GeneralSecurityException {
+            setUseHttps(loadedKeyStore, loadedKeyFactory.getKeyManagers());
+            return this;
+        }
+
+        public Builder setUseHttps(String keyAndTrustStoreClasspathPath, char[] passphrase) throws IOException {
+            try {
+                KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+                InputStream keystoreStream = Plumo.class.getResourceAsStream(keyAndTrustStoreClasspathPath);
+
+                if (keystoreStream == null) {
+                    throw new IOException("Unable to load keystore from classpath: " + keyAndTrustStoreClasspathPath);
+                }
+
+                keystore.load(keystoreStream, passphrase);
+                KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                keyManagerFactory.init(keystore, passphrase);
+                setUseHttps(keystore, keyManagerFactory);
+            } catch (Throwable e) {
+                shutdownExecutorIfNecessary();
+                if (e instanceof IOException) {
+                    throw (IOException) e;
+                } else {
+                    throw new IOException(e);
+                }
+            }
+
+            return this;
+        }
+
+        public Builder setExecutor(Executor executor) {
+            shutdownExecutorIfNecessary();
+
+            this.executor = executor;
+            this.shutdownExecutor = false;
+            this.holdExecutor = false;
+            return this;
+        }
+
+        public Builder setExecutor(ExecutorService executor, boolean shutdownOnClose) {
+            shutdownExecutorIfNecessary();
+
+            this.executor = safeCheckNull(executor);
+            this.shutdownExecutor = shutdownOnClose;
+            this.holdExecutor = shutdownOnClose;
+            return this;
+        }
+    }
 
     public static final Logger LOGGER;
 
@@ -35,139 +263,65 @@ public final class Plumo {
         }
     }
 
-    public static Plumo create(int port) {
-        return create(new InetSocketAddress(port));
+    public static Plumo newHttpServer(int port, Handler handler) {
+        Objects.requireNonNull(handler);
+
+        return Plumo.newBuilder()
+                .setAddress(port)
+                .setHandler(handler)
+                .build();
     }
 
-    public static Plumo create(InetAddress address, int port) {
-        return create(new InetSocketAddress(address, port));
+    public static Plumo newHttpServer(InetSocketAddress address, Handler handler) {
+        Objects.requireNonNull(address);
+        Objects.requireNonNull(handler);
+
+        return Plumo.newBuilder()
+                .setAddress(address)
+                .setHandler(handler)
+                .build();
     }
 
-    public static Plumo create(String hostname, int port) {
-        return create(new InetSocketAddress(hostname, port));
-    }
-
-    public static Plumo create(Path path) {
-        return create(path, false);
-    }
-
-    public static Plumo create(Path path, boolean deleteIfExists) {
+    public static Plumo newHttpServer(Path path, Handler handler) {
         Objects.requireNonNull(path);
+        Objects.requireNonNull(handler);
 
-        UnixDomainSocketUtils.checkAvailable();
-
-        if (deleteIfExists) {
-            try {
-                Files.deleteIfExists(path);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
-
-        return new Plumo(UnixDomainSocketUtils.createUnixDomainSocketAddress(path), path);
-    }
-
-    public static Plumo create(InetSocketAddress address) {
-        return new Plumo(Objects.requireNonNull(address), null);
+        return Plumo.newBuilder()
+                .setAddress(path)
+                .setHandler(handler)
+                .build();
     }
 
     private final SocketAddress address;
-
-    private Handler handler;
-    private Executor executor;
-    private boolean shutdownExecutor;
-    private int timeout = Constants.SOCKET_TIMEOUT;
-    private SSLContext sslContext;
-    private String[] sslProtocols;
-
     private final Path unixDomainSocketPath;
+    private final boolean deleteUnixDomainSocketFileIfExists;
+    private final Handler handler;
+    private final Executor executor;
+    private final boolean shutdownExecutor;
+    private final int timeout;
+    private final SSLContext sslContext;
+    private final String[] sslProtocols;
 
     private volatile boolean started = false;
     private volatile boolean stopped = false;
     private volatile HttpListener listener;
     private final AtomicReference<Thread> deleteUnixDomainSocketFileHook;
-    private Thread thread;
 
-    private Plumo(SocketAddress address, Path unixDomainSocketPath) {
+    private Plumo(SocketAddress address, Path unixDomainSocketPath, boolean deleteUnixDomainSocketFileIfExists,
+                  Handler handler,
+                  Executor executor, boolean shutdownExecutor,
+                  int timeout,
+                  SSLContext sslContext, String[] sslProtocols) {
         this.address = address;
         this.unixDomainSocketPath = unixDomainSocketPath;
+        this.deleteUnixDomainSocketFileIfExists = deleteUnixDomainSocketFileIfExists;
         this.deleteUnixDomainSocketFileHook = unixDomainSocketPath == null ? null : new AtomicReference<>();
-    }
-
-    public Plumo setSocketReadTimeout(int timeout) {
-        if (timeout <= 0) {
-            throw new IllegalArgumentException("timeout: " + timeout);
-        }
-
+        this.handler = handler;
+        this.executor = executor;
+        this.shutdownExecutor = shutdownExecutor;
         this.timeout = timeout;
-        return this;
-    }
-
-    public Plumo setHttpHandler(Handler handler) {
-        this.handler = Objects.requireNonNull(handler);
-        return this;
-    }
-
-    public Plumo setUseHttps(SSLContext context) {
-        setUseHttps(context, null);
-        return this;
-    }
-
-    public Plumo setUseHttps(SSLContext context, String[] sslProtocols) {
-        if (!(address instanceof InetSocketAddress)) {
-            throw new UnsupportedOperationException();
-        }
-
-        this.sslContext = Objects.requireNonNull(context);
+        this.sslContext = sslContext;
         this.sslProtocols = sslProtocols;
-        return this;
-    }
-
-    public Plumo setUseHttps(KeyStore loadedKeyStore, KeyManager[] keyManagers) throws GeneralSecurityException {
-        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        trustManagerFactory.init(loadedKeyStore);
-        SSLContext ctx = SSLContext.getInstance("TLS");
-        ctx.init(keyManagers, trustManagerFactory.getTrustManagers(), null);
-        setUseHttps(ctx);
-
-        return this;
-    }
-
-    public Plumo setUseHttps(KeyStore loadedKeyStore, KeyManagerFactory loadedKeyFactory) throws GeneralSecurityException {
-        setUseHttps(loadedKeyStore, loadedKeyFactory.getKeyManagers());
-        return this;
-    }
-
-    public Plumo setUseHttps(String keyAndTrustStoreClasspathPath, char[] passphrase) throws IOException {
-        try {
-            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-            InputStream keystoreStream = Plumo.class.getResourceAsStream(keyAndTrustStoreClasspathPath);
-
-            if (keystoreStream == null) {
-                throw new IOException("Unable to load keystore from classpath: " + keyAndTrustStoreClasspathPath);
-            }
-
-            keystore.load(keystoreStream, passphrase);
-            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            keyManagerFactory.init(keystore, passphrase);
-            setUseHttps(keystore, keyManagerFactory);
-        } catch (Exception e) {
-            throw new IOException(e.getMessage());
-        }
-
-        return this;
-    }
-
-    public Plumo setExecutor(Executor executor) {
-        this.executor = executor;
-        this.shutdownExecutor = false;
-        return this;
-    }
-
-    public Plumo setExecutor(ExecutorService executor, boolean shutdownOnClose) {
-        this.executor = executor;
-        this.shutdownExecutor = shutdownOnClose;
-        return this;
     }
 
     private void startImpl(ThreadFactory threadFactory) throws IOException {
@@ -178,14 +332,6 @@ public final class Plumo {
                 throw new IllegalStateException("Server has started");
             }
             started = true;
-
-            Handler handler = this.handler;
-            if (handler == null) {
-                handler = session -> HttpResponse.newBuilder()
-                        .setStatus(HttpResponse.Status.NOT_FOUND)
-                        .setBody("Not Found")
-                        .build();
-            }
 
             Closeable s = null;
 
@@ -209,6 +355,10 @@ public final class Plumo {
                     serverSocket.setReuseAddress(true);
                     serverSocket.bind(this.address);
                 } else {
+                    if (deleteUnixDomainSocketFileIfExists) {
+                        IOUtils.deleteIfExists(unixDomainSocketPath);
+                    }
+
                     ServerSocketChannel serverSocketChannel = UnixDomainSocketUtils.openUnixDomainServerSocketChannel();
                     s = serverSocketChannel;
                     serverSocketChannel.bind(this.address);
@@ -217,6 +367,9 @@ public final class Plumo {
                 }
             } catch (Throwable e) {
                 IOUtils.safeClose(s);
+                if (shutdownExecutor) {
+                    ((ExecutorService) executor).shutdown();
+                }
                 throw e;
             }
 
@@ -231,8 +384,7 @@ public final class Plumo {
         if (threadFactory == null) {
             impl.run();
         } else {
-            this.thread = threadFactory.newThread(impl);
-            this.thread.start();
+            threadFactory.newThread(impl).start();
         }
     }
 
@@ -282,13 +434,10 @@ public final class Plumo {
         this.listener = null;
 
         listener.close();
-        if (thread != null && thread.isAlive()) {
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
-                Plumo.LOGGER.log(Logger.Level.ERROR, "Interrupted", e);
-            }
-        }
+
+        // wait running lock
+        listener.runningLock.lock();
+        listener.runningLock.unlock();
 
         AtomicReference<Thread> hookHolder = this.deleteUnixDomainSocketFileHook;
         if (hookHolder != null) {
@@ -347,13 +496,12 @@ public final class Plumo {
     }
 
     public static void main(String[] args) throws Throwable {
-        Plumo.create(10001)
-                .setHttpHandler(request -> {
-                    System.out.println(Thread.currentThread());
-                    System.out.println(request);
-                    System.out.println(request.getBody(HttpDataFormat.TEXT));
+        Plumo.newHttpServer(10001, request -> {
+            System.out.println(Thread.currentThread());
+            System.out.println(request);
+            System.out.println(request.getBody(HttpDataFormat.TEXT));
 
-                    return HttpResponse.newHtmlResponse("<body>Hello World!</body>");
-                }).start();
+            return HttpResponse.newHtmlResponse("<body>Hello World!</body>");
+        }).start();
     }
 }
