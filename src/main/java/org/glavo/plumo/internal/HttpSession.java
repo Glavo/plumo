@@ -11,7 +11,6 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -20,14 +19,6 @@ import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 
 public final class HttpSession implements Closeable, Runnable {
-
-    public static final String POST_DATA = "postData";
-
-    private static final int REQUEST_BUFFER_LEN = 512;
-
-    private static final int MEMORY_STORE_LIMIT = 1024;
-
-    public static final int MAX_HEADER_SIZE = 1024;
 
     private final HttpListener server;
     private final Closeable socket;
@@ -149,52 +140,6 @@ public final class HttpSession implements Closeable, Runnable {
                 r.close();
             }
         }
-    }
-
-    /**
-     * Find the byte positions where multipart boundaries start. This reads a
-     * large block at a time and uses a temporary buffer to optimize (memory
-     * mapped) file access.
-     */
-    private int[] getBoundaryPositions(ByteBuffer b, byte[] boundary) {
-        int[] res = new int[0];
-        if (b.remaining() < boundary.length) {
-            return res;
-        }
-
-        int search_window_pos = 0;
-        byte[] search_window = new byte[4 * 1024 + boundary.length];
-
-        int first_fill = Math.min(b.remaining(), search_window.length);
-        b.get(search_window, 0, first_fill);
-        int new_bytes = first_fill - boundary.length;
-
-        do {
-            // Search the search_window
-            for (int j = 0; j < new_bytes; j++) {
-                for (int i = 0; i < boundary.length; i++) {
-                    if (search_window[j + i] != boundary[i])
-                        break;
-                    if (i == boundary.length - 1) {
-                        // Match found, add it to results
-                        int[] new_res = new int[res.length + 1];
-                        System.arraycopy(res, 0, new_res, 0, res.length);
-                        new_res[res.length] = search_window_pos + j;
-                        res = new_res;
-                    }
-                }
-            }
-            search_window_pos += new_bytes;
-
-            // Copy the end of the buffer to the start
-            System.arraycopy(search_window, search_window.length - boundary.length, search_window, 0, boundary.length);
-
-            // Refill search_window
-            new_bytes = search_window.length - boundary.length;
-            new_bytes = Math.min(b.remaining(), new_bytes);
-            b.get(search_window, boundary.length, new_bytes);
-        } while (new_bytes > 0);
-        return res;
     }
 
     /**
