@@ -5,12 +5,16 @@ import org.glavo.plumo.ContentType;
 import org.glavo.plumo.Cookie;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.MultiStringMap;
+import org.glavo.plumo.internal.util.Utils;
 
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
 
 public final class HttpResponseImpl implements HttpResponse, Cloneable {
 
@@ -129,12 +133,13 @@ public final class HttpResponseImpl implements HttpResponse, Cloneable {
             return this;
         }
 
+
         @Override
         public Builder addHeader(String name, String value) {
             Objects.requireNonNull(value);
             ensureUnaliased();
 
-            name = name.toLowerCase(Locale.ROOT);
+            name = Utils.normalizeHttpHeaderFieldName(name);
             switch (name) {
                 case "connection":
                     response.connection = value;
