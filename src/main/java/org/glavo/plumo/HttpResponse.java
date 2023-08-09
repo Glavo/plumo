@@ -3,10 +3,8 @@ package org.glavo.plumo;
 import org.glavo.plumo.internal.HttpResponseImpl;
 import org.jetbrains.annotations.ApiStatus;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
+import java.io.*;
+import java.nio.file.Path;
 import java.time.Instant;
 
 
@@ -48,6 +46,10 @@ public /*sealed*/ interface HttpResponse {
         Builder setBody(String data);
 
         Builder setBody(InputStream data, long contentLength);
+
+        Builder setBody(Path file);
+
+        Builder setBody(File file);
 
         Builder setBodyUnknownSize(InputStream data);
     }

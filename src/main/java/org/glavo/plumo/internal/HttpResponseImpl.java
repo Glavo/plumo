@@ -6,7 +6,9 @@ import org.glavo.plumo.Cookie;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.MultiStringMap;
 
+import java.io.File;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 
@@ -19,7 +21,7 @@ public final class HttpResponseImpl implements HttpResponse, Cloneable {
 
     String connection;
 
-    // InputStream | String | byte[]
+    // InputStream | String | byte[] | Path
     Object body;
     long contentLength;
     ContentType contentType;
@@ -217,7 +219,7 @@ public final class HttpResponseImpl implements HttpResponse, Cloneable {
         @Override
         public Builder setBody(String data) {
             ensureUnaliased();
-            response.body = data;
+            response.body = Objects.requireNonNull(data);
             response.contentLength = -1;
             return this;
         }
@@ -229,8 +231,23 @@ public final class HttpResponseImpl implements HttpResponse, Cloneable {
                 throw new IllegalArgumentException();
             }
 
-            response.body = data;
+            response.body = Objects.requireNonNull(data);
             response.contentLength = contentLength;
+            return this;
+        }
+
+        @Override
+        public Builder setBody(Path file) {
+            ensureUnaliased();
+
+            response.body = Objects.requireNonNull(file);
+            response.contentLength = -1;
+            return this;
+        }
+
+        @Override
+        public Builder setBody(File file) {
+            setBody(file.toPath());
             return this;
         }
 
