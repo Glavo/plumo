@@ -24,23 +24,21 @@ import java.util.zip.GZIPOutputStream;
 
 public final class HttpSession implements Closeable, Runnable {
 
-    private final HttpListener server;
-    private final Closeable socket;
-    private final SocketAddress remoteAddress;
-    private final SocketAddress localAddress;
+    public final HttpListener listener;
+    public final Closeable socket;
+    public final SocketAddress remoteAddress;
+    public final SocketAddress localAddress;
 
-    private final HttpRequestReader requestReader;
-    private final UnsyncBufferedOutputStream outputStream;
-
-    private HttpRequestImpl lastRequest;
+    public final HttpRequestReader requestReader;
+    public final UnsyncBufferedOutputStream outputStream;
 
     // Use in HttpServerImpl
     volatile HttpSession prev, next;
 
-    public HttpSession(HttpListener server, Closeable acceptSocket,
+    public HttpSession(HttpListener listener, Closeable acceptSocket,
                        SocketAddress remoteAddress, SocketAddress localAddress,
                        InputStream inputStream, OutputStream outputStream) {
-        this.server = server;
+        this.listener = listener;
         this.remoteAddress = remoteAddress;
         this.localAddress = localAddress;
         this.requestReader = new HttpRequestReader(inputStream);
@@ -65,7 +63,7 @@ public final class HttpSession implements Closeable, Runnable {
         } catch (Exception e) {
             Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Communication with the client broken, or an bug in the handler code", e);
         } finally {
-            server.close(this);
+            listener.close(this);
         }
     }
 
@@ -83,49 +81,20 @@ public final class HttpSession implements Closeable, Runnable {
     }
 
     private void execute() throws IOException {
-        HttpResponseImpl r = null;
         try {
-            if (lastRequest != null) {
-                lastRequest.close();
-                lastRequest = null;
-            }
-
             HttpRequestImpl request = new HttpRequestImpl(remoteAddress, localAddress);
             try {
                 requestReader.readHeader(request);
             } catch (EOFException e) {
                 throw ServerShutdown.shutdown();
             }
-            lastRequest = request;
-
-            String connection = request.headers.getFirst("connection");
-            boolean keepAlive = "HTTP/1.1".equals(request.httpVersion) && (connection == null || !connection.equals("close"));
-
-            // Ok, now do the serve()
-
-            r = (HttpResponseImpl) server.handler.handle(request);
-
-            if (r == null) {
-                throw ServerShutdown.shutdown();
-            }
-
-            if (!r.isAvailable()) {
-                Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "The response has been sent before");
-                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
-            }
-
             try {
-                send(request, r, this.outputStream, keepAlive);
-            } catch (IOException ioe) {
-                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Could not send response to the client", ioe);
-                throw ServerShutdown.shutdown();
-            }
-
-            if (!keepAlive || r.needCloseConnection()) {
-                throw ServerShutdown.shutdown();
+                listener.handler.handle(this, request);
+            } finally {
+                request.close();
             }
         } catch (SocketException | SocketTimeoutException e) {
-            // throw it out to close socket object (finalAccept)
+            // throw it out to close socket
             throw e;
         } catch (IOException | UncheckedIOException | HttpResponseException e) {
             HttpResponse resp;
@@ -139,10 +108,6 @@ public final class HttpSession implements Closeable, Runnable {
             }
 
             send(null, (HttpResponseImpl) resp, this.outputStream, false);
-        } finally {
-            if (r != null) {
-                r.close();
-            }
         }
     }
 

@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public final class HttpResponseImpl implements HttpResponse, Cloneable {
+public final class HttpResponseImpl implements HttpResponse, Cloneable, AutoCloseable {
 
     MultiStringMap headers = new MultiStringMap();
 
@@ -54,15 +54,16 @@ public final class HttpResponseImpl implements HttpResponse, Cloneable {
 
     // ----
 
-    boolean needCloseConnection() {
+    public boolean needCloseConnection() {
         return "close".equals(connection);
     }
 
-    boolean isAvailable() {
+    public boolean isAvailable() {
         return isReusable() || !closed;
     }
 
-    void close() {
+    @Override
+    public void close() {
         if (isReusable() || closed) {
             return;
         }

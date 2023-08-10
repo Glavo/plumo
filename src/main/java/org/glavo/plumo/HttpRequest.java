@@ -8,6 +8,8 @@ import java.util.Map;
 
 public interface HttpRequest {
 
+    String getHttpVersion();
+
     Method getMethod();
 
     URI getURI();

@@ -1,11 +1,10 @@
 package org.glavo.plumo;
 
-import org.glavo.plumo.internal.Constants;
-import org.glavo.plumo.internal.DefaultLogger;
-import org.glavo.plumo.internal.HttpListener;
+import org.glavo.plumo.internal.*;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
 import org.glavo.plumo.internal.util.VirtualThreadUtils;
+import org.jetbrains.annotations.ApiStatus;
 
 import javax.net.ssl.*;
 import java.io.Closeable;
@@ -331,7 +330,37 @@ public final class Plumo {
 
     @FunctionalInterface
     public interface Handler {
-        HttpResponse handle(HttpRequest request) throws IOException, HttpResponseException;
+        @ApiStatus.Internal
+        default void handle(HttpSession session, HttpRequest request) throws IOException, HttpResponseException {
+            try (HttpResponseImpl r = (HttpResponseImpl) handle(request)) {
+                if (r == null) {
+                    throw ServerShutdown.shutdown();
+                }
+
+                HttpRequestImpl requestImpl = (HttpRequestImpl) request;
+
+                String connection = requestImpl.headers.getFirst("connection");
+                boolean keepAlive = "HTTP/1.1".equals(requestImpl.getHttpVersion()) && (connection == null || !connection.equals("close"));
+
+                if (!r.isAvailable()) {
+                    Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "The response has been sent before");
+                    throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
+                }
+
+                try {
+                    session.send((HttpRequestImpl) request, r, session.outputStream, keepAlive);
+                } catch (IOException ioe) {
+                    Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Could not send response to the client", ioe);
+                    throw ServerShutdown.shutdown();
+                }
+
+                if (!keepAlive || r.needCloseConnection()) {
+                    throw ServerShutdown.shutdown();
+                }
+            }
+        }
+
+        HttpResponse handle(HttpRequest request) throws IOException;
     }
 
     public static final Logger LOGGER;

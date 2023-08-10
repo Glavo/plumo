@@ -16,7 +16,7 @@ public final class HttpRequestImpl implements HttpRequest {
     private final SocketAddress remoteAddress;
     private final SocketAddress localAddress;
 
-    final MultiStringMap headers = new MultiStringMap();
+    public final MultiStringMap headers = new MultiStringMap();
 
     // Initialize in HttpRequestReader
     Method method;
@@ -38,6 +38,11 @@ public final class HttpRequestImpl implements HttpRequest {
                 body = null;
             }
         }
+    }
+
+    @Override
+    public String getHttpVersion() {
+        return httpVersion;
     }
 
     @Override
