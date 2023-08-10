@@ -12,7 +12,6 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.Channels;
-import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;

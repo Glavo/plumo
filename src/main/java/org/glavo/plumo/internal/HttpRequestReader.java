@@ -3,7 +3,7 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.HttpResponseException;
-import org.glavo.plumo.internal.util.IOUtils;
+import org.glavo.plumo.internal.util.Utils;
 
 import java.io.Closeable;
 import java.io.EOFException;
@@ -370,7 +370,7 @@ public class HttpRequestReader implements Closeable {
         int nameEnd = off;
         while (nameEnd < end) {
             byte ch = buf[nameEnd];
-            if (IOUtils.isTokenPart(ch) && ch != ':') {
+            if (Utils.isTokenPart(ch) && ch != ':') {
                 nameEnd++;
             } else {
                 break;

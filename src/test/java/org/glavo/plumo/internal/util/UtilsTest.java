@@ -15,5 +15,6 @@ public class UtilsTest {
         assertThrows(IllegalArgumentException.class, () -> Utils.normalizeHttpHeaderFieldName(""));
         assertThrows(IllegalArgumentException.class, () -> Utils.normalizeHttpHeaderFieldName("content length"));
         assertThrows(IllegalArgumentException.class, () -> Utils.normalizeHttpHeaderFieldName("Content length"));
+        assertThrows(IllegalArgumentException.class, () -> Utils.normalizeHttpHeaderFieldName("A".repeat(81)));
     }
 }

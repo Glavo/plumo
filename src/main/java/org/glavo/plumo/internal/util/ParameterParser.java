@@ -40,7 +40,7 @@ public final class ParameterParser {
                 continue;
             }
 
-            if (!IOUtils.isTokenPart(ch)) {
+            if (!Utils.isTokenPart(ch)) {
                 skipInvalid();
                 continue;
             }
@@ -48,7 +48,7 @@ public final class ParameterParser {
             int tokenStart = offset;
             while (offset < limit) {
                 ch = input.charAt(offset);
-                if (IOUtils.isTokenPart(ch)) {
+                if (Utils.isTokenPart(ch)) {
                     offset++;
                 } else {
                     break;
