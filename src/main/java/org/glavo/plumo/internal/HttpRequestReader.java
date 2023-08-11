@@ -16,7 +16,21 @@ import java.util.Locale;
 
 public class HttpRequestReader implements Closeable {
 
-    private static final Charset HEADER_ENCODING = StandardCharsets.UTF_8;
+    private static final Charset HEADER_ENCODING;
+
+    static {
+        if (Constants.HEADER_ENCODING != null) {
+            HEADER_ENCODING = Charset.forName(Constants.HEADER_ENCODING);
+
+            if (HEADER_ENCODING != StandardCharsets.US_ASCII
+                && HEADER_ENCODING != StandardCharsets.UTF_8
+                && HEADER_ENCODING != StandardCharsets.ISO_8859_1) {
+                throw new IllegalArgumentException("Illegal http header encoding");
+            }
+        } else {
+            HEADER_ENCODING = StandardCharsets.UTF_8;
+        }
+    }
 
     private final byte[] lineBuffer = new byte[Constants.LINE_BUFFER_LENGTH];
     private int bufferOff;
@@ -478,7 +492,7 @@ public class HttpRequestReader implements Closeable {
     }
 
     private final class MultiPartInputStream extends InputStream {
-       private boolean closed = false;
+        private boolean closed = false;
 
         private void ensureOpen() throws IOException {
             if (closed) {

@@ -48,6 +48,7 @@ public final class Constants {
     public static final int SOCKET_TIMEOUT = Integer.getInteger(PROPERTY_PREFIX + "socketTimeout", 5000);
     public static final Boolean USE_VIRTUAL_THREAD = getBoolean(PROPERTY_PREFIX + "useVirtualThread", null);
     public static final String LOGGER_PROVIDER = System.getProperty(PROPERTY_PREFIX + "loggerProvider");
+    public static final String HEADER_ENCODING = System.getProperty(PROPERTY_PREFIX + "httpHeaderEncoding");
 
     static {
         if (LINE_BUFFER_LENGTH < 0) {
