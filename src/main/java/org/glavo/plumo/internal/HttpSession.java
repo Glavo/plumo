@@ -50,7 +50,34 @@ public final class HttpSession implements Closeable, Runnable {
     public void run() {
         try {
             while (isOpen()) {
-                execute();
+                try {
+                    HttpRequestImpl request = new HttpRequestImpl(remoteAddress, localAddress);
+                    try {
+                        requestReader.readHeader(request);
+                    } catch (EOFException e) {
+                        throw ServerShutdown.shutdown();
+                    }
+                    try {
+                        listener.handler.handle(this, request);
+                    } finally {
+                        request.close();
+                    }
+                } catch (SocketException | SocketTimeoutException e) {
+                    // throw it out to close socket
+                    throw e;
+                } catch (IOException | UncheckedIOException | HttpResponseException e) {
+                    HttpResponse resp;
+                    if (e instanceof HttpResponseException) {
+                        resp = HttpResponse.newPlainTextResponse(((HttpResponseException) e).getStatus(), e.getMessage());
+                    } else if (e instanceof SSLException) {
+                        resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
+                    } else {
+                        Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Server internal error", e);
+                        resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
+                    }
+
+                    send(null, (HttpResponseImpl) resp, this.outputStream, false);
+                }
             }
         } catch (ServerShutdown | SocketTimeoutException ignored) {
             // When the socket is closed by the client,
@@ -78,37 +105,6 @@ public final class HttpSession implements Closeable, Runnable {
         return socket instanceof Socket
                 ? !((Socket) socket).isClosed()
                 : ((SocketChannel) socket).isOpen();
-    }
-
-    private void execute() throws IOException {
-        try {
-            HttpRequestImpl request = new HttpRequestImpl(remoteAddress, localAddress);
-            try {
-                requestReader.readHeader(request);
-            } catch (EOFException e) {
-                throw ServerShutdown.shutdown();
-            }
-            try {
-                listener.handler.handle(this, request);
-            } finally {
-                request.close();
-            }
-        } catch (SocketException | SocketTimeoutException e) {
-            // throw it out to close socket
-            throw e;
-        } catch (IOException | UncheckedIOException | HttpResponseException e) {
-            HttpResponse resp;
-            if (e instanceof HttpResponseException) {
-                resp = HttpResponse.newPlainTextResponse(((HttpResponseException) e).getStatus(), e.getMessage());
-            } else if (e instanceof SSLException) {
-                resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
-            } else {
-                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Server internal error", e);
-                resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
-            }
-
-            send(null, (HttpResponseImpl) resp, this.outputStream, false);
-        }
     }
 
     /**
