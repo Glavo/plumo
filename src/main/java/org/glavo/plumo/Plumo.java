@@ -84,7 +84,7 @@ public final class Plumo {
                         shutdownExecutor = false;
                         executor = command -> {
                             Thread t = VirtualThreadUtils.newVirtualThread(command);
-                            t.setName("Plumo Request Processor #" + requestCount.getAndIncrement());
+                            t.setName("plumo Request Processor #" + requestCount.getAndIncrement());
                             t.start();
                         };
                     } else {
@@ -124,7 +124,7 @@ public final class Plumo {
             }
         }
 
-        public Builder listen(int port) {
+        public Builder setListenAddress(int port) {
             ensureAvailable();
             try {
                 this.address = new InetSocketAddress(port);
@@ -136,32 +136,19 @@ public final class Plumo {
             return this;
         }
 
-        public Builder listen(String hostName, int port) {
-            ensureAvailable();
-            try {
-                this.address = new InetSocketAddress(hostName, port);
-                this.unixDomainSocketPath = null;
-            } catch (Throwable e) {
-                shutdownExecutorIfNecessary();
-                throw e;
-            }
-            return this;
-        }
-
-        public Builder listen(InetSocketAddress address) {
+        public Builder setListenAddress(InetSocketAddress address) {
             ensureAvailable();
             this.address = safeCheckNull(address);
             this.unixDomainSocketPath = null;
             return this;
         }
 
-        public Builder listen(Path path) {
-            ensureAvailable();
-            listen(path, false);
+        public Builder setListenAddress(Path path) {
+            setListenAddress(path, false);
             return this;
         }
 
-        public Builder listen(Path path, boolean deleteIfExists) {
+        public Builder setListenAddress(Path path, boolean deleteIfExists) {
             ensureAvailable();
             try {
                 this.address = UnixDomainSocketUtils.createUnixDomainSocketAddress(path);
@@ -271,7 +258,7 @@ public final class Plumo {
         Objects.requireNonNull(handler);
 
         return Plumo.newBuilder()
-                .listen(port)
+                .setListenAddress(port)
                 .setHandler(handler)
                 .build();
     }
@@ -281,7 +268,7 @@ public final class Plumo {
         Objects.requireNonNull(handler);
 
         return Plumo.newBuilder()
-                .listen(address)
+                .setListenAddress(address)
                 .setHandler(handler)
                 .build();
     }
@@ -291,7 +278,7 @@ public final class Plumo {
         Objects.requireNonNull(handler);
 
         return Plumo.newBuilder()
-                .listen(path)
+                .setListenAddress(path)
                 .setHandler(handler)
                 .build();
     }
@@ -551,11 +538,6 @@ public final class Plumo {
 
     public static void main(String[] args) throws Throwable {
         Plumo.newHttpServer(10001, request -> {
-            LOGGER.log(Logger.Level.INFO, "Hello World!");
-            LOGGER.log(Logger.Level.INFO, "Hello World!", new Exception());
-            LOGGER.log(Logger.Level.INFO, "Hello World!");
-
-
             System.out.println(Thread.currentThread());
             System.out.println(request);
             System.out.println(request.getBody(HttpDataFormat.TEXT));
