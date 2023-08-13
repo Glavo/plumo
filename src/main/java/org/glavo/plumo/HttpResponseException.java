@@ -1,7 +1,5 @@
 package org.glavo.plumo;
 
-import org.glavo.plumo.HttpResponse;
-
 public final class HttpResponseException extends Exception {
 
     private final HttpResponse.Status status;

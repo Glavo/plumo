@@ -107,6 +107,35 @@ public final class HttpSession implements Closeable, Runnable {
                 : ((SocketChannel) socket).isOpen();
     }
 
+    public void handleImpl(HttpRequest request, Plumo.Handler handler) throws IOException, HttpResponseException {
+        try (HttpResponseImpl r = (HttpResponseImpl) handler.handle(request)) {
+            if (r == null) {
+                throw ServerShutdown.shutdown();
+            }
+
+            HttpRequestImpl requestImpl = (HttpRequestImpl) request;
+
+            String connection = requestImpl.headers.getFirst("connection");
+            boolean keepAlive = "HTTP/1.1".equals(requestImpl.getHttpVersion()) && (connection == null || !connection.equals("close"));
+
+            if (!r.isAvailable()) {
+                Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "The response has been sent before");
+                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
+            }
+
+            try {
+                send((HttpRequestImpl) request, r, outputStream, keepAlive);
+            } catch (IOException ioe) {
+                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Could not send response to the client", ioe);
+                throw ServerShutdown.shutdown();
+            }
+
+            if (!keepAlive || r.needCloseConnection()) {
+                throw ServerShutdown.shutdown();
+            }
+        }
+    }
+
     /**
      * Sends given response to the socket.
      */
