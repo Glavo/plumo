@@ -43,7 +43,7 @@ public final class Utils {
             throw new IllegalArgumentException("Header name must not be empty");
         }
         if (len > 80) {
-            throw new IllegalArgumentException("Header name is too large");
+            throw new IllegalArgumentException("Header name is too long");
         }
 
         int i = 0;

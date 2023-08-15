@@ -1,8 +1,40 @@
 package org.glavo.plumo.internal.util;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
+import java.util.Map;
 
 public final class ParameterParser {
+
+    public static Charset getEncoding(String contentType) {
+        if (contentType == null) {
+            return StandardCharsets.UTF_8;
+        }
+
+        int idx = contentType.indexOf(';');
+        if (idx < 0 || idx >= contentType.length() - 1) {
+            return StandardCharsets.UTF_8;
+        }
+
+        ParameterParser parser = new ParameterParser(contentType, idx + 1, ';');
+
+        Map.Entry<String, String> next;
+        while ((next = parser.nextParameter(false)) != null) {
+            if ("charset".equalsIgnoreCase(next.getKey())) {
+                String charsetName = next.getValue();
+
+                try {
+                    return Charset.forName(charsetName);
+                } catch (Throwable ignored) {
+                    break; // unknown encoding
+                }
+            }
+        }
+
+        return StandardCharsets.UTF_8;
+    }
+
     private final String input;
     private int offset;
     private final int limit;

@@ -1,267 +1,192 @@
 package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.ContentType;
-import org.glavo.plumo.Cookie;
 import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.MultiStringMap;
 import org.glavo.plumo.internal.util.Utils;
 
-import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
-public final class HttpResponseImpl implements HttpResponse, Cloneable, AutoCloseable {
+public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
 
-    MultiStringMap headers = new MultiStringMap();
+    public MultiStringMap headers = new MultiStringMap();
 
-    Status status;
-    Instant date;
-
-    String connection;
+    public Status status;
 
     // InputStream | String | byte[] | Path
-    Object body;
-    long contentLength;
-    ContentType contentType;
-    String contentEncoding;
-
-    List<Cookie> cookies;
-
+    public Object body;
+    public long contentLength;
     private boolean closed = false;
 
+    private boolean frozen;
+    private boolean headerIsAlias;
+
     public HttpResponseImpl() {
+        this.frozen = false;
+        this.headerIsAlias = false;
+
+        this.headers = new MultiStringMap();
     }
 
-    public HttpResponseImpl(Status status) {
-        this.status = status;
+    public HttpResponseImpl(MultiStringMap old) {
+        this.frozen = false;
+        this.headerIsAlias = true;
+
+        this.headers = old;
     }
 
-    public HttpResponseImpl(Status status, Object body, ContentType contentType) {
+    public HttpResponseImpl(boolean frozen, Status status, Object body, String contentType) {
+        this.frozen = frozen;
+        this.headerIsAlias = false;
+
         this.status = status;
         this.body = body;
-        this.contentType = contentType;
+
+        this.headers.map.put("content-type", contentType);
     }
 
-    public boolean isReusable() {
-        return !(body instanceof InputStream);
+    private HttpResponseImpl copyIfFrozen() {
+        if (!frozen) {
+            return this;
+        }
+
+        if (body instanceof InputStream) {
+            throw new UnsupportedOperationException("Body is not reusable");
+        }
+
+        HttpResponseImpl response = new HttpResponseImpl(this.headers);
+        response.body = this.body;
+        response.contentLength = this.contentLength;
+        return response;
+    }
+
+    private HttpResponseImpl ensureHeaderUnaliased() {
+        if (headerIsAlias) {
+            this.headers = headers.clone();
+            headerIsAlias = false;
+        }
+
+        return this;
+    }
+
+    @Override
+    public HttpResponse withStatus(Status status) {
+        HttpResponseImpl response = copyIfFrozen();
+        response.status = status;
+        return response;
+    }
+
+    @Override
+    public HttpResponse withHeader(String name, String value) {
+        String canonicalName = Utils.normalizeHttpHeaderFieldName(name);
+        Objects.requireNonNull(value);
+
+        HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
+        response.headers.map.put(canonicalName, value);
+        return response;
+    }
+
+    @Override
+    public HttpResponse withHeader(String name, List<String> values) {
+        String canonicalName = Utils.normalizeHttpHeaderFieldName(name);
+        int size = values.size(); // implicit null check
+
+        HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
+
+        if (size == 0) {
+            response.headers.map.put(canonicalName, null);
+        } else if (size == 1) {
+            response.headers.map.put(canonicalName, values.get(0));
+        } else {
+            ArrayList<String> clone = new ArrayList<>(size);
+            for (String value : values) {
+                clone.add(Objects.requireNonNull(value));
+            }
+            if (clone.size() != size) {
+                throw new ConcurrentModificationException();
+            }
+            response.headers.map.put(canonicalName, clone);
+        }
+
+        return response;
+    }
+
+    @Override
+    public HttpResponse addHeader(String name, String value) {
+        String canonicalName = Utils.normalizeHttpHeaderFieldName(name);
+        Objects.requireNonNull(value);
+
+        HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
+        response.headers.add(canonicalName, value);
+        return response;
+    }
+
+    @Override
+    public HttpResponse removeHeader(String name) {
+        String canonicalName;
+
+        try {
+            canonicalName = Utils.normalizeHttpHeaderFieldName(name);
+        } catch (IllegalArgumentException ignored) {
+            return this;
+        }
+
+        HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
+        response.headers.map.put(canonicalName, null);
+        return response;
+    }
+
+    @Override
+    public HttpResponse withBody(byte[] data) {
+        HttpResponseImpl response = copyIfFrozen();
+        response.body = data;
+        response.contentLength = data.length;
+        return response;
+    }
+
+    @Override
+    public HttpResponse withBody(String data) {
+        HttpResponseImpl response = copyIfFrozen();
+        response.body = data;
+        response.contentLength = -1L;
+        return response;
+    }
+
+    @Override
+    public HttpResponse withBody(InputStream data, long contentLength) {
+        Objects.requireNonNull(data);
+
+        HttpResponseImpl response = copyIfFrozen();
+        response.body = data;
+        response.contentLength = contentLength;
+        return response;
+    }
+
+    @Override
+    public HttpResponse withBody(Path file) {
+        Objects.requireNonNull(file);
+
+        HttpResponseImpl response = copyIfFrozen();
+        response.body = file;
+        response.contentLength = -1L;
+        return response;
     }
 
     // ----
 
-    public boolean needCloseConnection() {
-        return "close".equals(connection);
-    }
-
     public boolean isAvailable() {
-        return isReusable() || !closed;
+        return !(body instanceof InputStream) || !closed;
     }
 
     @Override
     public void close() {
-        if (isReusable() || closed) {
+        if (!(body instanceof InputStream) || closed) {
             return;
         }
 
         closed = true;
-        if (body instanceof InputStream) {
-            IOUtils.safeClose((InputStream) body);
-        }
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    protected HttpResponseImpl clone() throws CloneNotSupportedException {
-        if (!(isReusable())) {
-            throw new CloneNotSupportedException();
-        }
-
-        HttpResponseImpl res = (HttpResponseImpl) super.clone();
-        res.headers = new MultiStringMap((HashMap<String, Object>) headers.map.clone());
-        if (cookies != null) {
-            res.cookies = new ArrayList<>(cookies);
-        }
-        return res;
-    }
-
-    public static final class BuilderImpl implements HttpResponse.Builder {
-        private HttpResponseImpl response;
-        private boolean aliased;
-
-        public BuilderImpl() {
-            this.response = new HttpResponseImpl();
-            this.aliased = false;
-        }
-
-        public BuilderImpl(HttpResponse response) {
-            this.response = (HttpResponseImpl) response;
-            this.aliased = true;
-        }
-
-        private void ensureUnaliased() {
-            if (aliased) {
-                try {
-                    response = response.clone();
-                } catch (CloneNotSupportedException e) {
-                    throw new UnsupportedOperationException();
-                }
-                aliased = false;
-            }
-        }
-
-        @Override
-        public HttpResponse build() {
-            aliased = true;
-            return response;
-        }
-
-        @Override
-        public Builder setStatus(Status status) {
-            ensureUnaliased();
-            response.status = status;
-            return this;
-        }
-
-        @Override
-        public Builder setDate(Instant date) {
-            ensureUnaliased();
-            response.date = date;
-            return this;
-        }
-
-
-        @Override
-        public Builder addHeader(String name, String value) {
-            Objects.requireNonNull(value);
-            ensureUnaliased();
-
-            name = Utils.normalizeHttpHeaderFieldName(name);
-            switch (name) {
-                case "connection":
-                    response.connection = value;
-                    break;
-                case "content-length":
-                    if (!(response.body instanceof InputStream)) {
-                        throw new UnsupportedOperationException();
-                    }
-
-                    long len = Long.parseLong(value);
-                    if (len < 0) {
-                        throw new IllegalArgumentException();
-                    }
-                    response.contentLength = len;
-                    break;
-                case "content-type":
-                    response.contentType = new ContentType(value);
-                    break;
-                case "content-encoding":
-                    response.contentEncoding = value;
-                    break;
-                case "date":
-                    response.date = Instant.from(Constants.HTTP_TIME_FORMATTER.parse(value));
-                    break;
-                default:
-                    response.headers.add(name, value);
-            }
-
-            return this;
-        }
-
-        @Override
-        public Builder setContentType(ContentType contentType) {
-            ensureUnaliased();
-            response.contentType = contentType;
-            return this;
-        }
-
-        @Override
-        public Builder setContentType(String contentType) {
-            ensureUnaliased();
-            response.contentType = new ContentType(contentType);
-            return this;
-        }
-
-        @Override
-        public Builder setContentEncoding(String contentEncoding) {
-            ensureUnaliased();
-            response.contentEncoding = contentEncoding;
-            return this;
-        }
-
-        @Override
-        public Builder setKeepAlive(boolean keepAlive) {
-            ensureUnaliased();
-            response.connection = keepAlive ? "keep-alive" : "close";
-            return this;
-        }
-
-        @Override
-        public Builder addCookies(Iterable<? extends Cookie> cookies) {
-            ensureUnaliased();
-            if (response.cookies == null) {
-                response.cookies = new ArrayList<>();
-            }
-
-            for (Cookie cookie : cookies) {
-                response.cookies.add(cookie);
-            }
-
-            return this;
-        }
-
-        @Override
-        public Builder setBody(byte[] data) {
-            ensureUnaliased();
-            response.body = data;
-            response.contentLength = -1;
-            return this;
-        }
-
-        @Override
-        public Builder setBody(String data) {
-            ensureUnaliased();
-            response.body = Objects.requireNonNull(data);
-            response.contentLength = -1;
-            return this;
-        }
-
-        @Override
-        public Builder setBody(InputStream data, long contentLength) {
-            ensureUnaliased();
-            if (contentLength < 0) {
-                throw new IllegalArgumentException();
-            }
-
-            response.body = Objects.requireNonNull(data);
-            response.contentLength = contentLength;
-            return this;
-        }
-
-        @Override
-        public Builder setBody(Path file) {
-            ensureUnaliased();
-
-            response.body = Objects.requireNonNull(file);
-            response.contentLength = -1;
-            return this;
-        }
-
-        @Override
-        public Builder setBody(File file) {
-            setBody(file.toPath());
-            return this;
-        }
-
-        @Override
-        public Builder setBodyUnknownSize(InputStream data) {
-            response.body = data;
-            response.contentLength = -1;
-            return this;
-        }
+        IOUtils.safeClose((InputStream) body);
     }
 }

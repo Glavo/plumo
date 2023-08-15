@@ -3,6 +3,7 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.*;
 import org.glavo.plumo.internal.util.ChunkedOutputStream;
 import org.glavo.plumo.internal.util.IOUtils;
+import org.glavo.plumo.internal.util.ParameterParser;
 import org.glavo.plumo.internal.util.UnsyncBufferedOutputStream;
 
 import javax.net.ssl.SSLException;
@@ -68,12 +69,12 @@ public final class HttpSession implements Closeable, Runnable {
                 } catch (IOException | UncheckedIOException | HttpResponseException e) {
                     HttpResponse resp;
                     if (e instanceof HttpResponseException) {
-                        resp = HttpResponse.newPlainTextResponse(((HttpResponseException) e).getStatus(), e.getMessage());
+                        resp = HttpResponse.newTextResponse(((HttpResponseException) e).getStatus(), e.getMessage(), "text/plain");
                     } else if (e instanceof SSLException) {
-                        resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage());
+                        resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage(), "text/plain");
                     } else {
                         Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Server internal error", e);
-                        resp = HttpResponse.newPlainTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
+                        resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR", "text/plain");
                     }
 
                     send(null, (HttpResponseImpl) resp, this.outputStream, false);
@@ -130,7 +131,7 @@ public final class HttpSession implements Closeable, Runnable {
                 throw ServerShutdown.shutdown();
             }
 
-            if (!keepAlive || r.needCloseConnection()) {
+            if (!keepAlive || "close".equals(r.headers.getFirst("connection"))) {
                 throw ServerShutdown.shutdown();
             }
         }
@@ -148,13 +149,9 @@ public final class HttpSession implements Closeable, Runnable {
         out.writeStatus(response.status);
         out.writeCRLF();
 
-        ContentType contentType = response.contentType;
-        if (contentType != null) {
-            out.writeHttpHeader("content-type", contentType.toString());
+        if (request == null || !request.headers.containsKey("date")) {
+            out.writeHttpHeader("date", Constants.HTTP_TIME_FORMATTER.format(Instant.now()));
         }
-
-        Instant date = response.date == null ? Instant.now() : response.date;
-        out.writeHttpHeader("date", Constants.HTTP_TIME_FORMATTER.format(date));
 
         for (Map.Entry<String, Object> entry : response.headers.map.entrySet()) {
             String key = entry.getKey();
@@ -162,26 +159,21 @@ public final class HttpSession implements Closeable, Runnable {
 
             if (value instanceof String) {
                 out.writeHttpHeader(key, (String) value);
-            } else {
+            } else if (value != null) {
                 @SuppressWarnings("unchecked")
                 List<String> list = (List<String>) value;
                 for (String v : list) {
                     out.writeHttpHeader(key, v);
                 }
             }
-
         }
 
-        if (response.cookies != null) {
-            for (Cookie cookie : response.cookies) {
-                out.writeHttpHeader("set-cookie", cookie.toString());
-            }
-        }
+        String contentType = null;
+        String contentEncoding = null;
 
-        if (!keepAlive) {
-            out.writeHttpHeader("connection", "close");
-        } else if (response.connection != null) {
-            out.writeHttpHeader("connection", response.connection);
+        if (request != null) {
+            contentType = request.headers.getFirst("content-type");
+            contentEncoding = request.headers.getFirst("content-encoding");
         }
 
         long inputLength;
@@ -200,7 +192,7 @@ public final class HttpSession implements Closeable, Runnable {
                 preprocessedData = body;
                 inputLength = ((byte[]) body).length;
             } else if (body instanceof String) {
-                byte[] ba = ((String) body).getBytes(contentType == null ? StandardCharsets.UTF_8 : contentType.getCharset());
+                byte[] ba = ((String) body).getBytes(ParameterParser.getEncoding(contentType));
                 preprocessedData = ba;
                 inputLength = ba.length;
             } else if (body instanceof Path) {
@@ -215,19 +207,18 @@ public final class HttpSession implements Closeable, Runnable {
             String acceptEncoding = request != null ? request.headers.getFirst("accept-encoding") : null;
             if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
                 useGzip = false;
-            } else if (response.contentEncoding == null) {
-                if (response.contentType == null || (inputLength >= 0 && inputLength <= 512)) { // TODO: magic number
+            } else if (contentEncoding == null) {
+                if (contentType == null || (inputLength >= 0 && inputLength <= 512)) { // TODO: magic number
                     useGzip = false;
                 } else {
-                    String type = response.contentType.getMimeType();
-                    useGzip = type.startsWith("text/") || type.endsWith("json");
+                    useGzip = contentType.startsWith("text/") || contentType.startsWith("application/json");
                 }
-            } else if (response.contentEncoding.isEmpty() || "identity".equals(response.contentEncoding)) {
+            } else if (contentEncoding.isEmpty() || "identity".equals(contentEncoding)) {
                 useGzip = false;
-            } else if ("gzip".equals(response.contentEncoding)) {
+            } else if ("gzip".equals(contentEncoding)) {
                 useGzip = true;
             } else {
-                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Unsupported content encoding: " + response.contentEncoding);
+                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Unsupported content encoding: " + contentEncoding);
                 useGzip = false;
             }
 

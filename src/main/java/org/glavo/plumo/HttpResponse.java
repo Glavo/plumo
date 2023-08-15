@@ -5,72 +5,48 @@ import org.jetbrains.annotations.ApiStatus;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.time.Instant;
+import java.util.List;
 
 
 public /*sealed*/ interface HttpResponse {
 
-    static Builder newBuilder() {
-        return new HttpResponseImpl.BuilderImpl();
+    static HttpResponse newResponse() {
+        return new HttpResponseImpl();
     }
 
-    static Builder newBuilder(HttpResponse base) {
-        if (!base.isReusable()) {
-            throw new UnsupportedOperationException();
-        }
-        return new HttpResponseImpl.BuilderImpl(base);
+    static HttpResponse newResponse(Status status) {
+        return newResponse().withStatus(status);
     }
 
-    interface Builder {
-
-        HttpResponse build();
-
-        Builder setStatus(Status status);
-
-        Builder setDate(Instant time);
-
-        Builder setContentType(ContentType contentType);
-
-        Builder setContentType(String contentType);
-
-        Builder setContentEncoding(String contentEncoding);
-
-        Builder setKeepAlive(boolean keepAlive);
-
-        Builder addHeader(String name, String value);
-
-        Builder addCookies(Iterable<? extends Cookie> cookies);
-
-        Builder setBody(byte[] data);
-
-        Builder setBody(String data);
-
-        Builder setBody(InputStream data, long contentLength);
-
-        Builder setBody(Path file);
-
-        Builder setBody(File file);
-
-        Builder setBodyUnknownSize(InputStream data);
+    static HttpResponse newTextResponse(String text, String contentType) {
+        return newTextResponse(Status.OK, text, contentType);
     }
 
-    static HttpResponse newPlainTextResponse(String data) {
-        return new HttpResponseImpl(Status.OK, data, ContentType.PLAIN_TEXT);
+    static HttpResponse newTextResponse(Status status, String text, String contentType) {
+        return new HttpResponseImpl(false, status, text, contentType);
     }
 
-    static HttpResponse newPlainTextResponse(Status status, String data) {
-        return new HttpResponseImpl(status, data, ContentType.PLAIN_TEXT);
-    }
+    HttpResponse withStatus(Status status);
 
-    static HttpResponse newHtmlResponse(String html) {
-        return new HttpResponseImpl(Status.OK, html, ContentType.HTML);
-    }
+    HttpResponse withHeader(String name, String value);
 
-    static HttpResponse newHtmlResponse(Status status, String html) {
-        return new HttpResponseImpl(status, html, ContentType.HTML);
-    }
+    HttpResponse withHeader(String name, List<String> values);
 
-    boolean isReusable();
+    HttpResponse addHeader(String name, String value);
+
+    HttpResponse removeHeader(String name);
+
+    HttpResponse withBody(byte[] data);
+
+    HttpResponse withBody(String data);
+
+    HttpResponse withBody(InputStream data, long contentLength);
+
+    HttpResponse withBody(Path file);
+
+    default HttpResponse withBody(File file) {
+        return withBody(file.toPath());
+    }
 
     final class Status implements Serializable {
         private static final long serialVersionUID = 0L;

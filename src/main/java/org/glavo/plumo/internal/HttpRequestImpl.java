@@ -1,6 +1,5 @@
 package org.glavo.plumo.internal;
 
-import org.glavo.plumo.ContentType;
 import org.glavo.plumo.HttpDataFormat;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.MultiStringMap;
@@ -105,23 +104,6 @@ public final class HttpRequestImpl implements HttpRequest {
     @Override
     public long getBodySize() {
         return bodySize;
-    }
-
-    private ContentType contentType;
-    private boolean contentTypeInitialized = false;
-
-    @Override
-    public ContentType getContentType() {
-        if (!contentTypeInitialized) {
-            contentTypeInitialized = true;
-
-            String t = headers.getFirst("content-type");
-            if (t != null) {
-                contentType = new ContentType(t);
-            }
-        }
-
-        return contentType;
     }
 
     private URI decodedUri;

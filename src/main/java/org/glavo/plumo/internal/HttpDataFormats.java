@@ -1,15 +1,14 @@
 package org.glavo.plumo.internal;
 
-import org.glavo.plumo.ContentType;
 import org.glavo.plumo.HttpDataFormat;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.IOUtils;
+import org.glavo.plumo.internal.util.ParameterParser;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public final class HttpDataFormats {
@@ -37,8 +36,7 @@ public final class HttpDataFormats {
                 throw new OutOfMemoryError("Request body is too large");
             }
 
-            ContentType contentType = response.getContentType();
-            Charset encoding = contentType == null ? StandardCharsets.UTF_8 : contentType.getCharset();
+            Charset encoding = ParameterParser.getEncoding(response.getHeader("content-type"));
 
             if (size < 0) {
                 InputStreamReader reader = new InputStreamReader(input, encoding);

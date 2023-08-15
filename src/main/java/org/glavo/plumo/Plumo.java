@@ -99,7 +99,7 @@ public final class Plumo {
 
                 Handler handler = this.handler;
                 if (handler == null) {
-                    handler = session -> HttpResponse.newPlainTextResponse("");
+                    handler = session -> HttpResponse.newTextResponse("", "text/plain"); // TODO
                 }
 
                 SocketAddress address = this.address;
@@ -517,7 +517,7 @@ public final class Plumo {
             System.out.println(request);
             System.out.println(request.getBody(HttpDataFormat.TEXT));
 
-            return HttpResponse.newHtmlResponse("<body>Hello World!</body>");
+            return HttpResponse.newTextResponse("<body>Hello World!</body>", "text/html");
         }).start();
     }
 }

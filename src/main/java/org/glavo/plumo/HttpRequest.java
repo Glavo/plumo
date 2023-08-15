@@ -44,8 +44,6 @@ public interface HttpRequest {
 
     long getBodySize();
 
-    ContentType getContentType();
-
     /**
      * HTTP Request methods, with the ability to decode a <code>String</code> back
      * to its enum value.

@@ -35,7 +35,7 @@ public final class MultiStringMap extends AbstractMap<String, List<String>> {
         } else if (v instanceof String) {
             return Collections.singletonList((String) v);
         } else {
-            return (List<String>) v;
+            return Collections.unmodifiableList((List<String>) v);
         }
     }
 
@@ -88,6 +88,17 @@ public final class MultiStringMap extends AbstractMap<String, List<String>> {
                 }
             }
         }
+    }
+
+    @Override
+    public MultiStringMap clone() {
+        HashMap<String, Object> cloned = (HashMap<String, Object>) this.map.clone();
+        for (Entry<String, Object> entry : cloned.entrySet()) {
+            if (entry.getValue() instanceof List<?>) {
+                entry.setValue(new ArrayList<>(((List<?>) entry.getValue())));
+            }
+        }
+        return new MultiStringMap(cloned);
     }
 
     private final class EntrySet extends AbstractSet<Entry<String, List<String>>> {
