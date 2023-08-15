@@ -7,7 +7,6 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.List;
 
-
 public /*sealed*/ interface HttpResponse {
 
     static HttpResponse newResponse() {

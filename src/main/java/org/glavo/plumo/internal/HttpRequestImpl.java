@@ -2,8 +2,6 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpDataFormat;
 import org.glavo.plumo.HttpRequest;
-import org.glavo.plumo.internal.util.MultiStringMap;
-import org.glavo.plumo.internal.util.ParameterParser;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +13,7 @@ public final class HttpRequestImpl implements HttpRequest {
     private final SocketAddress remoteAddress;
     private final SocketAddress localAddress;
 
-    public final MultiStringMap headers = new MultiStringMap();
+    public final Headers headers = new Headers();
 
     // Initialize in HttpRequestReader
     Method method;
@@ -56,35 +54,12 @@ public final class HttpRequestImpl implements HttpRequest {
 
     @Override
     public String getHeader(String name) {
-        return headers.getFirst(name.toLowerCase(Locale.ROOT));
+        return headers.getHeader(name.toLowerCase(Locale.ROOT));
     }
 
     @Override
     public List<String> getHeaders(String name) {
         return headers.get(name.toLowerCase(Locale.ROOT));
-    }
-
-    private Map<String, List<String>> cookies;
-
-    @Override
-    public Map<String, List<String>> getCookies() {
-        if (cookies == null) {
-            String cookie = headers.getFirst("cookie");
-            if (cookie == null) {
-                cookies = Collections.emptyMap();
-            } else {
-                MultiStringMap msm = new MultiStringMap();
-                ParameterParser parser = new ParameterParser(cookie, ',');
-                Map.Entry<String, String> pair;
-                while ((pair = parser.nextParameter()) != null) {
-                    String value = pair.getValue();
-                    msm.add(pair.getKey(), value == null ? "" : value);
-                }
-                cookies = msm;
-            }
-        }
-
-        return cookies;
     }
 
     private boolean hasGetBody = false;
@@ -161,7 +136,7 @@ public final class HttpRequestImpl implements HttpRequest {
 
     @Override
     public String getHost() {
-        return headers.getFirst("host");
+        return headers.getHeader("host");
     }
 
     @Override
@@ -172,7 +147,7 @@ public final class HttpRequestImpl implements HttpRequest {
                 .append("local-address=").append(localAddress)
                 .append("] {\n");
         builder.append("    ").append(method).append(' ').append(rawUri).append(' ').append(httpVersion).append('\n');
-        headers.forEachPair((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
+        headers.forEachHeader((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
         builder.append("}");
         return builder.toString();
     }

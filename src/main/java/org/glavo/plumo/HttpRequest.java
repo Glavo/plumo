@@ -32,8 +32,6 @@ public interface HttpRequest {
 
     List<String> getHeaders(String name);
 
-    Map<String, List<String>> getCookies();
-
     String getHost();
 
     default <V, E extends Throwable> V getBody(HttpDataFormat<V, ?, E> type) throws E {

@@ -117,15 +117,15 @@ public class HttpRequestReader implements Closeable {
     }
 
     private void endOfHeader(HttpRequestImpl request) throws HttpResponseException {
-        if (request.getContentType() != null && request.getContentType().isMultipart()) {
-            if (request.method == HttpRequest.Method.POST) {
-                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "TODO"); // TODO: Multipart Body
-            } else {
-                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Invalid Content-Type.");
-            }
-        }
+//        if (request.getContentType() != null && request.getContentType().isMultipart()) {
+//            if (request.method == HttpRequest.Method.POST) {
+//                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "TODO"); // TODO: Multipart Body
+//            } else {
+//                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Invalid Content-Type.");
+//            }
+//        }
 
-        String contentLength = request.headers.getFirst("content-length");
+        String contentLength = request.headers.getHeader("content-length");
         long len;
 
         if (contentLength != null) {
@@ -411,7 +411,7 @@ public class HttpRequestReader implements Closeable {
 
         String value = off < 0 ? "" : new String(buf, off, end - off, HEADER_ENCODING).trim();
 
-        request.headers.add(name.toLowerCase(Locale.ROOT), value);
+        request.headers.addHeader(name.toLowerCase(Locale.ROOT), value);
     }
 
     private final class BoundedInputStream extends InputStream {
