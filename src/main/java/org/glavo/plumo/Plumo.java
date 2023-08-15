@@ -318,7 +318,7 @@ public final class Plumo {
     @FunctionalInterface
     public interface Handler {
         @ApiStatus.Internal
-        default void handle(HttpSession session, HttpRequest request) throws IOException, HttpResponseException {
+        default void handle(HttpSession session, HttpRequest request) throws IOException {
             session.handleImpl(request, this);
         }
 

@@ -2,7 +2,6 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.HttpResponseException;
 import org.glavo.plumo.internal.util.Utils;
 
 import java.io.Closeable;
@@ -47,7 +46,7 @@ public class HttpRequestReader implements Closeable {
         in.close();
     }
 
-    public void readHeader(HttpRequestImpl request) throws IOException, HttpResponseException {
+    public void readHeader(HttpRequestImpl request) throws IOException {
         byte[] buf = this.lineBuffer;
 
         int read = bufferRemaining;

@@ -15,12 +15,9 @@ import java.net.SocketTimeoutException;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 
 public final class HttpSession implements Closeable, Runnable {
@@ -66,7 +63,7 @@ public final class HttpSession implements Closeable, Runnable {
                 } catch (SocketException | SocketTimeoutException e) {
                     // throw it out to close socket
                     throw e;
-                } catch (IOException | UncheckedIOException | HttpResponseException e) {
+                } catch (IOException | UncheckedIOException e) {
                     HttpResponse resp;
                     if (e instanceof HttpResponseException) {
                         resp = ((HttpResponseException) e).getResponse();
@@ -108,7 +105,7 @@ public final class HttpSession implements Closeable, Runnable {
                 : ((SocketChannel) socket).isOpen();
     }
 
-    public void handleImpl(HttpRequest request, Plumo.Handler handler) throws IOException, HttpResponseException {
+    public void handleImpl(HttpRequest request, Plumo.Handler handler) throws IOException {
         try (HttpResponseImpl r = (HttpResponseImpl) handler.handle(request)) {
             if (r == null) {
                 throw ServerShutdown.shutdown();
