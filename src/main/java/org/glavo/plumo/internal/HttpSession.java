@@ -69,7 +69,7 @@ public final class HttpSession implements Closeable, Runnable {
                 } catch (IOException | UncheckedIOException | HttpResponseException e) {
                     HttpResponse resp;
                     if (e instanceof HttpResponseException) {
-                        resp = HttpResponse.newTextResponse(((HttpResponseException) e).getStatus(), e.getMessage(), "text/plain");
+                        resp = ((HttpResponseException) e).getResponse();
                     } else if (e instanceof SSLException) {
                         resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage(), "text/plain");
                     } else {
