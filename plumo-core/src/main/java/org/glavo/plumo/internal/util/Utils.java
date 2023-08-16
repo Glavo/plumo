@@ -110,19 +110,12 @@ public final class Utils {
         boolean terminated = es.isTerminated();
         if (!terminated) {
             es.shutdown();
-            boolean interrupted = false;
             while (!terminated) {
                 try {
                     terminated = es.awaitTermination(1L, TimeUnit.DAYS);
                 } catch (InterruptedException e) {
-                    if (!interrupted) {
-                        es.shutdownNow();
-                        interrupted = true;
-                    }
+                    es.shutdownNow();
                 }
-            }
-            if (interrupted) {
-                Thread.currentThread().interrupt();
             }
         }
     }
