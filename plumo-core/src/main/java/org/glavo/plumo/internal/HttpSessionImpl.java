@@ -70,11 +70,11 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                     try {
                         requestReader.readHeader(request);
                     } catch (EOFException e) {
-                        throw ServerShutdown.shutdown();
+                        return;
                     }
                     try (HttpResponseImpl r = (HttpResponseImpl) handler.handle(request)) {
                         if (r == null) {
-                            throw ServerShutdown.shutdown();
+                            return;
                         }
 
                         String connection = request.headers.getHeader("connection");
@@ -89,16 +89,18 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                             send(request, r, outputStream, keepAlive);
                         } catch (IOException ioe) {
                             DefaultLogger.log(DefaultLogger.Level.WARNING, "Could not send response to the client", ioe);
-                            throw ServerShutdown.shutdown();
+                            return;
                         }
 
                         if (!keepAlive || "close".equals(r.headers.getHeader("connection"))) {
-                            throw ServerShutdown.shutdown();
+                            return;
                         }
                     } finally {
                         request.close();
                     }
-                } catch (SocketException | SocketTimeoutException e) {
+                } catch (SocketTimeoutException e) {
+                    return;
+                } catch (SocketException e) {
                     // throw it out to close socket
                     throw e;
                 } catch (IOException | UncheckedIOException e) {
@@ -115,14 +117,6 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                     send(null, (HttpResponseImpl) resp, this.outputStream, false);
                 }
             }
-        } catch (ServerShutdown | SocketTimeoutException ignored) {
-            // When the socket is closed by the client,
-            // we throw our own SocketException
-            // to break the "keep alive" loop above. If
-            // the exception was anything other
-            // than the expected SocketException OR a
-            // SocketTimeoutException, print the
-            // stacktrace
         } catch (Exception e) {
             DefaultLogger.log(DefaultLogger.Level.ERROR, "Communication with the client broken, or an bug in the handler code", e);
         } finally {
