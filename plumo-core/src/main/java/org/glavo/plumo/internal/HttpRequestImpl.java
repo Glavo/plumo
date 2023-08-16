@@ -80,7 +80,6 @@ public final class HttpRequestImpl implements HttpRequest {
     private boolean hasGetBody = false;
 
     @Override
-    @SuppressWarnings("unchecked")
     public <V, A, E extends Throwable> V getBody(HttpDataFormat<V, A, E> type, A arg) throws E {
         Objects.requireNonNull(type);
         if (hasGetBody) {

@@ -1,10 +1,12 @@
 plugins {
     id("java-library")
+    id("org.glavo.compile-module-info-plugin") version "2.0"
 }
 
 subprojects {
     apply {
         plugin("java-library")
+        plugin("org.glavo.compile-module-info-plugin")
     }
 
     group = "org.glavo"

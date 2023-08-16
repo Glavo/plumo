@@ -349,10 +349,18 @@ public class HttpRequestReader implements Closeable {
 
         byte[][] names;
         if (len <= MAX_METHOD_NAME_LENGTH && (names = METHOD_NAME_LOOKUP[len]) != null) {
+
+            outer:
             for (int i = 0; i < names.length; i++) {
-                if (Arrays.equals(names[i], 0, len, arr, off, end)) {
-                    return METHOD_VALUE_LOOKUP[len][i];
+                byte[] name = names[i];
+
+                for (int j = 0; j < name.length; j++) {
+                    if (arr[off + i] != name[i]) {
+                        continue outer;
+                    }
                 }
+
+                return METHOD_VALUE_LOOKUP[len][i];
             }
         }
 
