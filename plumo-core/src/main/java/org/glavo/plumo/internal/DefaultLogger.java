@@ -81,6 +81,7 @@ public final class DefaultLogger {
             builder.append(sw.getBuffer());
         }
 
-        System.out.println(builder);
+        PrintStream stream = (level.severity < Level.WARNING.severity) ? System.err : System.out;
+        stream.println(builder);
     }
 }
