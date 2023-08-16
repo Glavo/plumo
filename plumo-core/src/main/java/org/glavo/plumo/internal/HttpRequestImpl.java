@@ -42,7 +42,7 @@ public final class HttpRequestImpl implements HttpRequest {
         this.localAddress = localAddress;
     }
 
-    public void close() throws IOException {
+    public void finish() throws IOException {
         if (body != null) {
             try {
                 body.close();

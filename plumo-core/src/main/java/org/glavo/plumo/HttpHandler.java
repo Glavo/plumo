@@ -15,7 +15,9 @@
  */
 package org.glavo.plumo;
 
+import org.glavo.plumo.internal.ErrorHandler;
+
 @FunctionalInterface
-public interface HttpHandler {
+public interface HttpHandler extends ErrorHandler {
     HttpResponse handle(HttpRequest request) throws Exception;
 }

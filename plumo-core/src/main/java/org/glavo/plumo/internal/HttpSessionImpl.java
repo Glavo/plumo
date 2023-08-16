@@ -21,7 +21,6 @@ import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.ParameterParser;
 import org.glavo.plumo.internal.util.UnsyncBufferedOutputStream;
 
-import javax.net.ssl.SSLException;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -61,9 +60,8 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
 
     @Override
     public void run() {
+        HttpHandler handler = listener.handler;
         try {
-            HttpHandler handler = listener.handler;
-
             while (isOpen()) {
                 try {
                     HttpRequestImpl request = new HttpRequestImpl(remoteAddress, localAddress);
@@ -81,14 +79,14 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                         boolean keepAlive = "HTTP/1.1".equals(request.getHttpVersion()) && (connection == null || !connection.equals("close"));
 
                         if (!r.isAvailable()) {
-                            DefaultLogger.log(DefaultLogger.Level.ERROR, "The response has been sent before");
-                            throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
+                            handler.handleUnrecoverableException(this, new AssertionError("The response has been sent before"));
+                            return;
                         }
 
                         try {
                             send(request, r, outputStream, keepAlive);
                         } catch (IOException ioe) {
-                            DefaultLogger.log(DefaultLogger.Level.WARNING, "Could not send response to the client", ioe);
+                            handler.handleUnrecoverableException(this, ioe);
                             return;
                         }
 
@@ -96,7 +94,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                             return;
                         }
                     } finally {
-                        request.close();
+                        request.finish();
                     }
                 } catch (SocketTimeoutException e) {
                     return;
@@ -104,21 +102,11 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                     // throw it out to close socket
                     throw e;
                 } catch (IOException | UncheckedIOException e) {
-                    HttpResponse resp;
-                    if (e instanceof HttpResponseException) {
-                        resp = ((HttpResponseException) e).getResponse();
-                    } else if (e instanceof SSLException) {
-                        resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage(), "text/plain");
-                    } else {
-                        DefaultLogger.log(DefaultLogger.Level.WARNING, "Server internal error", e);
-                        resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR", "text/plain");
-                    }
-
-                    send(null, (HttpResponseImpl) resp, this.outputStream, false);
+                    handler.handleRecoverableException(this, e);
                 }
             }
         } catch (Exception e) {
-            DefaultLogger.log(DefaultLogger.Level.ERROR, "Communication with the client broken, or an bug in the handler code", e);
+            handler.handleUnrecoverableException(this, e);
         } finally {
             listener.close(this);
         }
