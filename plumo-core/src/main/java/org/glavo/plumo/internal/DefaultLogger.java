@@ -18,6 +18,7 @@ package org.glavo.plumo.internal;
 import java.io.*;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 public final class DefaultLogger {
     public enum Level {
@@ -29,14 +30,20 @@ public final class DefaultLogger {
         ERROR(1000),
         OFF(Integer.MAX_VALUE);
 
-        private final int severity;
+        final int severity;
 
         Level(int severity) {
             this.severity = severity;
         }
+    }
 
-        public int getSeverity() {
-            return severity;
+    private static final Level LEVEL;
+
+    static {
+        if (Constants.LOGGER_LEVEL == null) {
+            LEVEL = Level.WARNING;
+        } else {
+            LEVEL = Level.valueOf(Constants.LOGGER_LEVEL.toUpperCase(Locale.ROOT));
         }
     }
 
@@ -45,6 +52,10 @@ public final class DefaultLogger {
     }
 
     public static void log(Level level, String message, Throwable exception) {
+        if (level.severity < LEVEL.severity) {
+            return;
+        }
+
         StringBuilder builder = new StringBuilder();
         builder.append('[');
         DateTimeFormatter.ISO_OFFSET_DATE_TIME.formatTo(ZonedDateTime.now(), builder);
