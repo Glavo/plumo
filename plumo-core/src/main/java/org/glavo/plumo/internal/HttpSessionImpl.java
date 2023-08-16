@@ -17,7 +17,6 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.*;
 import org.glavo.plumo.internal.util.ChunkedOutputStream;
-import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.ParameterParser;
 import org.glavo.plumo.internal.util.UnsyncBufferedOutputStream;
 
@@ -36,7 +35,7 @@ import java.util.zip.GZIPOutputStream;
 
 public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
 
-    public final PlumoImpl listener;
+    public final PlumoImpl server;
     public final Closeable socket;
     public final SocketAddress remoteAddress;
     public final SocketAddress localAddress;
@@ -47,10 +46,10 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
     // Use in HttpServerImpl
     volatile HttpSessionImpl prev, next;
 
-    public HttpSessionImpl(PlumoImpl listener, Closeable acceptSocket,
+    public HttpSessionImpl(PlumoImpl server, Closeable acceptSocket,
                            SocketAddress remoteAddress, SocketAddress localAddress,
                            InputStream inputStream, OutputStream outputStream) {
-        this.listener = listener;
+        this.server = server;
         this.remoteAddress = remoteAddress;
         this.localAddress = localAddress;
         this.requestReader = new HttpRequestReader(inputStream);
@@ -60,7 +59,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
 
     @Override
     public void run() {
-        HttpHandler handler = listener.handler;
+        HttpHandler handler = server.handler;
         try {
             while (isOpen()) {
                 try {
@@ -108,15 +107,17 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
         } catch (Exception e) {
             handler.handleUnrecoverableException(this, e);
         } finally {
-            listener.close(this);
+            server.close(this);
         }
     }
 
     @Override
     public void close() {
-        IOUtils.safeClose(this.outputStream);
-        IOUtils.safeClose(this.requestReader);
-        IOUtils.safeClose(this.socket);
+        HttpHandler handler = server.handler;
+
+        handler.safeClose(this.outputStream);
+        handler.safeClose(this.requestReader);
+        handler.safeClose(this.socket);
     }
 
     private boolean isOpen() {
@@ -264,7 +265,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             }
             out.flush();
         } finally {
-            IOUtils.safeClose(needToClose);
+            server.handler.safeClose(needToClose);
         }
     }
 

@@ -15,6 +15,10 @@
  */
 package org.glavo.plumo.internal.util;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 public final class Utils {
@@ -95,6 +99,32 @@ public final class Utils {
         }
 
         return new String(buf, ISO_8859_1);
+    }
+
+    public static void shutdown(Executor executor) {
+        if (!(executor instanceof ExecutorService)) {
+            return;
+        }
+
+        ExecutorService es = (ExecutorService) executor;
+        boolean terminated = es.isTerminated();
+        if (!terminated) {
+            es.shutdown();
+            boolean interrupted = false;
+            while (!terminated) {
+                try {
+                    terminated = es.awaitTermination(1L, TimeUnit.DAYS);
+                } catch (InterruptedException e) {
+                    if (!interrupted) {
+                        es.shutdownNow();
+                        interrupted = true;
+                    }
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private Utils() {

@@ -16,7 +16,6 @@
 package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.Utils;
 
 import java.io.InputStream;
@@ -211,6 +210,6 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         }
 
         closed = true;
-        IOUtils.safeClose((InputStream) body);
+        // TODO IOUtils.safeClose((InputStream) body);
     }
 }

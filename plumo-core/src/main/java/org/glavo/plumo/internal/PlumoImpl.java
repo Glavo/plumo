@@ -17,8 +17,8 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.Plumo;
-import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
+import org.glavo.plumo.internal.util.Utils;
 import org.glavo.plumo.internal.util.VirtualThreadUtils;
 
 import javax.net.ssl.SSLContext;
@@ -29,6 +29,7 @@ import java.net.*;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -225,7 +226,7 @@ public final class PlumoImpl implements Plumo {
                 this.localAddress = serverSocket.getLocalSocketAddress();
             } else {
                 if (deleteUnixDomainSocketFileIfExists) {
-                    IOUtils.deleteIfExists(unixDomainSocketPath);
+                    Files.deleteIfExists(unixDomainSocketPath);
                 }
 
                 ServerSocketChannel serverSocketChannel = UnixDomainSocketUtils.openUnixDomainServerSocketChannel();
@@ -235,10 +236,10 @@ public final class PlumoImpl implements Plumo {
                 this.localAddress = serverSocketChannel.getLocalAddress();
             }
         } catch (Throwable e) {
-            IOUtils.safeClose(serverSocketOrChannel);
+            handler.safeClose(serverSocketOrChannel);
             serverSocketOrChannel = null;
             if (shutdownExecutor) {
-                IOUtils.shutdown(executor);
+                Utils.shutdown(executor);
             }
             throw e;
         }
@@ -370,11 +371,17 @@ public final class PlumoImpl implements Plumo {
             lastSession = null;
 
             if (shutdownExecutor) {
-                IOUtils.shutdown(executor);
+                Utils.shutdown(executor);
             }
 
-            IOUtils.safeClose(this.serverSocketOrChannel);
-            IOUtils.deleteIfExists(unixDomainSocketPath);
+            handler.safeClose(this.serverSocketOrChannel);
+
+            if (unixDomainSocketPath != null) {
+                try {
+                    Files.deleteIfExists(unixDomainSocketPath);
+                } catch (IOException ignored) {
+                }
+            }
         } finally {
             latch.countDown();
             sessionLock.unlock();

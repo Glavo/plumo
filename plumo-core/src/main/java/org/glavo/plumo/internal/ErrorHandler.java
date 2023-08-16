@@ -4,8 +4,20 @@ import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.HttpSession;
 
 import javax.net.ssl.SSLException;
+import java.io.Closeable;
+import java.io.IOException;
 
 public interface ErrorHandler {
+
+    default void safeClose(Closeable closeable) {
+        try {
+            if (closeable != null) {
+                closeable.close();
+            }
+        } catch (IOException e) {
+            DefaultLogger.log(DefaultLogger.Level.ERROR, "Could not close", e);
+        }
+    }
 
     default void handleRecoverableException(HttpSession session, Throwable exception) throws Exception {
         HttpResponse resp;
