@@ -17,9 +17,9 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpDataFormat;
 import org.glavo.plumo.HttpRequest;
-import org.glavo.plumo.internal.util.IOUtils;
 import org.glavo.plumo.internal.util.ParameterParser;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -31,7 +31,7 @@ public final class HttpDataFormats {
     public static final HttpDataFormat<InputStream, Object, RuntimeException> INPUT_STREAM = new HttpDataFormat<InputStream, Object, RuntimeException>() {
         @Override
         public InputStream decode(HttpRequest request, InputStream input, Object arg) {
-            return input == null ? IOUtils.nullInputStream() : input;
+            return input == null ? new ByteArrayInputStream(Constants.EMPTY_BYTE_ARRAY) : input;
         }
 
         @Override
