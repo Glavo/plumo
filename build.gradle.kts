@@ -20,6 +20,11 @@ subprojects {
         testImplementation("org.junit.jupiter:junit-jupiter")
     }
 
+    tasks.compileJava {
+        sourceCompatibility = "9"
+        options.release.set(8)
+    }
+
     tasks.test {
         useJUnitPlatform()
     }

@@ -61,7 +61,7 @@ public final class PlumoImpl implements Plumo {
     private String[] sslProtocols;
     private String protocol;
     HttpHandler handler;
-    private int timeout;
+    private int timeout = 5000;
 
     private Closeable serverSocketOrChannel;
     private SocketAddress localAddress;
@@ -131,6 +131,16 @@ public final class PlumoImpl implements Plumo {
         }
 
         this.sslProtocols = protocols;
+    }
+
+    @Override
+    public void setSocketTimeout(int timeout) {
+        ensureNotStarted();
+        if (timeout < 0) {
+            throw new IllegalArgumentException("socket timeout must not be negative");
+        }
+
+        this.timeout = timeout;
     }
 
     @Override
@@ -287,7 +297,6 @@ public final class PlumoImpl implements Plumo {
             latch.await();
         }
     }
-
 
     // ---
 

@@ -50,6 +50,8 @@ public interface Plumo {
 
     void setEnabledSSLProtocols(String[] protocols);
 
+    void setSocketTimeout(int timeout);
+
     void setHandler(HttpHandler handler);
 
     // ---
