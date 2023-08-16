@@ -1,38 +1,26 @@
 plugins {
     id("java-library")
-    id("application")
 }
 
-group = "org.glavo"
-version = "0.1.0" + "-SNAPSHOT"
+subprojects {
+    apply {
+        plugin("java-library")
+    }
 
-val mainClassName = "org.glavo.plumo.Plumo"
+    group = "org.glavo"
+    version = "0.1.0" + "-SNAPSHOT"
 
-application {
-    mainClass.set(mainClassName)
-    applicationDefaultJvmArgs = listOf("--enable-preview")
-}
+    repositories {
+        mavenCentral()
+    }
 
-repositories {
-    mavenCentral()
-}
+    dependencies {
+        compileOnlyApi("org.jetbrains:annotations:24.0.1")
+        testImplementation(platform("org.junit:junit-bom:5.9.3"))
+        testImplementation("org.junit.jupiter:junit-jupiter")
+    }
 
-tasks.compileJava {
-    options.compilerArgs.add("--enable-preview")
-}
-
-tasks.jar {
-    manifest.attributes(
-        "Main-Class" to mainClassName
-    )
-}
-
-dependencies {
-    compileOnlyApi("org.jetbrains:annotations:24.0.1")
-    testImplementation(platform("org.junit:junit-bom:5.9.3"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-}
-
-tasks.test {
-    useJUnitPlatform()
+    tasks.test {
+        useJUnitPlatform()
+    }
 }
