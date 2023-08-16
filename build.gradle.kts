@@ -4,13 +4,17 @@ plugins {
 }
 
 subprojects {
+    group = "org.glavo"
+    version = "0.1.0" + "-SNAPSHOT"
+
+    if (this == project(":benchmark")) {
+        return@subprojects
+    }
+
     apply {
         plugin("java-library")
         plugin("org.glavo.compile-module-info-plugin")
     }
-
-    group = "org.glavo"
-    version = "0.1.0" + "-SNAPSHOT"
 
     repositories {
         mavenCentral()

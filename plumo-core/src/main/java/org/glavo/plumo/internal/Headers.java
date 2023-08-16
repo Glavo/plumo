@@ -187,7 +187,6 @@ public final class Headers extends AbstractMap<String, List<String>> {
     }
 
     public void forEachHeader(BiConsumer<String, String> consumer) {
-
         for (int i = 0; i < this.keys.length; i++) {
             String key = this.keys[i];
             if (key != null) {
