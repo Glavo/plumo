@@ -97,7 +97,7 @@ public final class HttpRequestImpl implements HttpRequest {
     }
 
     @Override
-    public String getUri() {
+    public String getRawURI() {
         return rawUri;
     }
 
