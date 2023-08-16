@@ -81,27 +81,8 @@ public final class HttpRequestImpl implements HttpRequest {
         return bodySize;
     }
 
-    private URI decodedUri;
-    private boolean illegalUri = false;
-
     @Override
-    public URI getURI() {
-        if (decodedUri == null) {
-            if (illegalUri) {
-                return null;
-            }
-
-            try {
-                decodedUri = new URI(rawUri);
-            } catch (URISyntaxException e) {
-                illegalUri = true;
-            }
-        }
-        return decodedUri;
-    }
-
-    @Override
-    public String getRawURI() {
+    public String getUri() {
         return rawUri;
     }
 

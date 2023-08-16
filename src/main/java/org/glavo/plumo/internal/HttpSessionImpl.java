@@ -20,9 +20,9 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.zip.GZIPOutputStream;
 
-public final class HttpSession implements Closeable, Runnable {
+public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
 
-    public final HttpListener listener;
+    public final PlumoImpl listener;
     public final Closeable socket;
     public final SocketAddress remoteAddress;
     public final SocketAddress localAddress;
@@ -31,11 +31,11 @@ public final class HttpSession implements Closeable, Runnable {
     public final UnsyncBufferedOutputStream outputStream;
 
     // Use in HttpServerImpl
-    volatile HttpSession prev, next;
+    volatile HttpSessionImpl prev, next;
 
-    public HttpSession(HttpListener listener, Closeable acceptSocket,
-                       SocketAddress remoteAddress, SocketAddress localAddress,
-                       InputStream inputStream, OutputStream outputStream) {
+    public HttpSessionImpl(PlumoImpl listener, Closeable acceptSocket,
+                           SocketAddress remoteAddress, SocketAddress localAddress,
+                           InputStream inputStream, OutputStream outputStream) {
         this.listener = listener;
         this.remoteAddress = remoteAddress;
         this.localAddress = localAddress;
@@ -47,6 +47,8 @@ public final class HttpSession implements Closeable, Runnable {
     @Override
     public void run() {
         try {
+            HttpHandler handler = listener.handler;
+
             while (isOpen()) {
                 try {
                     HttpRequestImpl request = new HttpRequestImpl(remoteAddress, localAddress);
@@ -55,8 +57,29 @@ public final class HttpSession implements Closeable, Runnable {
                     } catch (EOFException e) {
                         throw ServerShutdown.shutdown();
                     }
-                    try {
-                        listener.handler.handle(this, request);
+                    try (HttpResponseImpl r = (HttpResponseImpl) handler.handle(request)) {
+                        if (r == null) {
+                            throw ServerShutdown.shutdown();
+                        }
+
+                        String connection = request.headers.getHeader("connection");
+                        boolean keepAlive = "HTTP/1.1".equals(request.getHttpVersion()) && (connection == null || !connection.equals("close"));
+
+                        if (!r.isAvailable()) {
+                            DefaultLogger.log(DefaultLogger.Level.ERROR, "The response has been sent before");
+                            throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
+                        }
+
+                        try {
+                            send(request, r, outputStream, keepAlive);
+                        } catch (IOException ioe) {
+                            DefaultLogger.log(DefaultLogger.Level.WARNING, "Could not send response to the client", ioe);
+                            throw ServerShutdown.shutdown();
+                        }
+
+                        if (!keepAlive || "close".equals(r.headers.getHeader("connection"))) {
+                            throw ServerShutdown.shutdown();
+                        }
                     } finally {
                         request.close();
                     }
@@ -70,7 +93,7 @@ public final class HttpSession implements Closeable, Runnable {
                     } else if (e instanceof SSLException) {
                         resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + e.getMessage(), "text/plain");
                     } else {
-                        Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Server internal error", e);
+                        DefaultLogger.log(DefaultLogger.Level.WARNING, "Server internal error", e);
                         resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR", "text/plain");
                     }
 
@@ -86,7 +109,7 @@ public final class HttpSession implements Closeable, Runnable {
             // SocketTimeoutException, print the
             // stacktrace
         } catch (Exception e) {
-            Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Communication with the client broken, or an bug in the handler code", e);
+            DefaultLogger.log(DefaultLogger.Level.ERROR, "Communication with the client broken, or an bug in the handler code", e);
         } finally {
             listener.close(this);
         }
@@ -105,34 +128,6 @@ public final class HttpSession implements Closeable, Runnable {
                 : ((SocketChannel) socket).isOpen();
     }
 
-    public void handleImpl(HttpRequest request, Plumo.Handler handler) throws IOException {
-        try (HttpResponseImpl r = (HttpResponseImpl) handler.handle(request)) {
-            if (r == null) {
-                throw ServerShutdown.shutdown();
-            }
-
-            HttpRequestImpl requestImpl = (HttpRequestImpl) request;
-
-            String connection = requestImpl.headers.getHeader("connection");
-            boolean keepAlive = "HTTP/1.1".equals(requestImpl.getHttpVersion()) && (connection == null || !connection.equals("close"));
-
-            if (!r.isAvailable()) {
-                Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "The response has been sent before");
-                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR");
-            }
-
-            try {
-                send((HttpRequestImpl) request, r, outputStream, keepAlive);
-            } catch (IOException ioe) {
-                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Could not send response to the client", ioe);
-                throw ServerShutdown.shutdown();
-            }
-
-            if (!keepAlive || "close".equals(r.headers.getHeader("connection"))) {
-                throw ServerShutdown.shutdown();
-            }
-        }
-    }
 
     /**
      * Sends given response to the socket.
@@ -206,7 +201,7 @@ public final class HttpSession implements Closeable, Runnable {
             } else if ("gzip".equals(contentEncoding)) {
                 useGzip = true;
             } else {
-                Plumo.LOGGER.log(Plumo.Logger.Level.WARNING, "Unsupported content encoding: " + contentEncoding);
+                DefaultLogger.log(DefaultLogger.Level.WARNING, "Unsupported content encoding: " + contentEncoding);
                 useGzip = false;
             }
 

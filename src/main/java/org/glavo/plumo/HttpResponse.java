@@ -25,6 +25,8 @@ public /*sealed*/ interface HttpResponse {
         return new HttpResponseImpl(false, status, text, contentType);
     }
 
+    HttpResponse freeze();
+
     HttpResponse withStatus(Status status);
 
     HttpResponse withHeader(String name, String value);

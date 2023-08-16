@@ -51,9 +51,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
             return this;
         }
 
-        if (body instanceof InputStream) {
-            throw new UnsupportedOperationException("Body is not reusable");
-        }
+        assert !(body instanceof InputStream);
 
         HttpResponseImpl response = new HttpResponseImpl(this.headers);
         response.body = this.body;
@@ -67,6 +65,18 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
             headerIsAlias = false;
         }
 
+        return this;
+    }
+
+    @Override
+    public HttpResponse freeze() {
+        if (!frozen) {
+            if (body instanceof InputStream) {
+                throw new UnsupportedOperationException("The response body is not reusable");
+            }
+
+            this.frozen = true;
+        }
         return this;
     }
 

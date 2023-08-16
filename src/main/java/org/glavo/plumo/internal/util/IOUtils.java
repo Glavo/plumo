@@ -1,7 +1,7 @@
 package org.glavo.plumo.internal.util;
 
-import org.glavo.plumo.Plumo;
 import org.glavo.plumo.internal.Constants;
+import org.glavo.plumo.internal.DefaultLogger;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -21,7 +21,7 @@ public final class IOUtils {
                 closeable.close();
             }
         } catch (IOException e) {
-            Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Could not close", e);
+            DefaultLogger.log(DefaultLogger.Level.ERROR, "Could not close", e);
         }
     }
 
@@ -31,7 +31,7 @@ public final class IOUtils {
                 Files.deleteIfExists(file);
             }
         } catch (Throwable e) {
-            Plumo.LOGGER.log(Plumo.Logger.Level.ERROR, "Could not delete file", e);
+            DefaultLogger.log(DefaultLogger.Level.ERROR, "Could not delete file", e);
         }
     }
 

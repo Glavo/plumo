@@ -1,21 +1,35 @@
 package org.glavo.plumo.internal;
 
-import org.glavo.plumo.Plumo;
-
 import java.io.*;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-public final class DefaultLogger implements Plumo.Logger {
+public final class DefaultLogger {
+    public enum Level {
+        ALL(Integer.MIN_VALUE),
+        TRACE(400),
+        DEBUG(500),
+        INFO(800),
+        WARNING(900),
+        ERROR(1000),
+        OFF(Integer.MAX_VALUE);
 
-    private final PrintStream out;
+        private final int severity;
 
-    public DefaultLogger(PrintStream out) {
-        this.out = out;
+        Level(int severity) {
+            this.severity = severity;
+        }
+
+        public int getSeverity() {
+            return severity;
+        }
     }
 
-    @Override
-    public void log(Level level, String message, Throwable exception) {
+    public static void log(Level level, String message) {
+        log(level, message, null);
+    }
+
+    public static void log(Level level, String message, Throwable exception) {
         StringBuilder builder = new StringBuilder();
         builder.append('[');
         DateTimeFormatter.ISO_OFFSET_DATE_TIME.formatTo(ZonedDateTime.now(), builder);
@@ -41,6 +55,6 @@ public final class DefaultLogger implements Plumo.Logger {
             builder.append(sw.getBuffer());
         }
 
-        out.println(builder);
+        System.out.println(builder);
     }
 }

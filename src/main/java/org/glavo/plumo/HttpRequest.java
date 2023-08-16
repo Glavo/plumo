@@ -2,7 +2,6 @@ package org.glavo.plumo;
 
 import java.net.InetAddress;
 import java.net.SocketAddress;
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -12,9 +11,7 @@ public interface HttpRequest {
 
     Method getMethod();
 
-    URI getURI();
-
-    String getRawURI();
+    String getUri();
 
     SocketAddress getRemoteAddress();
 
