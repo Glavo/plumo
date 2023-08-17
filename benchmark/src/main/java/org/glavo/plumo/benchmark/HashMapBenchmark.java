@@ -56,20 +56,23 @@ public class HashMapBenchmark {
     }
 
     private static final Map.Entry<String, String>[] TEST_DATA1 = arrayOf(
-            entry("server", "CLOUD ELB 1.0.0"),
             entry("content-type", "text/html"),
             entry("content-length", "182"),
             entry("content-language", "en-US"),
             entry("collection", "keep-alive"),
             entry("cache-control", " private, must-revalidate, no-cache, no-store, max-age=0"),
-            entry("date", "Wed, 16 Aug 2023 21:15:01 GMT")
+            entry("date", "Wed, 16 Aug 2023 21:15:01 GMT"),
+            entry("pragma", "no-cache"),
+            entry("server", "CLOUD ELB 1.0.0")
     );
 
     private static final Map.Entry<String, String>[] TEST_DATA2 = concat(TEST_DATA1, arrayOf(
             entry("last-modified", "Mon, 23 Jan 2017 13:27:29 GMT"),
             entry("accept-ranges", "bytes"),
-            entry("x-frame-options", "deny"),
             entry("x-content-type-options", "nosniff"),
+            entry("x-frame-options", "deny"),
+            entry("x-powered-by", "Express"),
+            entry("x-response-time", "118"),
             entry("x-xss-protection", "0")
     ));
 
@@ -78,7 +81,9 @@ public class HashMapBenchmark {
             entry("set-cookie", "key2=value2"),
             entry("set-cookie", "key3=value3"),
             entry("set-cookie", "key4=value4"),
-            entry("set-cookie", "key5=value5")
+            entry("set-cookie", "key5=value5"),
+            entry("set-cookie", "key6=value6"),
+            entry("set-cookie", "key7=value7")
     ));
 
     private static final HashMap<String, String> TEST_MAP1 = new HashMap<>();
