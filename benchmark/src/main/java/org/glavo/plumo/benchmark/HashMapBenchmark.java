@@ -201,7 +201,7 @@ public class HashMapBenchmark {
     }
 
     //
-    // ------ addHeader
+    // ------ addHeader ------
     //
 
     private static HashMap<String, Object> addToHashMap(Map.Entry<String, String>[] datas) {
@@ -248,6 +248,52 @@ public class HashMapBenchmark {
     @Benchmark
     public Object testAddToHeaders3() {
         return addToHeaders(TEST_DATA3);
+    }
+
+    //
+    // ------ clone ------
+    //
+
+    private static HashMap<String, Object> deepClone(HashMap<String, Object> map) {
+        HashMap<String, Object> res = (HashMap<String, Object>) map.clone();
+        res.replaceAll((k, v) -> {
+            if ((v == null) || v instanceof String) {
+                return v;
+            } else {
+                return ((ArrayList<String>) v).clone();
+            }
+        });
+        return res;
+    }
+
+    @Benchmark
+    public Object testCloneHashMap1() {
+        return TEST_MAP1.clone();
+    }
+
+    @Benchmark
+    public Object testCloneHashMap2() {
+        return TEST_MAP2.clone();
+    }
+
+    @Benchmark
+    public Object testCloneHashMap3() {
+        return deepClone(TEST_MAP3);
+    }
+
+    @Benchmark
+    public Object testCloneHeaders1() {
+        return TEST_HEADERS1.clone();
+    }
+
+    @Benchmark
+    public Object testCloneHeaders2() {
+        return TEST_HEADERS2.clone();
+    }
+
+    @Benchmark
+    public Object testCloneHeaders3() {
+        return TEST_HEADERS3.clone();
     }
 }
 
