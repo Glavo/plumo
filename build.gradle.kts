@@ -7,7 +7,7 @@ subprojects {
     group = "org.glavo"
     version = "0.1.0" + "-SNAPSHOT"
 
-    if (this == project(":benchmark")) {
+    if (!project.name.startsWith("plumo-")) {
         return@subprojects
     }
 
