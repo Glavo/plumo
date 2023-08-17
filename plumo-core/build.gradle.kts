@@ -14,4 +14,3 @@ tasks.jar {
         "Main-Class" to mainClassName
     )
 }
-

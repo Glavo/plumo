@@ -28,11 +28,8 @@ public final class Headers extends AbstractMap<String, List<String>> {
     // list of prime numbers
     private static final int[] CAPACITIES = {127, 269, 541, 1091, 2287, 4583, 9199, 19121, 39133};
 
-    private static final String[] EMPTY_STRING_ARRAY = new String[0];
-    private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
-
-    String[] keys = EMPTY_STRING_ARRAY;
-    Object[] values = EMPTY_OBJECT_ARRAY;
+    String[] keys;
+    Object[] values;
 
     int size = 0;
     int threshold = 0;
@@ -73,21 +70,24 @@ public final class Headers extends AbstractMap<String, List<String>> {
             }
         }
 
-        String[] oldKeys = this.keys;
-        Object[] oldValues = this.values;
-
         String[] newKeys = new String[nextCap];
         Object[] newValues = new Object[nextCap];
 
-        for (int oldIdx = 0; oldIdx < oldKeys.length; oldIdx++) {
-            String key = oldKeys[oldIdx];
-            if (key != null) {
-                int newIdx = probe(newKeys, key);
-                if (newIdx < 0) {
-                    newIdx = -(newIdx + 1);
-                    newKeys[newIdx] = key;
+        if (currentSize > 0) {
+
+            String[] oldKeys = this.keys;
+            Object[] oldValues = this.values;
+
+            for (int oldIdx = 0; oldIdx < oldKeys.length; oldIdx++) {
+                String key = oldKeys[oldIdx];
+                if (key != null) {
+                    int newIdx = probe(newKeys, key);
+                    if (newIdx < 0) {
+                        newIdx = -(newIdx + 1);
+                        newKeys[newIdx] = key;
+                    }
+                    newValues[newIdx] = oldValues[oldIdx];
                 }
-                newValues[newIdx] = oldValues[oldIdx];
             }
         }
 
