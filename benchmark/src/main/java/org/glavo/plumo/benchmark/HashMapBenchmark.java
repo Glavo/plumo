@@ -1,14 +1,12 @@
 package org.glavo.plumo.benchmark;
 
 import org.glavo.plumo.internal.Headers;
+import org.glavo.plumo.internal.util.Utils;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.Map.entry;
@@ -29,6 +27,14 @@ public class HashMapBenchmark {
         return Arrays.stream(arrays)
                 .flatMap(Arrays::stream)
                 .toArray(n -> (T[]) Array.newInstance(arrays[0].getClass().getComponentType(), n));
+    }
+
+    private static String[] keys(Map.Entry<String, ?>[] pairs) {
+        String[] res = new String[pairs.length];
+        for (int i = 0; i < pairs.length; i++) {
+            res[i] = pairs[i].getKey();
+        }
+        return res;
     }
 
     private static void addHeaderToHashMap(HashMap<String, Object> map, String key, String value) {
@@ -81,6 +87,9 @@ public class HashMapBenchmark {
     private static final Headers TEST_HEADERS1 = new Headers();
     private static final Headers TEST_HEADERS2 = new Headers();
     private static final Headers TEST_HEADERS3 = new Headers();
+    private static final String[] TEST_KEYS1 = keys(TEST_DATA1);
+    private static final String[] TEST_KEYS2 = keys(TEST_DATA2);
+    private static final String[] TEST_KEYS3 = keys(TEST_DATA3);
 
     static {
         for (Map.Entry<String, String> data : TEST_DATA1) {
@@ -158,6 +167,104 @@ public class HashMapBenchmark {
     @Benchmark
     public void testForEachHeaders3(Blackhole blackhole) {
         forEachHeaders(blackhole, TEST_HEADERS3);
+    }
+
+    //
+    // ------ getHeader ------
+    //
+
+    private static void getHeaderFromHashMap(Blackhole blackhole, HashMap<String, String> map, String[] keys) {
+        for (String key : keys) {
+            blackhole.consume(map.get(key));
+        }
+    }
+
+    private static void getHeaderFromHeaders(Blackhole blackhole, Headers map, String[] keys) {
+        for (String key : keys) {
+            blackhole.consume(map.getHeader(key));
+        }
+    }
+
+    @Benchmark
+    public void testGetHeaderFromHashMap1(Blackhole blackhole) {
+        getHeaderFromHashMap(blackhole, TEST_MAP1, TEST_KEYS1);
+    }
+
+    @Benchmark
+    public void testGetHeaderFromHashMap2(Blackhole blackhole) {
+        getHeaderFromHashMap(blackhole, TEST_MAP2, TEST_KEYS2);
+    }
+
+    @Benchmark
+    public void testGetHeaderFromHeaders1(Blackhole blackhole) {
+        getHeaderFromHeaders(blackhole, TEST_HEADERS1, TEST_KEYS1);
+    }
+
+    @Benchmark
+    public void testGetHeaderFromHeaders2(Blackhole blackhole) {
+        getHeaderFromHeaders(blackhole, TEST_HEADERS2, TEST_KEYS2);
+    }
+
+    //
+    // ------ getHeaders ------
+    //
+
+    private static void getHeadersFromHashMap(Blackhole blackhole, HashMap<String, ?> map, String[] keys) {
+        for (String key : keys) {
+            try {
+                String canonicalName = Utils.normalizeHttpHeaderFieldName(key);
+                Object value = map.get(canonicalName);
+
+                List<String> valueList;
+                if (value instanceof String) {
+                    valueList = Collections.singletonList((String) value);
+                } else if (value != null) {
+                    valueList = Collections.unmodifiableList((List<String>) value);
+                } else {
+                    valueList = null;
+                }
+
+                blackhole.consume(valueList);
+            } catch (IllegalArgumentException ignored) {
+                blackhole.consume(null);
+            }
+        }
+    }
+
+    private static void getHeadersFromHeaders(Blackhole blackhole, Headers map, String[] keys) {
+        for (String key : keys) {
+            blackhole.consume(map.get(key));
+        }
+    }
+
+    @Benchmark
+    public void testGetHeadersFromHashMap1(Blackhole blackhole) {
+        getHeadersFromHashMap(blackhole, TEST_MAP1, TEST_KEYS1);
+    }
+
+    @Benchmark
+    public void testGetHeadersFromHashMap2(Blackhole blackhole) {
+        getHeadersFromHashMap(blackhole, TEST_MAP2, TEST_KEYS2);
+    }
+
+    @Benchmark
+    public void testGetHeadersFromHashMap3(Blackhole blackhole) {
+        getHeadersFromHashMap(blackhole, TEST_MAP3, TEST_KEYS3);
+    }
+
+    @Benchmark
+    public void testGetHeadersFromHeaders1(Blackhole blackhole) {
+        getHeadersFromHeaders(blackhole, TEST_HEADERS1, TEST_KEYS1);
+    }
+
+    @Benchmark
+    public void testGetHeadersFromHeaders2(Blackhole blackhole) {
+        getHeadersFromHeaders(blackhole, TEST_HEADERS2, TEST_KEYS2);
+    }
+
+    @Benchmark
+    public void testGetHeadersFromHeaders3(Blackhole blackhole) {
+        getHeadersFromHeaders(blackhole, TEST_HEADERS3, TEST_KEYS3);
     }
 
     //
