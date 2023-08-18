@@ -126,7 +126,6 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 : ((SocketChannel) socket).isOpen();
     }
 
-
     /**
      * Sends given response to the socket.
      */
@@ -149,13 +148,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             out.writeHttpHeader("connection", "close");
         }
 
-        String contentType = null;
-        String contentEncoding = null;
-
-        if (request != null) {
-            contentType = request.headers.getFirst("content-type");
-            contentEncoding = request.headers.getFirst("content-encoding");
-        }
+        String contentType = response.headers.getFirst("content-type");
 
         long inputLength;
         Object preprocessedData;
@@ -181,35 +174,30 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 preprocessedData = needToClose = Channels.newInputStream(channel);
                 inputLength = channel.size();
             } else {
-                throw new InternalError("unexpected types: " + body.getClass());
+                throw new InternalError("unexpected type: " + body.getClass());
             }
 
-            boolean useGzip;
-            String acceptEncoding = request != null ? request.headers.getFirst("accept-encoding") : null;
-            if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
-                useGzip = false;
-            } else if (contentEncoding == null) {
-                if (contentType == null || (inputLength >= 0 && inputLength <= 512)) { // TODO: magic number
-                    useGzip = false;
-                } else {
-                    useGzip = contentType.startsWith("text/") || contentType.startsWith("application/json");
-                }
-            } else if (contentEncoding.isEmpty() || "identity".equals(contentEncoding)) {
-                useGzip = false;
-            } else if ("gzip".equals(contentEncoding)) {
-                useGzip = true;
+            boolean autoGZip;
+            if (response.headers.containsKey("content-encoding")) {
+                autoGZip = false;
             } else {
-                DefaultLogger.log(DefaultLogger.Level.WARNING, "Unsupported content encoding: " + contentEncoding);
-                useGzip = false;
+                String acceptEncoding = request != null ? request.headers.getFirst("accept-encoding") : null;
+                if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
+                    autoGZip = false;
+                } else if (contentType == null || (inputLength >= 0 && inputLength <= 512)) { // TODO: magic number
+                    autoGZip = false;
+                } else {
+                    autoGZip = contentType.startsWith("text/") || contentType.startsWith("application/json");
+                }
             }
 
-            if (useGzip) {
+            if (autoGZip) {
                 out.writeHttpHeader("content-encoding", "gzip");
             }
 
             long outputLength;
-            boolean useGzipOutputStream;
-            if (useGzip) {
+            boolean useGZipOutputStream;
+            if (autoGZip) {
                 if (inputLength >= 0 && inputLength < 8192) { // TODO: magic number
                     ByteArrayOutputStream bao = new ByteArrayOutputStream((int) inputLength);
                     try (GZIPOutputStream go = new GZIPOutputStream(bao)) {
@@ -239,14 +227,14 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                     preprocessedData = compressedData;
                     inputLength = compressedData.length;
                     outputLength = inputLength;
-                    useGzipOutputStream = false;
+                    useGZipOutputStream = false;
                 } else {
                     outputLength = -1;
-                    useGzipOutputStream = true;
+                    useGZipOutputStream = true;
                 }
             } else {
                 outputLength = inputLength;
-                useGzipOutputStream = false;
+                useGZipOutputStream = false;
             }
 
             if (outputLength >= 0) {
@@ -261,7 +249,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             }
             out.writeCRLF();
             if (method != HttpRequest.Method.HEAD && outputLength != 0) {
-                sendBody(out, preprocessedData, inputLength, chunkedTransfer, useGzipOutputStream);
+                sendBody(out, preprocessedData, inputLength, chunkedTransfer, useGZipOutputStream);
             }
             out.flush();
         } finally {
@@ -272,12 +260,12 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
     private void sendBody(UnsyncBufferedOutputStream out,
             /* InputStream | byte[] */ Object preprocessedData,
                           long inputLength, boolean chunkedTransfer,
-                          boolean useGzipOutputStream) throws IOException {
+                          boolean useGZipOutputStream) throws IOException {
         if (preprocessedData == null) {
             throw new InternalError();
         }
 
-        if (preprocessedData instanceof InputStream || useGzipOutputStream) {
+        if (preprocessedData instanceof InputStream || useGZipOutputStream) {
             InputStream input;
 
             if (preprocessedData instanceof InputStream) {
@@ -294,7 +282,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             if (chunkedTransfer) {
                 o = chunkedOutputStream = new ChunkedOutputStream(o);
             }
-            if (useGzipOutputStream) {
+            if (useGZipOutputStream) {
                 o = gzipOutputStream = new GZIPOutputStream(o);
             }
 
@@ -323,7 +311,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 }
             }
 
-            if (useGzipOutputStream) {
+            if (useGZipOutputStream) {
                 gzipOutputStream.finish();
             }
             if (chunkedTransfer) {

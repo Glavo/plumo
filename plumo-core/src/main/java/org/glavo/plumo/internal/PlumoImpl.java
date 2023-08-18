@@ -182,13 +182,13 @@ public final class PlumoImpl implements Plumo {
                 this.shutdownExecutor = false;
                 this.executor = command -> {
                     Thread t = VirtualThreadUtils.newVirtualThread(command);
-                    t.setName("plumo Request Processor #" + requestCount.getAndIncrement());
+                    t.setName("plumo-worker-" + requestCount.getAndIncrement());
                     t.start();
                 };
             } else {
                 this.shutdownExecutor = true;
                 this.executor = Executors.newCachedThreadPool(r -> {
-                    Thread t = new Thread(r, "Plumo Request Processor #" + requestCount.getAndIncrement());
+                    Thread t = new Thread(r, "plumo-worker-" + requestCount.getAndIncrement());
                     t.setDaemon(true);
                     return t;
                 });
