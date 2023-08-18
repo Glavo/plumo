@@ -1,5 +1,6 @@
 package org.glavo.plumo.internal;
 
+import org.glavo.plumo.internal.util.MultiStringMap;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -35,28 +36,26 @@ public final class HeadersTest {
     }
 
     private static void testPutHeader(int offset, int length) {
-        Headers headers = new Headers();
+        MultiStringMap multiStringMap = new MultiStringMap();
         for (int i = offset; i < offset + length; i++) {
             String header = RANDOM_HEADERS.get(i);
             try {
-                assertEquals(i - offset, headers.size());
-                assertFalse(headers.containsHeader(header));
-                assertFalse(headers.containsKey(header));
-                assertNull(headers.getHeader(header));
-                assertNull(headers.get(header));
+                assertEquals(i - offset, multiStringMap.size());
+                assertFalse(multiStringMap.containsKey(header));
+                assertNull(multiStringMap.getFirst(header));
+                assertNull(multiStringMap.get(header));
 
-                headers.putHeader(header, "foo");
+                multiStringMap.putDirect(header, "foo");
 
-                assertEquals(i + 1 - offset, headers.size());
-                assertTrue(headers.containsHeader(header));
-                assertTrue(headers.containsKey(header));
-                assertEquals("foo", headers.getHeader(header));
-                assertEquals(List.of("foo"), headers.get(header));
+                assertEquals(i + 1 - offset, multiStringMap.size());
+                assertTrue(multiStringMap.containsKey(header));
+                assertEquals("foo", multiStringMap.getFirst(header));
+                assertEquals(List.of("foo"), multiStringMap.get(header));
 
-                headers.putHeader(header, "foo");
-                assertEquals(i + 1 - offset, headers.size());
-                assertEquals("foo", headers.getHeader(header));
-                assertEquals(List.of("foo"), headers.get(header));
+                multiStringMap.putDirect(header, "foo");
+                assertEquals(i + 1 - offset, multiStringMap.size());
+                assertEquals("foo", multiStringMap.getFirst(header));
+                assertEquals(List.of("foo"), multiStringMap.get(header));
             } catch (AssertionError error) {
                 throw new AssertionError("header: " + header, error);
             }

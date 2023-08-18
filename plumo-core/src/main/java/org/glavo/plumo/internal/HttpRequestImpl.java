@@ -17,6 +17,7 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpDataFormat;
 import org.glavo.plumo.HttpRequest;
+import org.glavo.plumo.internal.util.MultiStringMap;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +29,7 @@ public final class HttpRequestImpl implements HttpRequest {
     private final SocketAddress remoteAddress;
     private final SocketAddress localAddress;
 
-    public final Headers headers = new Headers();
+    public final MultiStringMap headers = new MultiStringMap();
 
     // Initialize in HttpRequestReader
     Method method;
@@ -69,7 +70,7 @@ public final class HttpRequestImpl implements HttpRequest {
 
     @Override
     public String getHeader(String name) {
-        return headers.getHeader(name.toLowerCase(Locale.ROOT));
+        return headers.getFirst(name.toLowerCase(Locale.ROOT));
     }
 
     @Override
@@ -131,7 +132,7 @@ public final class HttpRequestImpl implements HttpRequest {
 
     @Override
     public String getHost() {
-        return headers.getHeader("host");
+        return headers.getFirst("host");
     }
 
     @Override

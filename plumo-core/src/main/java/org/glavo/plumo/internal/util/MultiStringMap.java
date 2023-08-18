@@ -13,17 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glavo.plumo.internal;
-
-import org.glavo.plumo.internal.util.UnsyncBufferedOutputStream;
-import org.glavo.plumo.internal.util.Utils;
+package org.glavo.plumo.internal.util;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.function.BiConsumer;
 
 @SuppressWarnings("unchecked")
-public final class Headers extends AbstractMap<String, List<String>> {
+public final class MultiStringMap extends AbstractMap<String, List<String>> {
 
     // list of prime numbers
     private static final int[] CAPACITIES = {127, 269, 541, 1091, 2287, 4583, 9199, 19121, 39133};
@@ -111,7 +108,7 @@ public final class Headers extends AbstractMap<String, List<String>> {
         }
     }
 
-    static List<String> mapValue(Object value) {
+    public static List<String> mapValue(Object value) {
         if (value instanceof String) {
             return Collections.singletonList((String) value);
         } else if (value != null) {
@@ -121,7 +118,7 @@ public final class Headers extends AbstractMap<String, List<String>> {
         }
     }
 
-    public void putHeader(String canonicalName, Object value) {
+    public void putDirect(String canonicalName, Object value) {
         // assert value == null || value instanceof String || value instanceof ArrayList<?>;
 
         growIfNeeded();
@@ -135,9 +132,7 @@ public final class Headers extends AbstractMap<String, List<String>> {
         values[idx] = value;
     }
 
-    public void addHeader(String canonicalName, String value) {
-        // assert value == null || value instanceof String || value instanceof ArrayList<?>;
-
+    public void addDirect(String canonicalName, String value) {
         growIfNeeded();
 
         int idx = probe(this.keys, canonicalName);
@@ -163,7 +158,7 @@ public final class Headers extends AbstractMap<String, List<String>> {
         }
     }
 
-    public String getHeader(String canonicalName) {
+    public String getFirst(String canonicalName) {
         if (size == 0) {
             return null;
         }
@@ -180,10 +175,6 @@ public final class Headers extends AbstractMap<String, List<String>> {
         } else {
             return ((ArrayList<String>) value).get(0);
         }
-    }
-
-    public boolean containsHeader(String canonicalName) {
-        return size > 0 && probe(this.keys, canonicalName) >= 0;
     }
 
     public void forEachHeader(BiConsumer<String, String> consumer) {
@@ -203,7 +194,7 @@ public final class Headers extends AbstractMap<String, List<String>> {
         }
     }
 
-    public void writeTo(UnsyncBufferedOutputStream out) throws IOException {
+    public void writeHeadersTo(UnsyncBufferedOutputStream out) throws IOException {
         final String[] keys = this.keys;
         final Object[] values = this.values;
 
@@ -235,14 +226,7 @@ public final class Headers extends AbstractMap<String, List<String>> {
             return null;
         }
 
-        String canonicalName;
-        try {
-            canonicalName = Utils.normalizeHttpHeaderFieldName((String) key);
-        } catch (IllegalArgumentException ignored) {
-            return null;
-        }
-
-        int idx = probe(this.keys, canonicalName);
+        int idx = probe(this.keys, (String) key);
         if (idx < 0) {
             return null;
         }
@@ -252,11 +236,7 @@ public final class Headers extends AbstractMap<String, List<String>> {
 
     @Override
     public boolean containsKey(Object key) {
-        try {
-            return containsHeader(Utils.normalizeHttpHeaderFieldName((String) key));
-        } catch (IllegalArgumentException | ClassCastException | NullPointerException ignored) {
-            return false;
-        }
+        return key instanceof String && size > 0 && probe(this.keys, (String) key) >= 0;
     }
 
     @Override
@@ -283,8 +263,8 @@ public final class Headers extends AbstractMap<String, List<String>> {
     }
 
     @Override
-    public Headers clone() {
-        Headers newHeaders = new Headers();
+    public MultiStringMap clone() {
+        MultiStringMap newMultiStringMap = new MultiStringMap();
         if (size > 0) {
             Object[] values = this.values;
             Object[] newValues = new Object[values.length];
@@ -297,12 +277,12 @@ public final class Headers extends AbstractMap<String, List<String>> {
                 }
             }
 
-            newHeaders.keys = this.keys.clone();
-            newHeaders.values = newValues;
-            newHeaders.size = this.size;
-            newHeaders.threshold = this.threshold;
+            newMultiStringMap.keys = this.keys.clone();
+            newMultiStringMap.values = newValues;
+            newMultiStringMap.size = this.size;
+            newMultiStringMap.threshold = this.threshold;
         }
-        return newHeaders;
+        return newMultiStringMap;
     }
 
     @Override
@@ -313,7 +293,7 @@ public final class Headers extends AbstractMap<String, List<String>> {
     private final class EntrySet extends AbstractSet<Entry<String, List<String>>> {
         @Override
         public int size() {
-            return Headers.this.size();
+            return MultiStringMap.this.size();
         }
 
         @Override

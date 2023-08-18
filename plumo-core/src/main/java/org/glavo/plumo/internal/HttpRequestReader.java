@@ -139,7 +139,7 @@ public class HttpRequestReader implements Closeable {
 //            }
 //        }
 
-        String contentLength = request.headers.getHeader("content-length");
+        String contentLength = request.headers.getFirst("content-length");
         long len;
 
         if (contentLength != null) {
@@ -433,7 +433,7 @@ public class HttpRequestReader implements Closeable {
 
         String value = off < 0 ? "" : new String(buf, off, end - off, HEADER_ENCODING).trim();
 
-        request.headers.addHeader(name.toLowerCase(Locale.ROOT), value);
+        request.headers.addDirect(name.toLowerCase(Locale.ROOT), value);
     }
 
     private final class BoundedInputStream extends InputStream {

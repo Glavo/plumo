@@ -74,7 +74,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                             return;
                         }
 
-                        String connection = request.headers.getHeader("connection");
+                        String connection = request.headers.getFirst("connection");
                         boolean keepAlive = "HTTP/1.1".equals(request.getHttpVersion()) && (connection == null || !connection.equals("close"));
 
                         if (!r.isAvailable()) {
@@ -89,7 +89,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                             return;
                         }
 
-                        if (!keepAlive || "close".equals(r.headers.getHeader("connection"))) {
+                        if (!keepAlive || "close".equals(r.headers.getFirst("connection"))) {
                             return;
                         }
                     } finally {
@@ -139,13 +139,13 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
         out.writeStatus(response.status);
         out.writeCRLF();
 
-        if (request == null || !request.headers.containsHeader("date")) {
+        if (request == null || !request.headers.containsKey("date")) {
             out.writeHttpHeader("date", Constants.HTTP_TIME_FORMATTER.format(Instant.now()));
         }
 
-        response.headers.writeTo(out);
+        response.headers.writeHeadersTo(out);
 
-        if (!keepAlive && !response.headers.containsHeader("connection")) {
+        if (!keepAlive && !response.headers.containsKey("connection")) {
             out.writeHttpHeader("connection", "close");
         }
 
@@ -153,8 +153,8 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
         String contentEncoding = null;
 
         if (request != null) {
-            contentType = request.headers.getHeader("content-type");
-            contentEncoding = request.headers.getHeader("content-encoding");
+            contentType = request.headers.getFirst("content-type");
+            contentEncoding = request.headers.getFirst("content-encoding");
         }
 
         long inputLength;
@@ -185,7 +185,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             }
 
             boolean useGzip;
-            String acceptEncoding = request != null ? request.headers.getHeader("accept-encoding") : null;
+            String acceptEncoding = request != null ? request.headers.getFirst("accept-encoding") : null;
             if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
                 useGzip = false;
             } else if (contentEncoding == null) {

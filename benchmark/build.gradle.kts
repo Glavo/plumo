@@ -10,13 +10,11 @@ repositories {
 }
 
 dependencies {
-    implementation(rootProject)
     implementation("org.openjdk.jmh:jmh-core:$jmhVersion")
     annotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
 
     implementation(project(":plumo-core"))
 }
-
 
 tasks.compileJava {
     options.release.set(17)
