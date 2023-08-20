@@ -23,6 +23,8 @@ import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -387,6 +389,13 @@ public class HttpRequestReader implements Closeable {
 
         String rawUri = new String(buf, off, end - off, HEADER_ENCODING);
 
+        URI uri;
+        try {
+            uri = new URI(rawUri);
+        } catch (URISyntaxException e) {
+            throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Syntax error. Illegal URI.");
+        }
+
         off = findTokenStart(buf, end, lineEnd);
         if (end == lineEnd || off < 0) {
             throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Syntax error. Missing HTTP version.");
@@ -399,6 +408,7 @@ public class HttpRequestReader implements Closeable {
 
         request.method = method;
         request.rawUri = rawUri;
+        request.uri = uri;
         request.httpVersion = httpVersion;
     }
 

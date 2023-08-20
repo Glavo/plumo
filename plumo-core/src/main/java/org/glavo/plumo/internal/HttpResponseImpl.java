@@ -41,6 +41,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         this.frozen = false;
         this.headerIsAlias = false;
 
+        this.status = Status.OK;
         this.headers = new MultiStringMap();
     }
 

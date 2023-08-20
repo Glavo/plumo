@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-module org.glavo.plumo.core {
+module org.glavo.plumo {
     requires static org.jetbrains.annotations;
 
     exports org.glavo.plumo;
+
+    exports org.glavo.plumo.internal to org.glavo.plumo.webserver;
+    exports org.glavo.plumo.internal.util to org.glavo.plumo.webserver;
 }

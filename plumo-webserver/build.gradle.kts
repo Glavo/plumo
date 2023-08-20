@@ -2,7 +2,7 @@ plugins {
     id("application")
 }
 
-val mainClassName = "org.glavo.plumo.webserver.Main"
+val mainClassName = "org.glavo.plumo.webserver.WebServer"
 
 application {
     mainClass.set(mainClassName)

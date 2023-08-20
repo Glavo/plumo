@@ -18,6 +18,7 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpResponse;
 
 import java.io.IOException;
+import java.util.Objects;
 
 public final class HttpResponseException extends IOException {
 
@@ -35,6 +36,10 @@ public final class HttpResponseException extends IOException {
     public HttpResponseException(HttpResponse.Status status, String message, Exception e) {
         super(message, e);
         this.response = HttpResponse.newTextResponse(status, message, "text/plain");
+    }
+
+    public HttpResponseException(HttpResponse response) {
+        this.response = Objects.requireNonNull(response);
     }
 
     public HttpResponse getResponse() {

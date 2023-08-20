@@ -33,6 +33,7 @@ public final class HttpRequestImpl implements HttpRequest {
 
     // Initialize in HttpRequestReader
     Method method;
+    URI uri;
     String rawUri;
     String httpVersion;
     InputStream body;
@@ -94,6 +95,11 @@ public final class HttpRequestImpl implements HttpRequest {
     @Override
     public long getBodySize() {
         return bodySize;
+    }
+
+    @Override
+    public URI getURI() {
+        return uri;
     }
 
     @Override
