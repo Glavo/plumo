@@ -293,8 +293,8 @@ public class FileServer implements HttpHandler {
                                                "Options:\n" +
                                                "\n" +
                                                "  -b, --bind-address <bind address> \n" +
-                                               "                        Address to bind to. Default: 127.0.0.1 (loopback).\n" +
-                                               "                        For all interfaces use \"-b 0.0.0.0\" or \"-b ::\".\n" +
+                                               "                        Address to bind to. Default: 0.0.0.0 (all interfaces).\n" +
+                                               "                        For loopback use \"-b 127.0.0.1\" or \"-b ::1\".\n" +
                                                "                        For unix domain socket use \"-b unix:<socket file>\".\n" +
                                                "  -p, --port <port>     Port to listen on. Default: 8000.\n" +
                                                "  -d, --directory <directory>       \n" +
