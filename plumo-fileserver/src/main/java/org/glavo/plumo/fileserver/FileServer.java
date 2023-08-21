@@ -9,9 +9,13 @@ import org.glavo.plumo.fileserver.internal.FileServerUtils;
 
 import java.io.*;
 import java.net.*;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -34,17 +38,20 @@ public class FileServer implements HttpHandler {
     private static final String CLOSE_HTML = "</body></html>";
 
     private static final HttpResponse NOT_FOUND = HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND).freeze();
+    private static final HttpResponse FORBIDDEN = HttpResponse.newResponse(HttpResponse.Status.FORBIDDEN).freeze();
 
     private final Path root;
     private final FileNameMap mimeTable;
     private final OutputLevel outputLevel;
     private final PrintStream logOutput;
+    private final boolean doCache;
 
-    private FileServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintStream logOutput) {
+    private FileServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintStream logOutput, boolean doCache) {
         this.root = root;
         this.mimeTable = mimeTable;
         this.outputLevel = outputLevel;
         this.logOutput = logOutput;
+        this.doCache = doCache;
     }
 
     private static void sanitize(StringBuilder builder, String str) {
@@ -150,18 +157,41 @@ public class FileServer implements HttpHandler {
                 .withBody(builder.toString());
     }
 
-    private HttpResponse handleFile(Path file, BasicFileAttributes attributes) {
+    private HttpResponse handleFile(HttpRequest request, Path file, BasicFileAttributes attributes) {
+        Instant lastModifiedTime = attributes.lastModifiedTime().toInstant();
+        String httpTime = HTTP_TIME_FORMATTER.format(lastModifiedTime);
+
         String mime = mimeTable.getContentTypeFor(file.getFileName().toString());
 
-        HttpResponse response = HttpResponse.newResponse()
-                .withHeader("last-modified", HTTP_TIME_FORMATTER.format(attributes.lastModifiedTime().toInstant()))
-                .withBody(file);
-
-        if (mime != null) {
-            response = response.withHeader("content-type", mime);
+        if (mime != null && doCache) {
+            if (httpTime.equals(request.getHeader("if-modified-since"))) {
+                return HttpResponse.newResponse(HttpResponse.Status.NOT_MODIFIED);
+            }
         }
 
-        return response;
+        FileChannel channel = null;
+        try {
+            // Check Permissions
+            channel = FileChannel.open(file);
+
+            HttpResponse response = HttpResponse.newResponse()
+                    .withHeader("last-modified", HTTP_TIME_FORMATTER.format(lastModifiedTime));
+
+            if (mime != null) {
+                response = response.withHeader("content-type", mime);
+            }
+
+            return response.withBody(Channels.newInputStream(channel), channel.size());
+        } catch (Throwable e) {
+            try {
+                if (channel != null) {
+                    channel.close();
+                }
+            } catch (IOException ignored) {
+            }
+
+            return FORBIDDEN;
+        }
     }
 
     private void logRequest(HttpRequest request, HttpResponse response) {
@@ -210,7 +240,7 @@ public class FileServer implements HttpHandler {
             } else {
                 path = root.resolve(p).toAbsolutePath().normalize();
                 if (!path.startsWith(root)) {
-                    return HttpResponse.newResponse(HttpResponse.Status.FORBIDDEN);
+                    return FORBIDDEN;
                 }
             }
         } catch (Exception e) {
@@ -238,20 +268,16 @@ public class FileServer implements HttpHandler {
 
             Path indexFile = findIndexFile(path);
             if (indexFile != null) {
-                BasicFileAttributes indexFileAttributes;
-
                 try {
-                    indexFileAttributes = Files.readAttributes(indexFile, BasicFileAttributes.class);
-                } catch (Throwable e) {
-                    return NOT_FOUND;
+                    BasicFileAttributes indexFileAttributes = Files.readAttributes(indexFile, BasicFileAttributes.class);
+                    return handleFile(request, indexFile, indexFileAttributes);
+                } catch (Throwable ignored) {
                 }
-
-                return handleFile(indexFile, indexFileAttributes);
-            } else {
-                return listFiles(request.getURI(), path, attributes);
             }
+
+            return listFiles(request.getURI(), path, attributes);
         } else {
-            return handleFile(path, attributes);
+            return handleFile(request, path, attributes);
         }
     }
 
@@ -306,6 +332,7 @@ public class FileServer implements HttpHandler {
         OutputLevel outputLevel = null;
         Path root = null;
         int port = -1;
+        boolean doCache = false;
 
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -362,6 +389,10 @@ public class FileServer implements HttpHandler {
                         System.exit(1);
                     }
                     break;
+                // Undocumented
+                case "--do-cache":
+                    doCache = true;
+                    break;
                 default:
                     System.err.println("Error: unknown option: " + arg);
                     System.exit(1);
@@ -390,7 +421,7 @@ public class FileServer implements HttpHandler {
             outputLevel = OutputLevel.INFO;
         }
 
-        FileServer server = new FileServer(root, new MimeTable(), outputLevel, System.out);
+        FileServer server = new FileServer(root, new MimeTable(), outputLevel, System.out, doCache);
 
         Plumo plumo = Plumo.create();
         if (inetSocketAddress != null) {
