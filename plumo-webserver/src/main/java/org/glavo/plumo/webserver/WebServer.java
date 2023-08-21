@@ -8,12 +8,12 @@ import org.glavo.plumo.internal.Constants;
 import org.glavo.plumo.webserver.internal.MimeTable;
 import org.glavo.plumo.webserver.internal.WebServerUtils;
 
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 public class WebServer implements HttpHandler {
@@ -21,6 +21,8 @@ public class WebServer implements HttpHandler {
     public enum OutputLevel {
         NONE, INFO, VERBOSE
     }
+
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm:ss Z").withLocale(Locale.US);
 
     private static final HttpResponse METHOD_NOT_ALLOWED = HttpResponse.newResponse(HttpResponse.Status.METHOD_NOT_ALLOWED)
             .addHeader("allow", "HEAD, GET")
@@ -34,9 +36,9 @@ public class WebServer implements HttpHandler {
     private final Path root;
     private final FileNameMap mimeTable;
     private final OutputLevel outputLevel;
-    private final PrintWriter logOutput;
+    private final PrintStream logOutput;
 
-    private WebServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintWriter logOutput) {
+    private WebServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintStream logOutput) {
         this.root = root;
         this.mimeTable = mimeTable;
         this.outputLevel = outputLevel;
@@ -148,18 +150,43 @@ public class WebServer implements HttpHandler {
 
     private HttpResponse handleFile(Path file, BasicFileAttributes attributes) {
         String mime = mimeTable.getContentTypeFor(file.getFileName().toString());
-        if (mime == null) {
-            mime = "application/octet-stream";
-        }
 
-        return HttpResponse.newResponse()
-                .withHeader("content-type", mime)
+        HttpResponse response = HttpResponse.newResponse()
                 .withHeader("last-modified", Constants.HTTP_TIME_FORMATTER.format(attributes.lastModifiedTime().toInstant()))
                 .withBody(file);
+
+        if (mime != null) {
+            response = response.withHeader("content-type", mime);
+        }
+
+        return response;
     }
 
-    @Override
-    public HttpResponse handle(HttpRequest request) throws Exception {
+    private void logRequest(HttpRequest request, HttpResponse response) {
+        if (outputLevel == OutputLevel.NONE) {
+            return;
+        }
+
+        StringBuilder log = new StringBuilder(256);
+
+        SocketAddress remoteAddress = request.getRemoteAddress();
+        if (remoteAddress instanceof InetSocketAddress) {
+            log.append(((InetSocketAddress) remoteAddress).getAddress().getHostAddress());
+        } else {
+            log.append("127.0.0.1");
+        }
+
+        log.append(" -- [");
+        FORMATTER.formatTo(OffsetDateTime.now(), log);
+        log.append("] \"");
+        log.append(request.getMethod()).append(' ').append(request.getRawURI()).append(' ').append(request.getHttpVersion());
+        log.append("\" ");
+        log.append(response.getStatus().getStatusCode()).append(" -");
+
+        logOutput.println(log);
+    }
+
+    private HttpResponse handleImpl(HttpRequest request) {
         if (request.getMethod() != HttpRequest.Method.GET && request.getMethod() != HttpRequest.Method.HEAD) {
             return METHOD_NOT_ALLOWED;
         }
@@ -224,6 +251,13 @@ public class WebServer implements HttpHandler {
         } else {
             return handleFile(path, attributes);
         }
+    }
+
+    @Override
+    public HttpResponse handle(HttpRequest request) {
+        HttpResponse response = handleImpl(request);
+        logRequest(request, response);
+        return response;
     }
 
     private static String nextArg(String[] args, int index) {
@@ -329,7 +363,7 @@ public class WebServer implements HttpHandler {
             outputLevel = OutputLevel.INFO;
         }
 
-        WebServer server = new WebServer(root, new MimeTable(), outputLevel, new PrintWriter(new OutputStreamWriter(System.out)));
+        WebServer server = new WebServer(root, new MimeTable(), outputLevel, System.out);
 
         Plumo plumo = Plumo.create();
         if (inetSocketAddress != null) {

@@ -64,6 +64,10 @@ public /*sealed*/ interface HttpResponse {
         return withBody(file.toPath());
     }
 
+    // Getters
+
+    Status getStatus();
+
     final class Status implements Serializable {
         private static final long serialVersionUID = 0L;
 

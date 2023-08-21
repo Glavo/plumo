@@ -201,6 +201,13 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
 
     // ----
 
+    @Override
+    public Status getStatus() {
+        return status;
+    }
+
+    // ----
+
     public boolean isAvailable() {
         return !(body instanceof InputStream) || !closed;
     }
