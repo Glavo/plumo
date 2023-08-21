@@ -272,7 +272,7 @@ public class WebServer implements HttpHandler {
                                                "  -d, --directory <directory>       \n" +
                                                "                        Directory to serve. Default: current directory.\n" +
                                                "  -?, -h, --help        Prints this help message and exits.\n" +
-                                               "  -version, --version   Prints version information and exits.";
+                                               "  --version             Prints version information and exits.";
 
     private static String nextArg(String[] args, int index) {
         if (index < args.length - 1) {
