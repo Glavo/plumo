@@ -1,12 +1,11 @@
-package org.glavo.plumo.webserver;
+package org.glavo.plumo.fileserver;
 
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.Plumo;
-import org.glavo.plumo.internal.Constants;
-import org.glavo.plumo.webserver.internal.MimeTable;
-import org.glavo.plumo.webserver.internal.WebServerUtils;
+import org.glavo.plumo.fileserver.internal.MimeTable;
+import org.glavo.plumo.fileserver.internal.FileServerUtils;
 
 import java.io.*;
 import java.net.*;
@@ -14,16 +13,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-public class WebServer implements HttpHandler {
+public class FileServer implements HttpHandler {
 
     public enum OutputLevel {
         NONE, INFO, VERBOSE
     }
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm:ss Z").withLocale(Locale.US);
+    private static final DateTimeFormatter HTTP_TIME_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.US).withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter LOG_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm:ss Z", Locale.US);
 
     private static final HttpResponse METHOD_NOT_ALLOWED = HttpResponse.newResponse(HttpResponse.Status.METHOD_NOT_ALLOWED)
             .addHeader("allow", "HEAD, GET")
@@ -39,7 +40,7 @@ public class WebServer implements HttpHandler {
     private final OutputLevel outputLevel;
     private final PrintStream logOutput;
 
-    private WebServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintStream logOutput) {
+    private FileServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintStream logOutput) {
         this.root = root;
         this.mimeTable = mimeTable;
         this.outputLevel = outputLevel;
@@ -125,8 +126,8 @@ public class WebServer implements HttpHandler {
                 String fileName = file.getFileName().toString();
 
                 builder.append("<li><a href=\"");
-                WebServerUtils.encodeURL(builder, dirBase);
-                WebServerUtils.encodeURL(builder, fileName);
+                FileServerUtils.encodeURL(builder, dirBase);
+                FileServerUtils.encodeURL(builder, fileName);
                 if (isDir) {
                     builder.append('/');
                 }
@@ -153,7 +154,7 @@ public class WebServer implements HttpHandler {
         String mime = mimeTable.getContentTypeFor(file.getFileName().toString());
 
         HttpResponse response = HttpResponse.newResponse()
-                .withHeader("last-modified", Constants.HTTP_TIME_FORMATTER.format(attributes.lastModifiedTime().toInstant()))
+                .withHeader("last-modified", HTTP_TIME_FORMATTER.format(attributes.lastModifiedTime().toInstant()))
                 .withBody(file);
 
         if (mime != null) {
@@ -178,7 +179,7 @@ public class WebServer implements HttpHandler {
         }
 
         log.append(" -- [");
-        FORMATTER.formatTo(OffsetDateTime.now(), log);
+        LOG_TIME_FORMATTER.formatTo(OffsetDateTime.now(), log);
         log.append("] \"");
         log.append(request.getMethod()).append(' ').append(request.getRawURI()).append(' ').append(request.getHttpVersion());
         log.append("\" ");
@@ -261,7 +262,7 @@ public class WebServer implements HttpHandler {
         return response;
     }
 
-    private static final String HELP_MESSAGE = "Usage: plumo-webserver [-b bind address] [-p port] [-d directory]\n" +
+    private static final String HELP_MESSAGE = "Usage: plumo-fileserver [-b bind address] [-p port] [-d directory]\n" +
                                                "\n" +
                                                "Options:\n" +
                                                "\n" +
@@ -277,7 +278,7 @@ public class WebServer implements HttpHandler {
 
     private static String getVersion() {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                WebServer.class.getResourceAsStream("version.txt"), StandardCharsets.UTF_8))) {
+                FileServer.class.getResourceAsStream("version.txt"), StandardCharsets.UTF_8))) {
             return reader.readLine();
         } catch (IOException | NullPointerException e) {
             return "unknown";
@@ -317,7 +318,7 @@ public class WebServer implements HttpHandler {
                     return;
                 case "-version":
                 case "--version":
-                    System.out.println("plumo-webserver " + getVersion());
+                    System.out.println("plumo-fileserver " + getVersion());
                     return;
                 case "-b":
                 case "-bind-address":
@@ -376,7 +377,7 @@ public class WebServer implements HttpHandler {
         if (unixAddr != null) {
             inetSocketAddress = null;
         } else if (addr == null) {
-            inetSocketAddress = new InetSocketAddress(InetAddress.getLoopbackAddress(), port);
+            inetSocketAddress = new InetSocketAddress(port);
         } else {
             inetSocketAddress = new InetSocketAddress(addr, port);
         }
@@ -389,7 +390,7 @@ public class WebServer implements HttpHandler {
             outputLevel = OutputLevel.INFO;
         }
 
-        WebServer server = new WebServer(root, new MimeTable(), outputLevel, System.out);
+        FileServer server = new FileServer(root, new MimeTable(), outputLevel, System.out);
 
         Plumo plumo = Plumo.create();
         if (inetSocketAddress != null) {
@@ -399,10 +400,6 @@ public class WebServer implements HttpHandler {
         }
         plumo.setHandler(server);
         plumo.startInNewThread(false);
-
-        if (unixAddr == null && addr == null) {
-            System.out.println("Binding to loopback by default. For all interfaces use \"-b 0.0.0.0\" or \"-b ::\".");
-        }
 
         if (unixAddr == null) {
             InetSocketAddress localAddress = (InetSocketAddress) plumo.getLocalAddress();

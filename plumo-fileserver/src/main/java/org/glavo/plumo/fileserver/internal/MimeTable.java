@@ -1,4 +1,4 @@
-package org.glavo.plumo.webserver.internal;
+package org.glavo.plumo.fileserver.internal;
 
 import java.io.IOException;
 import java.io.InputStream;

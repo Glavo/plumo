@@ -2,7 +2,7 @@ plugins {
     id("application")
 }
 
-val mainClassName = "org.glavo.plumo.webserver.WebServer"
+val mainClassName = "org.glavo.plumo.fileserver.FileServer"
 
 application {
     mainClass.set(mainClassName)
@@ -27,7 +27,7 @@ tasks.create("generateVersionFile") {
 tasks.processResources {
     dependsOn(tasks["generateVersionFile"])
 
-    into("org/glavo/plumo/webserver") {
+    into("org/glavo/plumo/fileserver") {
         from(versionFile)
     }
 }

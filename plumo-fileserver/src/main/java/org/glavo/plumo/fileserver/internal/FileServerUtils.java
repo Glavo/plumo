@@ -1,6 +1,6 @@
-package org.glavo.plumo.webserver.internal;
+package org.glavo.plumo.fileserver.internal;
 
-public final class WebServerUtils {
+public final class FileServerUtils {
 
     private static final boolean[] DONT_NEED_ENCODING = new boolean[128];
 
