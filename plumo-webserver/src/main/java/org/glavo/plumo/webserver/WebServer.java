@@ -260,6 +260,20 @@ public class WebServer implements HttpHandler {
         return response;
     }
 
+    private static final String HELP_MESSAGE = "Usage: plumo-webserver [-b bind address] [-p port] [-d directory]\n" +
+                                               "\n" +
+                                               "Options:\n" +
+                                               "\n" +
+                                               "  -b, --bind-address <bind address> \n" +
+                                               "                        Address to bind to. Default: 127.0.0.1 (loopback).\n" +
+                                               "                        For all interfaces use \"-b 0.0.0.0\" or \"-b ::\".\n" +
+                                               "                        For unix domain socket use \"-b unix:<socket file>\".\n" +
+                                               "  -p, --port <port>     Port to listen on. Default: 8000.\n" +
+                                               "  -d, --directory <directory>       \n" +
+                                               "                        Directory to serve. Default: current directory.\n" +
+                                               "  -?, -h, --help        Prints this help message and exits.\n" +
+                                               "  -version, --version   Prints version information and exits.";
+
     private static String nextArg(String[] args, int index) {
         if (index < args.length - 1) {
             return args[index + 1];
@@ -289,7 +303,7 @@ public class WebServer implements HttpHandler {
                 case "-?":
                 case "-help":
                 case "--help":
-                    System.out.println("<help message>"); // TODO
+                    System.out.println(HELP_MESSAGE);
                     return;
                 case "-version":
                 case "--version":
@@ -302,10 +316,12 @@ public class WebServer implements HttpHandler {
                         reportDuplicateOption(arg);
                     }
 
-                    if (arg.startsWith("unix:")) {
-                        unixAddr = Paths.get(arg.substring("unix:".length()));
+                    String addrString = nextArg(args, i++);
+
+                    if (addrString.startsWith("unix:")) {
+                        unixAddr = Paths.get(addrString.substring("unix:".length())).toAbsolutePath().normalize();
                     } else {
-                        addr = InetAddress.getByName(nextArg(args, i++));
+                        addr = InetAddress.getByName(addrString);
                     }
                     break;
                 case "-d":
@@ -391,7 +407,7 @@ public class WebServer implements HttpHandler {
 
             System.out.printf("Serving %s and subdirectories on %s port %s (%s)%n", root, hostAddress, localAddress.getPort(), url);
         } else {
-            System.out.println("Serving " + root + "  and subdirectories on unix:" + unixAddr);
+            System.out.println("Serving " + root + " and subdirectories on unix:" + unixAddr);
         }
     }
 }
