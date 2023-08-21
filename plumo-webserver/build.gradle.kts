@@ -14,6 +14,24 @@ tasks.jar {
     )
 }
 
+val versionFile = layout.buildDirectory.file("version.txt")
+
+tasks.create("generateVersionFile") {
+    outputs.file(versionFile)
+
+    doLast {
+        versionFile.get().asFile.writeText(project.version.toString())
+    }
+}
+
+tasks.processResources {
+    dependsOn(tasks["generateVersionFile"])
+
+    into("org/glavo/plumo/webserver") {
+        from(versionFile)
+    }
+}
+
 dependencies {
     implementation(project(":plumo-core"))
 }

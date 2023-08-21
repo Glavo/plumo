@@ -10,6 +10,7 @@ import org.glavo.plumo.webserver.internal.WebServerUtils;
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.OffsetDateTime;
@@ -274,6 +275,15 @@ public class WebServer implements HttpHandler {
                                                "  -?, -h, --help        Prints this help message and exits.\n" +
                                                "  --version             Prints version information and exits.";
 
+    private static String getVersion() {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                WebServer.class.getResourceAsStream("version.txt"), StandardCharsets.UTF_8))) {
+            return reader.readLine();
+        } catch (IOException | NullPointerException e) {
+            return "unknown";
+        }
+    }
+
     private static String nextArg(String[] args, int index) {
         if (index < args.length - 1) {
             return args[index + 1];
@@ -307,7 +317,7 @@ public class WebServer implements HttpHandler {
                     return;
                 case "-version":
                 case "--version":
-                    System.out.println("<version number>"); // TODO
+                    System.out.println("plumo-webserver " + getVersion());
                     return;
                 case "-b":
                 case "-bind-address":
