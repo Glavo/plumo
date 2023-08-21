@@ -375,8 +375,8 @@ public class WebServer implements HttpHandler {
         InetSocketAddress inetSocketAddress;
         if (unixAddr != null) {
             inetSocketAddress = null;
-        } else if (addr == null || addr.isAnyLocalAddress()) {
-            inetSocketAddress = new InetSocketAddress(port);
+        } else if (addr == null) {
+            inetSocketAddress = new InetSocketAddress(InetAddress.getLoopbackAddress(), port);
         } else {
             inetSocketAddress = new InetSocketAddress(addr, port);
         }
