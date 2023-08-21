@@ -22,6 +22,8 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.List;
 
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
+
 public /*sealed*/ interface HttpResponse {
 
     static HttpResponse newResponse() {
@@ -183,6 +185,11 @@ public /*sealed*/ interface HttpResponse {
         @ApiStatus.Internal
         public void writeTo(OutputStream out) throws IOException {
             out.write(binary);
+        }
+
+        @Override
+        public String toString() {
+            return new String(binary, ISO_8859_1);
         }
     }
 }

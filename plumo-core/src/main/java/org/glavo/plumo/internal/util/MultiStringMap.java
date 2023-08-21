@@ -178,8 +178,15 @@ public final class MultiStringMap extends AbstractMap<String, List<String>> {
     }
 
     public void forEachHeader(BiConsumer<String, String> consumer) {
-        for (int i = 0; i < this.keys.length; i++) {
-            String key = this.keys[i];
+        final String[] keys = this.keys;
+        final Object[] values = this.values;
+
+        if (keys == null) {
+            return;
+        }
+
+        for (int i = 0; i < keys.length; i++) {
+            String key = keys[i];
             if (key != null) {
                 Object value = values[i];
                 if (value instanceof String) {

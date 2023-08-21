@@ -215,6 +215,14 @@ public class FileServer implements HttpHandler {
         log.append("\" ");
         log.append(response.getStatus().getStatusCode()).append(" -");
 
+        if (outputLevel == OutputLevel.VERBOSE) {
+            log.append('\n');
+            log.append(request);
+            log.append('\n');
+            log.append(response);
+            log.append('\n');
+        }
+
         logOutput.println(log);
     }
 

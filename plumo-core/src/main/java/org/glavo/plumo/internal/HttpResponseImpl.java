@@ -21,6 +21,7 @@ import org.glavo.plumo.internal.util.Utils;
 
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.*;
 
 public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
@@ -220,5 +221,42 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
 
         closed = true;
         // TODO IOUtils.safeClose((InputStream) body);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("HttpResponse {\n");
+        builder.append("    ").append("HTTP/1.1 ").append(status).append("\n");
+
+        if (!headers.containsKey("date")) {
+            builder.append("    date: <calculated when request is sent>\n");
+        }
+
+        headers.forEachHeader((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
+
+        builder.append("\n    ");
+        if (body instanceof String) {
+            builder.append("<string body, length=").append(((String) body).length()).append('>');
+        } else if (body instanceof byte[]) {
+            builder.append("<binary body, length=").append(((byte[]) body).length).append('>');
+        } else if (body instanceof InputStream) {
+            builder.append("<binary body, ");
+            if (contentLength < 0) {
+                builder.append("unknown length>");
+            } else {
+                builder.append("length=").append(contentLength).append('>');
+            }
+
+        } else if (body instanceof Path) {
+            builder.append("<file body, path=").append(body).append('>');
+        } else {
+            assert body == null;
+            builder.append("<empty body>");
+        }
+
+        builder.append("\n}");
+
+        return builder.toString();
     }
 }
