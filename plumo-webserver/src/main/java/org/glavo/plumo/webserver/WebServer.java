@@ -5,16 +5,22 @@ import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.Plumo;
 import org.glavo.plumo.internal.Constants;
+import org.glavo.plumo.webserver.internal.MimeTable;
 import org.glavo.plumo.webserver.internal.WebServerUtils;
 
 import java.io.IOException;
-import java.net.FileNameMap;
-import java.net.URI;
-import java.net.URLConnection;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Locale;
 
 public class WebServer implements HttpHandler {
+
+    public enum OutputLevel {
+        NONE, INFO, VERBOSE
+    }
 
     private static final HttpResponse METHOD_NOT_ALLOWED = HttpResponse.newResponse(HttpResponse.Status.METHOD_NOT_ALLOWED)
             .addHeader("allow", "HEAD, GET")
@@ -26,10 +32,15 @@ public class WebServer implements HttpHandler {
     private static final HttpResponse NOT_FOUND = HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND).freeze();
 
     private final Path root;
-    private final FileNameMap mimeTable = URLConnection.getFileNameMap();
+    private final FileNameMap mimeTable;
+    private final OutputLevel outputLevel;
+    private final PrintWriter logOutput;
 
-    public WebServer(Path root) {
-        this.root = root.normalize().toAbsolutePath();
+    private WebServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintWriter logOutput) {
+        this.root = root;
+        this.mimeTable = mimeTable;
+        this.outputLevel = outputLevel;
+        this.logOutput = logOutput;
     }
 
     private static void sanitize(StringBuilder builder, String str) {
@@ -59,12 +70,6 @@ public class WebServer implements HttpHandler {
                     builder.append(ch);
             }
         }
-    }
-
-    private static String getRedirectURI(URI uri) {
-        String query = uri.getRawQuery();
-        String redirectPath = uri.getRawPath() + "/";
-        return query == null ? redirectPath : redirectPath + "?" + query;
     }
 
     private static String appendURI(URI uri, String str) {
@@ -174,7 +179,7 @@ public class WebServer implements HttpHandler {
             if (p.isEmpty() || p.equals("/")) {
                 path = root;
             } else {
-                path = root.resolve(p).normalize().toAbsolutePath();
+                path = root.resolve(p).toAbsolutePath().normalize();
                 if (!path.startsWith(root)) {
                     return HttpResponse.newResponse(HttpResponse.Status.FORBIDDEN);
                 }
@@ -221,11 +226,138 @@ public class WebServer implements HttpHandler {
         }
     }
 
+    private static String nextArg(String[] args, int index) {
+        if (index < args.length - 1) {
+            return args[index + 1];
+        } else {
+            System.err.println("Error: no value given for " + args[index]);
+            System.exit(1);
+            throw new AssertionError();
+        }
+    }
+
+    private static void reportDuplicateOption(String opt) {
+        System.err.println("Error: duplicate option: " + opt);
+        System.exit(1);
+    }
+
     public static void main(String[] args) throws Exception {
+        InetAddress addr = null;
+        Path unixAddr = null;
+        OutputLevel outputLevel = null;
+        Path root = null;
+        int port = -1;
+
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            switch (arg) {
+                case "-h":
+                case "-?":
+                case "-help":
+                case "--help":
+                    System.out.println("<help message>"); // TODO
+                    return;
+                case "-version":
+                case "--version":
+                    System.out.println("<version number>"); // TODO
+                    return;
+                case "-b":
+                case "-bind-address":
+                case "--bind-address":
+                    if (addr != null || unixAddr != null) {
+                        reportDuplicateOption(arg);
+                    }
+
+                    if (arg.startsWith("unix:")) {
+                        unixAddr = Paths.get(arg.substring("unix:".length()));
+                    } else {
+                        addr = InetAddress.getByName(nextArg(args, i++));
+                    }
+                    break;
+                case "-d":
+                case "-directory":
+                case "--directory":
+                    if (root != null) {
+                        reportDuplicateOption(arg);
+                    }
+                    root = Paths.get(nextArg(args, i++)).toAbsolutePath().normalize();
+                    break;
+                case "-output-level":
+                case "--output-level":
+                    if (outputLevel != null) {
+                        reportDuplicateOption(arg);
+                    }
+                    outputLevel = OutputLevel.valueOf(nextArg(args, i++).toUpperCase(Locale.ROOT));
+                    break;
+                case "-p":
+                case "-port":
+                case "--port":
+                    if (port > 0) {
+                        reportDuplicateOption(arg);
+                    }
+                    port = Integer.parseInt(nextArg(args, i++));
+                    if (port < 0 || port >= 65536) {
+                        System.err.println("Error: invalid port: " + port);
+                        System.exit(1);
+                    }
+                    break;
+                default:
+                    System.err.println("Error: unknown option: " + arg);
+                    System.exit(1);
+            }
+        }
+
+
+        if (port == -1) {
+            port = 8000;
+        }
+
+        InetSocketAddress inetSocketAddress;
+        if (unixAddr != null) {
+            inetSocketAddress = null;
+        } else if (addr == null || addr.isAnyLocalAddress()) {
+            inetSocketAddress = new InetSocketAddress(port);
+        } else {
+            inetSocketAddress = new InetSocketAddress(addr, port);
+        }
+
+        if (root == null) {
+            root = Paths.get("").toAbsolutePath().normalize();
+        }
+
+        if (outputLevel == null) {
+            outputLevel = OutputLevel.INFO;
+        }
+
+        WebServer server = new WebServer(root, new MimeTable(), outputLevel, new PrintWriter(new OutputStreamWriter(System.out)));
+
         Plumo plumo = Plumo.create();
-        plumo.setHandler(new WebServer(Paths.get("")));
-        ;
-        plumo.bind(8888);
-        plumo.start();
+        if (inetSocketAddress != null) {
+            plumo.bind(inetSocketAddress);
+        } else {
+            plumo.bind(unixAddr);
+        }
+        plumo.setHandler(server);
+        plumo.startInNewThread(false);
+
+        if (unixAddr == null && addr == null) {
+            System.out.println("Binding to loopback by default. For all interfaces use \"-b 0.0.0.0\" or \"-b ::\".");
+        }
+
+        if (unixAddr == null) {
+            InetSocketAddress localAddress = (InetSocketAddress) plumo.getLocalAddress();
+            String hostAddress = localAddress.getAddress().getHostAddress();
+
+            String url;
+            if (localAddress.getAddress().isAnyLocalAddress()) {
+                url = "http://localhost:" + localAddress.getPort();
+            } else {
+                url = "http://" + hostAddress + ":" + localAddress.getPort();
+            }
+
+            System.out.printf("Serving %s and subdirectories on %s port %s (%s)%n", root, hostAddress, localAddress.getPort(), url);
+        } else {
+            System.out.println("Serving " + root + "  and subdirectories on unix:" + unixAddr);
+        }
     }
 }
