@@ -4,6 +4,7 @@ import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.Plumo;
+import org.glavo.plumo.fileserver.internal.ContentRange;
 import org.glavo.plumo.fileserver.internal.MimeTable;
 import org.glavo.plumo.fileserver.internal.FileServerUtils;
 
@@ -20,6 +21,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class FileServer implements HttpHandler {
 
@@ -39,6 +41,7 @@ public class FileServer implements HttpHandler {
 
     private static final HttpResponse NOT_FOUND = HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND).freeze();
     private static final HttpResponse FORBIDDEN = HttpResponse.newResponse(HttpResponse.Status.FORBIDDEN).freeze();
+    private static final HttpResponse INTERNAL_ERROR = HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR).freeze();
 
     private final Path root;
     private final FileNameMap mimeTable;
@@ -101,6 +104,11 @@ public class FileServer implements HttpHandler {
         }
 
         return null;
+    }
+
+    private static HttpResponse rangeNotSatisfiable(long fileSize) {
+        return HttpResponse.newResponse(HttpResponse.Status.RANGE_NOT_SATISFIABLE)
+                .withHeader("content-range", "bytes */" + fileSize);
     }
 
     private HttpResponse notFound(URI uri) {
@@ -169,29 +177,86 @@ public class FileServer implements HttpHandler {
             }
         }
 
-        FileChannel channel = null;
+        FileChannel channel;
         try {
             // Check Permissions
             channel = FileChannel.open(file);
+        } catch (Throwable e) {
+            return FORBIDDEN;
+        }
 
+        boolean shouldCloseChannel = true;
+
+        try {
             HttpResponse response = HttpResponse.newResponse()
                     .withHeader("last-modified", HTTP_TIME_FORMATTER.format(lastModifiedTime));
-
             if (mime != null) {
                 response = response.withHeader("content-type", mime);
             }
 
-            return response.withBody(Channels.newInputStream(channel), channel.size());
-        } catch (Throwable e) {
+            long fileSize;
             try {
-                if (channel != null) {
-                    channel.close();
-                }
-            } catch (IOException ignored) {
+                fileSize = channel.size();
+            } catch (IOException e) {
+                return INTERNAL_ERROR;
             }
 
-            return FORBIDDEN;
+            String range = request.getHeader("range");
+            if (range != null) {
+                ContentRange[] ranges = ContentRange.parseRanges(range);
+                if (ranges == null) {
+                    return HttpResponse.newResponse(HttpResponse.Status.BAD_REQUEST);
+                }
+
+                for (ContentRange r : ranges) {
+                    if (r.start == -1) {
+                        r.start = fileSize - r.end;
+                        if (r.start < 0) {
+                            return rangeNotSatisfiable(fileSize);
+                        }
+                        r.end = fileSize;
+                    } else if (r.end == -1) {
+                        if (r.start > fileSize) {
+                            return rangeNotSatisfiable(fileSize);
+                        }
+                        r.end = fileSize;
+                    } else {
+                        if (r.start > r.end || r.end > fileSize) {
+                            return rangeNotSatisfiable(fileSize);
+                        }
+                    }
+                }
+
+                if (ranges.length == 1) {
+                    ContentRange r = ranges[0];
+                    long start = r.start;
+                    long end = r.end;
+
+                    channel.position(start);
+
+                    shouldCloseChannel = false;
+                    return response.withStatus(HttpResponse.Status.PARTIAL_CONTENT)
+                            .withHeader("content-range", "bytes " + start + "-" + end + "/" + fileSize)
+                            .withBody(Channels.newInputStream(channel), end - start);
+                } else {
+                    // WIP
+                }
+            }
+
+
+            shouldCloseChannel = false;
+            return response.withBody(Channels.newInputStream(channel), fileSize);
+        } catch (IOException ignored) {
+            return HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR);
+        } finally {
+            if (shouldCloseChannel) {
+                try {
+                    channel.close();
+                } catch (IOException ignored) {
+                }
+            }
         }
+
     }
 
     private void logRequest(HttpRequest request, HttpResponse response) {
