@@ -237,7 +237,9 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 useGZipOutputStream = false;
             }
 
-            if (outputLength >= 0) {
+            if (outputLength >= 0
+                && !response.headers.containsKey("content-length")
+                && (contentType == null || !contentType.startsWith("multipart/"))) {
                 out.writeHttpHeader("content-length", Long.toString(outputLength));
             }
 
