@@ -201,9 +201,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 if (inputLength >= 0 && inputLength < 8192) { // TODO: magic number
                     ByteArrayOutputStream bao = new ByteArrayOutputStream((int) inputLength);
                     try (GZIPOutputStream go = new GZIPOutputStream(bao)) {
-                        if (preprocessedData == null || inputLength == 0) {
-                            // do nothing
-                        } else if (preprocessedData instanceof InputStream) {
+                        if (preprocessedData instanceof InputStream) {
                             InputStream input = (InputStream) preprocessedData;
 
                             int count = 0;
@@ -237,9 +235,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 useGZipOutputStream = false;
             }
 
-            if (outputLength >= 0
-                && !response.headers.containsKey("content-length")
-                && (contentType == null || !contentType.startsWith("multipart/"))) {
+            if (outputLength >= 0 && !response.headers.containsKey("content-length")) {
                 out.writeHttpHeader("content-length", Long.toString(outputLength));
             }
 

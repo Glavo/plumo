@@ -7,6 +7,7 @@ import org.glavo.plumo.Plumo;
 import org.glavo.plumo.fileserver.internal.ContentRange;
 import org.glavo.plumo.fileserver.internal.MimeTable;
 import org.glavo.plumo.fileserver.internal.FileServerUtils;
+import org.glavo.plumo.fileserver.internal.MultiPartByteRangesInputStream;
 
 import java.io.*;
 import java.net.*;
@@ -214,14 +215,14 @@ public class FileServer implements HttpHandler {
                         if (r.start < 0) {
                             return rangeNotSatisfiable(fileSize);
                         }
-                        r.end = fileSize;
+                        r.end = fileSize - 1;
                     } else if (r.end == -1) {
-                        if (r.start > fileSize) {
+                        if (r.start >= fileSize) {
                             return rangeNotSatisfiable(fileSize);
                         }
-                        r.end = fileSize;
+                        r.end = fileSize - 1;
                     } else {
-                        if (r.start > r.end || r.end > fileSize) {
+                        if (r.start > r.end || r.end >= fileSize) {
                             return rangeNotSatisfiable(fileSize);
                         }
                     }
@@ -234,18 +235,24 @@ public class FileServer implements HttpHandler {
 
                     channel.position(start);
 
-                    shouldCloseChannel = false;
-                    return response.withStatus(HttpResponse.Status.PARTIAL_CONTENT)
+                    response = response.withStatus(HttpResponse.Status.PARTIAL_CONTENT)
                             .withHeader("content-range", "bytes " + start + "-" + end + "/" + fileSize)
-                            .withBody(Channels.newInputStream(channel), end - start);
+                            .withBody(Channels.newInputStream(channel), end - start + 1);
                 } else {
-                    // WIP
+                    MultiPartByteRangesInputStream input = new MultiPartByteRangesInputStream(channel, fileSize, ranges, mime);
+
+                    response = response.withStatus(HttpResponse.Status.PARTIAL_CONTENT)
+                            .withHeader("content-type", "multipart/byteranges; boundary=" + input.getBoundary())
+                            .withBody(input, input.getContentLength());
                 }
+                shouldCloseChannel = false;
+                return response;
             }
 
+            response = response.withBody(Channels.newInputStream(channel), fileSize);
 
             shouldCloseChannel = false;
-            return response.withBody(Channels.newInputStream(channel), fileSize);
+            return response;
         } catch (IOException ignored) {
             return HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR);
         } finally {
