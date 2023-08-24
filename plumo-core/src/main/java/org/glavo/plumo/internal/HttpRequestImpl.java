@@ -141,6 +141,18 @@ public final class HttpRequestImpl implements HttpRequest {
         return headers.getFirst("host");
     }
 
+    private Map<String, List<String>> cookies;
+
+    @Override
+    public Map<String, List<String>> getCookies() {
+        if (cookies == null) {
+            cookies = new MultiStringMap();
+            // TODO
+        }
+
+        return cookies;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
