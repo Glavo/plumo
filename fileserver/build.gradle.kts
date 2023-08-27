@@ -38,6 +38,10 @@ tasks.processResources {
     }
 }
 
+repositories {
+    mavenCentral()
+}
+
 dependencies {
     implementation(project(":plumo-core"))
 }
