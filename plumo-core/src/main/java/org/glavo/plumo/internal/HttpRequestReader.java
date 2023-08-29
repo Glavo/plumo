@@ -535,7 +535,7 @@ public class HttpRequestReader implements Closeable {
         private final byte[] boundary;
 
         private long partCount = 0;
-        private int scanOffset;
+        private int possibleOffset;
 
         MultiPartInputStream(byte[] boundary) {
             this.boundary = boundary;
