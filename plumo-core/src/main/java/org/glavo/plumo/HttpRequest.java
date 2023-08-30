@@ -51,11 +51,11 @@ public interface HttpRequest {
 
     Map<String, List<String>> getCookies();
 
-    default <V, E extends Throwable> V getBody(HttpDataFormat<V, ?, E> type) throws E {
+    default <V, E extends Throwable> V getBody(HttpDataDecoder<V, ?, E> type) throws E {
         return getBody(type, null);
     }
 
-    <V, A, E extends Throwable> V getBody(HttpDataFormat<V, A, E> type, A arg) throws E;
+    <V, A, E extends Throwable> V getBody(HttpDataDecoder<V, A, E> type, A arg) throws E;
 
     long getBodySize();
 

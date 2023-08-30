@@ -15,7 +15,7 @@
  */
 package org.glavo.plumo.internal;
 
-import org.glavo.plumo.HttpDataFormat;
+import org.glavo.plumo.HttpDataDecoder;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.MultiStringMap;
 
@@ -82,7 +82,7 @@ public final class HttpRequestImpl implements HttpRequest {
     private boolean hasGetBody = false;
 
     @Override
-    public <V, A, E extends Throwable> V getBody(HttpDataFormat<V, A, E> type, A arg) throws E {
+    public <V, A, E extends Throwable> V getBody(HttpDataDecoder<V, A, E> type, A arg) throws E {
         Objects.requireNonNull(type);
         if (hasGetBody) {
             throw new IllegalStateException();

@@ -15,15 +15,15 @@
  */
 package org.glavo.plumo;
 
-import org.glavo.plumo.internal.HttpDataFormats;
+import org.glavo.plumo.internal.HttpDataDecoders;
 
 import java.io.IOException;
 import java.io.InputStream;
 
-public interface HttpDataFormat<V, A, E extends Throwable> {
-    HttpDataFormat<InputStream, ?, RuntimeException> INPUT_STREAM = HttpDataFormats.INPUT_STREAM;
-    HttpDataFormat<String, ?, IOException> TEXT = HttpDataFormats.TEXT;
-    HttpDataFormat<byte[], ?, IOException> BYTES = HttpDataFormats.BYTES;
+public interface HttpDataDecoder<V, A, E extends Throwable> {
+    HttpDataDecoder<InputStream, ?, RuntimeException> INPUT_STREAM = HttpDataDecoders.INPUT_STREAM;
+    HttpDataDecoder<String, ?, IOException> TEXT = HttpDataDecoders.TEXT;
+    HttpDataDecoder<byte[], ?, IOException> BYTES = HttpDataDecoders.BYTES;
 
     V decode(HttpRequest request, InputStream input, A arg) throws E;
 }

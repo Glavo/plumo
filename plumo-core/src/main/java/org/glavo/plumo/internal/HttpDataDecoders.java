@@ -15,7 +15,7 @@
  */
 package org.glavo.plumo.internal;
 
-import org.glavo.plumo.HttpDataFormat;
+import org.glavo.plumo.HttpDataDecoder;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.ParameterParser;
 
@@ -26,9 +26,9 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
-public final class HttpDataFormats {
+public final class HttpDataDecoders {
 
-    public static final HttpDataFormat<InputStream, Object, RuntimeException> INPUT_STREAM = new HttpDataFormat<InputStream, Object, RuntimeException>() {
+    public static final HttpDataDecoder<InputStream, Object, RuntimeException> INPUT_STREAM = new HttpDataDecoder<InputStream, Object, RuntimeException>() {
         @Override
         public InputStream decode(HttpRequest request, InputStream input, Object arg) {
             return input == null ? new ByteArrayInputStream(Constants.EMPTY_BYTE_ARRAY) : input;
@@ -40,7 +40,7 @@ public final class HttpDataFormats {
         }
     };
 
-    public static final HttpDataFormat<String, Object, IOException> TEXT = new HttpDataFormat<String, Object, IOException>() {
+    public static final HttpDataDecoder<String, Object, IOException> TEXT = new HttpDataDecoder<String, Object, IOException>() {
         @Override
         public String decode(HttpRequest response, InputStream input, Object arg) throws IOException {
             long size = response.getBodySize();
@@ -88,7 +88,7 @@ public final class HttpDataFormats {
         }
     };
 
-    public static final HttpDataFormat<byte[], Object, IOException> BYTES = new HttpDataFormat<byte[], Object, IOException>() {
+    public static final HttpDataDecoder<byte[], Object, IOException> BYTES = new HttpDataDecoder<byte[], Object, IOException>() {
         @Override
         public byte[] decode(HttpRequest response, InputStream input, Object arg) throws IOException {
             long size = response.getBodySize();
@@ -154,6 +154,6 @@ public final class HttpDataFormats {
         }
     };
 
-    private HttpDataFormats(){
+    private HttpDataDecoders(){
     }
 }
