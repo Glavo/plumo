@@ -60,6 +60,8 @@ public interface Plumo {
 
     SocketAddress getLocalAddress();
 
+    String getProtocol();
+
     void start() throws IOException;
 
     default void startInNewThread() throws IOException {

@@ -168,6 +168,11 @@ public final class PlumoImpl implements Plumo {
         return localAddress;
     }
 
+    @Override
+    public String getProtocol() {
+        return protocol;
+    }
+
     private void startImpl(ThreadFactory threadFactory) throws IOException {
         if (!state.compareAndSet(STATE_INIT, STATE_STARTUP)) {
             throw new IllegalStateException("Server has been started");
