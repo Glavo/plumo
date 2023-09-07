@@ -3,7 +3,7 @@ plugins {
     id("org.glavo.compile-module-info-plugin") version "2.0"
 }
 
-val mainClassName = "org.glavo.plumo.fileserver.FileServer"
+val mainClassName = "org.glavo.plumo.webserver.WebServer"
 
 application {
     mainClass.set(mainClassName)
@@ -33,7 +33,7 @@ tasks.create("generateVersionFile") {
 tasks.processResources {
     dependsOn(tasks["generateVersionFile"])
 
-    into("org/glavo/plumo/fileserver") {
+    into("org/glavo/plumo/webserver") {
         from(versionFile)
     }
 }

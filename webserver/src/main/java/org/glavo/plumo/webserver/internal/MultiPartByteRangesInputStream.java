@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glavo.plumo.fileserver.internal;
+package org.glavo.plumo.webserver.internal;
 
 import java.io.IOException;
 import java.io.InputStream;

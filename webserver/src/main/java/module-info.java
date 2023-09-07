@@ -13,6 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-module org.glavo.plumo.fileserver {
+module org.glavo.plumo.webserver {
     requires org.glavo.plumo;
 }

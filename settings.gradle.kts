@@ -2,7 +2,7 @@ rootProject.name = "plumo"
 
 include(
     "benchmark",
-    "fileserver",
+    "webserver",
     "plumo-core",
     "plumo-http2",
 )

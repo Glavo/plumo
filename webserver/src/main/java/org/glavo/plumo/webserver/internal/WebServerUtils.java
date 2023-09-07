@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glavo.plumo.fileserver.internal;
+package org.glavo.plumo.webserver.internal;
 
-public final class FileServerUtils {
+public final class WebServerUtils {
 
     private static final boolean[] DONT_NEED_ENCODING = new boolean[128];
 

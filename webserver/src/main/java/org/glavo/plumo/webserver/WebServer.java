@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glavo.plumo.fileserver;
+package org.glavo.plumo.webserver;
 
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.Plumo;
-import org.glavo.plumo.fileserver.internal.ContentRange;
-import org.glavo.plumo.fileserver.internal.MimeTable;
-import org.glavo.plumo.fileserver.internal.FileServerUtils;
-import org.glavo.plumo.fileserver.internal.MultiPartByteRangesInputStream;
+import org.glavo.plumo.webserver.internal.ContentRange;
+import org.glavo.plumo.webserver.internal.MimeTable;
+import org.glavo.plumo.webserver.internal.WebServerUtils;
+import org.glavo.plumo.webserver.internal.MultiPartByteRangesInputStream;
 
 import java.io.*;
 import java.net.*;
@@ -31,15 +31,13 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
-public class FileServer implements HttpHandler {
+public class WebServer implements HttpHandler {
 
     public enum OutputLevel {
         NONE, INFO, VERBOSE
@@ -65,7 +63,7 @@ public class FileServer implements HttpHandler {
     private final PrintStream logOutput;
     private final boolean doCache;
 
-    private FileServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintStream logOutput, boolean doCache) {
+    private WebServer(Path root, FileNameMap mimeTable, OutputLevel outputLevel, PrintStream logOutput, boolean doCache) {
         this.root = root;
         this.mimeTable = mimeTable;
         this.outputLevel = outputLevel;
@@ -157,8 +155,8 @@ public class FileServer implements HttpHandler {
                 String fileName = file.getFileName().toString();
 
                 builder.append("<li><a href=\"");
-                FileServerUtils.encodeURL(builder, dirBase);
-                FileServerUtils.encodeURL(builder, fileName);
+                WebServerUtils.encodeURL(builder, dirBase);
+                WebServerUtils.encodeURL(builder, fileName);
                 if (isDir) {
                     builder.append('/');
                 }
@@ -383,7 +381,7 @@ public class FileServer implements HttpHandler {
         return response;
     }
 
-    private static final String HELP_MESSAGE = "Usage: plumo-fileserver [-b bind address] [-p port] [-d directory]\n" +
+    private static final String HELP_MESSAGE = "Usage: plumo-webserver [-b bind address] [-p port] [-d directory]\n" +
                                                "\n" +
                                                "Options:\n" +
                                                "\n" +
@@ -399,7 +397,7 @@ public class FileServer implements HttpHandler {
 
     private static String getVersion() {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                FileServer.class.getResourceAsStream("version.txt"), StandardCharsets.UTF_8))) {
+                WebServer.class.getResourceAsStream("version.txt"), StandardCharsets.UTF_8))) {
             return reader.readLine();
         } catch (IOException | NullPointerException e) {
             return "unknown";
@@ -440,7 +438,7 @@ public class FileServer implements HttpHandler {
                     return;
                 case "-version":
                 case "--version":
-                    System.out.println("plumo-fileserver " + getVersion());
+                    System.out.println("plumo-webserver " + getVersion());
                     return;
                 case "-b":
                 case "-bind-address":
@@ -516,7 +514,7 @@ public class FileServer implements HttpHandler {
             outputLevel = OutputLevel.INFO;
         }
 
-        FileServer server = new FileServer(root, new MimeTable(), outputLevel, System.out, doCache);
+        WebServer server = new WebServer(root, new MimeTable(), outputLevel, System.out, doCache);
 
         Plumo plumo = Plumo.create();
         if (inetSocketAddress != null) {
