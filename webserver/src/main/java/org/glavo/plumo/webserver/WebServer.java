@@ -21,7 +21,7 @@ import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.Plumo;
 import org.glavo.plumo.webserver.internal.ContentRange;
 import org.glavo.plumo.webserver.internal.MimeTable;
-import org.glavo.plumo.webserver.internal.WebServerUtils;
+import org.glavo.plumo.webserver.internal.Utils;
 import org.glavo.plumo.webserver.internal.MultiPartByteRangesInputStream;
 
 import java.io.*;
@@ -155,8 +155,8 @@ public class WebServer implements HttpHandler {
                 String fileName = file.getFileName().toString();
 
                 builder.append("<li><a href=\"");
-                WebServerUtils.encodeURL(builder, dirBase);
-                WebServerUtils.encodeURL(builder, fileName);
+                Utils.encodeURL(builder, dirBase);
+                Utils.encodeURL(builder, fileName);
                 if (isDir) {
                     builder.append('/');
                 }
