@@ -20,14 +20,11 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 public final class VirtualThreadUtils {
-    public static final boolean AVAILABLE;
-
     private static final boolean NEED_ENABLE_PREVIEW;
 
     private static final MethodHandle newThread;
 
     static {
-        boolean available = false;
         boolean needEnablePreview = false;
         MethodHandle newThreadHandle = null;
 
@@ -39,20 +36,17 @@ public final class VirtualThreadUtils {
 
             newThreadHandle = lookup.findVirtual(vtBuilder, "unstarted", MethodType.methodType(Thread.class, Runnable.class))
                     .bindTo(factory);
-
-            available = true;
         } catch (UnsupportedOperationException ignored) {
             needEnablePreview = true;
         } catch (Throwable ignored) {
         }
 
-        AVAILABLE = available;
         NEED_ENABLE_PREVIEW = needEnablePreview;
         newThread = newThreadHandle;
     }
 
     public static void checkAvailable() {
-        if (!AVAILABLE) {
+        if (newThread == null) {
             throw new UnsupportedOperationException(NEED_ENABLE_PREVIEW
                     ? "Preview Features not enabled, need to run with --enable-preview"
                     : "Please upgrade to Java 19+");
