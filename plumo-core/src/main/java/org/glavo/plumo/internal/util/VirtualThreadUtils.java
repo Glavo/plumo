@@ -20,9 +20,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 public final class VirtualThreadUtils {
-    private static final boolean NEED_ENABLE_PREVIEW;
-
-    private static final MethodHandle newThread;
+    public static final MethodHandle newThread;
+    public static final boolean NEED_ENABLE_PREVIEW;
 
     static {
         boolean needEnablePreview = false;
@@ -60,7 +59,6 @@ public final class VirtualThreadUtils {
             throw new InternalError(e);
         }
     }
-
 
     private VirtualThreadUtils() {
     }

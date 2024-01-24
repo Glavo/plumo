@@ -181,7 +181,7 @@ public final class PlumoImpl implements Plumo {
         if (this.executor == null) {
             final AtomicLong requestCount = new AtomicLong();
 
-            if (Constants.USE_VIRTUAL_THREAD == Boolean.TRUE || (Constants.USE_VIRTUAL_THREAD == null && VirtualThreadUtils.AVAILABLE)) {
+            if (Constants.USE_VIRTUAL_THREAD == Boolean.TRUE || (Constants.USE_VIRTUAL_THREAD == null && VirtualThreadUtils.newThread != null)) {
                 VirtualThreadUtils.checkAvailable();
 
                 this.shutdownExecutor = false;
