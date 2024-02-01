@@ -13,6 +13,7 @@ public final class HttpHeaderFieldTest {
         assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of(""));
         assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of("content type"));
         assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of("测试"));
+        assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"));
     }
 
     @Test
