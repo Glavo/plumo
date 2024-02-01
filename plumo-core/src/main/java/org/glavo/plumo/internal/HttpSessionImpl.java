@@ -198,38 +198,8 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             long outputLength;
             boolean useGZipOutputStream;
             if (autoGZip) {
-                if (inputLength >= 0 && inputLength < 8192) { // TODO: magic number
-                    ByteArrayOutputStream bao = new ByteArrayOutputStream((int) inputLength);
-                    try (GZIPOutputStream go = new GZIPOutputStream(bao)) {
-                        if (preprocessedData instanceof InputStream) {
-                            InputStream input = (InputStream) preprocessedData;
-
-                            int count = 0;
-                            byte[] buffer = new byte[128];
-                            while (count < inputLength) {
-                                int read = input.read(buffer, 0, Math.min((int) inputLength - count, buffer.length));
-                                if (read <= 0) {
-                                    throw new EOFException();
-                                }
-                                go.write(buffer, 0, read);
-                                count += read;
-                            }
-                        } else {
-                            byte[] ba = (byte[]) preprocessedData;
-                            go.write(ba, 0, (int) inputLength);
-                        }
-                    }
-
-                    byte[] compressedData = bao.toByteArray();
-
-                    preprocessedData = compressedData;
-                    inputLength = compressedData.length;
-                    outputLength = inputLength;
-                    useGZipOutputStream = false;
-                } else {
-                    outputLength = -1;
-                    useGZipOutputStream = true;
-                }
+                outputLength = -1;
+                useGZipOutputStream = true;
             } else {
                 outputLength = inputLength;
                 useGZipOutputStream = false;
