@@ -94,12 +94,57 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
     }
 
     @Override
+    public void write(byte[] src, int off, int len) throws IOException {
+        int bufRem = buffer.remaining();
+
+        if (len <= bufRem) {
+            buffer.put(src, off, len);
+            if (len == bufRem) {
+                flushBuffer();
+            }
+            return;
+        }
+
+        int srcRem = len;
+
+        if (buffer.position() > 0) {
+            buffer.put(src, off, off + bufRem);
+
+            flushBuffer();
+
+            srcRem -= bufRem;
+            off += bufRem;
+        }
+
+        final int bufferSize = buffer.capacity();
+        // assert bufferSize == buffer.remaining();
+
+        if (srcRem < bufferSize) {
+            buffer.put(src, off, srcRem);
+            return;
+        }
+
+        if (outputChannel != null) {
+            ByteBuffer srcBuffer = ByteBuffer.wrap(src, off, srcRem);
+            int count = 0;
+            do {
+                count += outputChannel.write(srcBuffer);
+            } while (count < srcRem);
+        } else {
+            outputStream.write(src, off, srcRem);
+        }
+    }
+
+    @Override
     public int write(ByteBuffer src) throws IOException {
         final int srcLen = src.remaining();
-        final int bufRem = buffer.remaining();
+        int bufRem = buffer.remaining();
 
         if (srcLen <= bufRem) {
             buffer.put(src);
+            if (srcLen == bufRem) {
+                flushBuffer();
+            }
             return srcLen;
         }
 
@@ -115,8 +160,8 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
             srcRem -= bufRem;
         }
 
-        final int bufferSize = buffer.remaining();
-        // assert bufferSize == buffer.capacity();
+        final int bufferSize = buffer.capacity();
+        // assert bufferSize == buffer.remaining();
 
         if (srcRem < bufferSize) {
             buffer.put(src);
@@ -131,24 +176,22 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
             } while (count < srcRem);
 
             return srcLen;
-        }
-
-        // assert outputStream != null;
-        if (src.hasArray()) {
-            int arrayOffset = src.arrayOffset();
-            outputStream.write(src.array(), arrayOffset + src.position(), srcRem);
         } else {
-            // assert buffer.position() == 0;
+            if (src.hasArray()) {
+                outputStream.write(src.array(), src.arrayOffset() + src.position(), srcRem);
+            } else {
+                // assert buffer.position() == 0;
 
-            byte[] array = buffer.array();
+                byte[] array = buffer.array();
 
-            while (srcRem > bufferSize) {
-                src.get(array);
-                outputStream.write(array);
-                srcRem -= bufferSize;
+                while (srcRem >= bufferSize) {
+                    src.get(array);
+                    outputStream.write(array);
+                    srcRem -= bufferSize;
+                }
+
+                buffer.put(src);
             }
-
-            buffer.put(src);
         }
 
         return srcLen;
