@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Glavo
+ * Copyright 2024 Glavo
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -105,9 +105,10 @@ public final class HttpHeaderField {
 
     @Override
     public String toString() {
-        if (string == null) {
-            string = new String(bytes, StandardCharsets.US_ASCII);
+        String s = this.string;
+        if (s != null) {
+            return s;
         }
-        return string;
+        return this.string = new String(bytes, StandardCharsets.US_ASCII);
     }
 }
