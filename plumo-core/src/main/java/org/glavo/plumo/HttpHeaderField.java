@@ -24,6 +24,10 @@ import java.util.Arrays;
 
 public final class HttpHeaderField {
 
+    private static HttpHeaderField ofTrusted(String value) {
+        return new HttpHeaderField(value.getBytes(StandardCharsets.ISO_8859_1), value);
+    }
+
     public static HttpHeaderField of(String value) {
         int len = value.length(); // implicit null check
         if (len == 0) {
@@ -34,10 +38,12 @@ public final class HttpHeaderField {
         }
 
         byte[] bytes = new byte[len];
+        boolean qualified = true;
 
         for (int i = 0; i < len; i++) {
             char ch = value.charAt(i);
             if (ch >= 'A' && ch <= 'Z') {
+                qualified = false;
                 bytes[i] = (byte) (ch | 0x20); // The oldest trick in the ASCII book
             } else if (Utils.isTokenPart(ch)) {
                 bytes[i] = (byte) ch;
@@ -46,7 +52,11 @@ public final class HttpHeaderField {
             }
         }
 
-        return new HttpHeaderField(bytes);
+        HttpHeaderField field = new HttpHeaderField(bytes);
+        if (qualified) {
+            field.string = value;
+        }
+        return field;
     }
 
     private final byte[] bytes;
@@ -56,6 +66,11 @@ public final class HttpHeaderField {
 
     private HttpHeaderField(byte[] bytes) {
         this.bytes = bytes;
+    }
+
+    private HttpHeaderField(byte[] bytes, String string) {
+        this.bytes = bytes;
+        this.string = string;
     }
 
     @ApiStatus.Internal
@@ -92,6 +107,6 @@ public final class HttpHeaderField {
         if (s != null) {
             return s;
         }
-        return this.string = new String(bytes, StandardCharsets.US_ASCII);
+        return this.string = new String(bytes, StandardCharsets.ISO_8859_1);
     }
 }
