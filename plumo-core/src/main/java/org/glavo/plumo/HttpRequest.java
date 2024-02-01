@@ -60,8 +60,7 @@ public interface HttpRequest {
     long getBodySize();
 
     /**
-     * HTTP Request methods, with the ability to decode a <code>String</code> back
-     * to its enum value.
+     * HTTP Request methods.
      */
     enum Method {
         GET,
