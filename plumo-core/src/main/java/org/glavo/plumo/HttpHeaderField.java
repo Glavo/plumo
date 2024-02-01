@@ -16,7 +16,9 @@
 package org.glavo.plumo;
 
 import org.glavo.plumo.internal.util.Utils;
+import org.jetbrains.annotations.ApiStatus;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -71,6 +73,11 @@ public final class HttpHeaderField {
 
     private HttpHeaderField(byte[] bytes) {
         this.bytes = bytes;
+    }
+
+    @ApiStatus.Internal
+    public void get(ByteBuffer target, int offset, int length) {
+        target.put(bytes, offset, length);
     }
 
     public int length() {
