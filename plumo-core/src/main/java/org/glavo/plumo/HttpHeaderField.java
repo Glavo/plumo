@@ -24,7 +24,6 @@ import java.util.Arrays;
 
 public final class HttpHeaderField {
 
-    @SuppressWarnings("deprecation")
     public static HttpHeaderField of(String value) {
         int len = value.length(); // implicit null check
         if (len == 0) {
@@ -34,24 +33,9 @@ public final class HttpHeaderField {
             throw new IllegalArgumentException("Header name is too long");
         }
 
-        int i = 0;
-        while (i < len) {
-            char ch = value.charAt(i);
-            if (ch >= 'A' && ch <= 'Z') {
-                break;
-            } else if (Utils.isTokenPart(ch)) {
-                i++;
-            } else {
-                throw new IllegalArgumentException("Invalid header name: " + value);
-            }
-        }
-
         byte[] bytes = new byte[len];
-        if (i > 0) {
-            value.getBytes(0, i, bytes, 0);
-        }
 
-        while (i < len) {
+        for (int i = 0; i < len; i++) {
             char ch = value.charAt(i);
             if (ch >= 'A' && ch <= 'Z') {
                 bytes[i] = (byte) (ch | 0x20); // The oldest trick in the ASCII book
@@ -60,7 +44,6 @@ public final class HttpHeaderField {
             } else {
                 throw new IllegalArgumentException("Invalid header name: " + value);
             }
-            i++;
         }
 
         return new HttpHeaderField(bytes);
