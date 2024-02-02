@@ -17,6 +17,7 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.Plumo;
+import org.glavo.plumo.internal.util.OutputWrapper;
 import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
 import org.glavo.plumo.internal.util.Utils;
 import org.glavo.plumo.internal.util.VirtualThreadUtils;
@@ -329,7 +330,7 @@ public final class PlumoImpl implements Plumo {
                         }
                         exec(new HttpSessionImpl(this, socket,
                                 socket.getRemoteSocketAddress(), socket.getLocalSocketAddress(),
-                                socket.getInputStream(), socket.getOutputStream()));
+                                socket.getInputStream(), new OutputWrapper(socket.getOutputStream(), 1024)));
                     } catch (IOException e) {
                         DefaultLogger.log(DefaultLogger.Level.INFO, "Communication with the client broken", e);
                     }
@@ -343,7 +344,7 @@ public final class PlumoImpl implements Plumo {
                         exec(new HttpSessionImpl(this, socketChannel,
                                 socketChannel.getRemoteAddress(), socketChannel.getLocalAddress(),
                                 Channels.newInputStream(socketChannel),
-                                Channels.newOutputStream(socketChannel)));
+                                new OutputWrapper(socketChannel, 1024)));
                     } catch (IOException e) {
                         DefaultLogger.log(DefaultLogger.Level.INFO, "Communication with the client broken", e);
                     }
