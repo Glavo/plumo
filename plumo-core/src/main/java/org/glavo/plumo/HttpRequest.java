@@ -41,13 +41,35 @@ public interface HttpRequest {
 
     Map<HttpHeaderField, List<String>> getHeaders();
 
-    boolean containsHeader(String name);
+    boolean containsHeader(HttpHeaderField field);
 
-    String getHeader(String name);
+    default boolean containsHeader(String field) {
+        try {
+            return containsHeader(HttpHeaderField.of(field));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
 
-    List<String> getHeaders(String name);
+    String getHeader(HttpHeaderField field);
 
-    String getHost();
+    default String getHeader(String field) {
+        try {
+            return getHeader(HttpHeaderField.of(field));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    List<String> getHeaders(HttpHeaderField field);
+
+    default List<String> getHeaders(String field) {
+        try {
+            return getHeaders(HttpHeaderField.of(field));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
 
     Map<String, List<String>> getCookies();
 

@@ -46,13 +46,35 @@ public /*sealed*/ interface HttpResponse {
 
     HttpResponse withStatus(Status status);
 
-    HttpResponse withHeader(String name, String value);
+    HttpResponse withHeader(HttpHeaderField field, String value);
 
-    HttpResponse withHeader(String name, List<String> values);
+    default HttpResponse withHeader(String field, String value) {
+        return withHeader(HttpHeaderField.of(field), value);
+    }
 
-    HttpResponse addHeader(String name, String value);
+    HttpResponse withHeader(HttpHeaderField field, List<String> values);
 
-    HttpResponse removeHeader(String name);
+    default HttpResponse withHeader(String field, List<String> values) {
+        return withHeader(HttpHeaderField.of(field), values);
+    }
+
+    HttpResponse addHeader(HttpHeaderField field, String value);
+
+    default HttpResponse addHeader(String field, String value) {
+        return addHeader(HttpHeaderField.of(field), value);
+    }
+
+    HttpResponse removeHeader(HttpHeaderField field);
+
+    default HttpResponse removeHeader(String field) {
+        HttpHeaderField f;
+        try {
+            f = HttpHeaderField.of(field);
+        } catch (IllegalArgumentException e) {
+            return this;
+        }
+        return removeHeader(f);
+    }
 
     HttpResponse withBody(byte[] data);
 

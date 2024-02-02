@@ -65,18 +65,18 @@ public final class HttpRequestImpl implements HttpRequest {
     }
 
     @Override
-    public boolean containsHeader(String name) {
-        return headers.containsKey(HttpHeaderField.of(name));
+    public boolean containsHeader(HttpHeaderField field) {
+        return headers.containsKey(field);
     }
 
     @Override
-    public String getHeader(String name) {
-        return headers.getFirst(HttpHeaderField.of(name));
+    public String getHeader(HttpHeaderField field) {
+        return headers.getFirst(field);
     }
 
     @Override
-    public List<String> getHeaders(String name) {
-        return headers.get(HttpHeaderField.of(name));
+    public List<String> getHeaders(HttpHeaderField field) {
+        return headers.get(field);
     }
 
     private boolean hasGetBody = false;
@@ -134,11 +134,6 @@ public final class HttpRequestImpl implements HttpRequest {
     @Override
     public Map<HttpHeaderField, List<String>> getHeaders() {
         return headers;
-    }
-
-    @Override
-    public String getHost() {
-        return headers.getFirst(HttpHeaderField.HOST);
     }
 
     private Map<String, List<String>> cookies;

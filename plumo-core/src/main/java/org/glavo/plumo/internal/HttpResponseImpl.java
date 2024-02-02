@@ -17,7 +17,6 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.internal.util.Utils;
 
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -104,26 +103,24 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
     }
 
     @Override
-    public HttpResponse withHeader(String name, String value) {
-        String canonicalName = Utils.normalizeHttpHeaderFieldName(name);
+    public HttpResponse withHeader(HttpHeaderField field, String value) {
         Objects.requireNonNull(value);
 
         HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
-        response.headers.putDirect(HttpHeaderField.of(canonicalName), value);
+        response.headers.putDirect(field, value);
         return response;
     }
 
     @Override
-    public HttpResponse withHeader(String name, List<String> values) {
-        String canonicalName = Utils.normalizeHttpHeaderFieldName(name);
+    public HttpResponse withHeader(HttpHeaderField field, List<String> values) {
         int size = values.size(); // implicit null check
 
         HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
 
         if (size == 0) {
-            response.headers.putDirect(HttpHeaderField.of(canonicalName), null);
+            response.headers.putDirect(field, null);
         } else if (size == 1) {
-            response.headers.putDirect(HttpHeaderField.of(canonicalName), values.get(0));
+            response.headers.putDirect(field, values.get(0));
         } else {
             ArrayList<String> clone = new ArrayList<>(size);
             for (String value : values) {
@@ -132,34 +129,25 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
             if (clone.size() != size) {
                 throw new ConcurrentModificationException();
             }
-            response.headers.putDirect(HttpHeaderField.of(canonicalName), clone);
+            response.headers.putDirect(field, clone);
         }
 
         return response;
     }
 
     @Override
-    public HttpResponse addHeader(String name, String value) {
-        String canonicalName = Utils.normalizeHttpHeaderFieldName(name);
+    public HttpResponse addHeader(HttpHeaderField field, String value) {
         Objects.requireNonNull(value);
 
         HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
-        response.headers.addDirect(HttpHeaderField.of(canonicalName), value);
+        response.headers.addDirect(field, value);
         return response;
     }
 
     @Override
-    public HttpResponse removeHeader(String name) {
-        String canonicalName;
-
-        try {
-            canonicalName = Utils.normalizeHttpHeaderFieldName(name);
-        } catch (IllegalArgumentException ignored) {
-            return this;
-        }
-
+    public HttpResponse removeHeader(HttpHeaderField field) {
         HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
-        response.headers.putDirect(HttpHeaderField.of(canonicalName), null);
+        response.headers.putDirect(field, null);
         return response;
     }
 
