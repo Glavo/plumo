@@ -17,8 +17,8 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.*;
 import org.glavo.plumo.internal.util.ChunkedOutputStream;
+import org.glavo.plumo.internal.util.OutputWrapper;
 import org.glavo.plumo.internal.util.ParameterParser;
-import org.glavo.plumo.internal.util.UnsyncBufferedOutputStream;
 
 import java.io.*;
 import java.net.Socket;
@@ -28,6 +28,7 @@ import java.net.SocketTimeoutException;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -41,7 +42,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
     public final SocketAddress localAddress;
 
     public final HttpRequestReader requestReader;
-    public final UnsyncBufferedOutputStream outputStream;
+    public final OutputWrapper outputStream;
 
     // Use in HttpServerImpl
     volatile HttpSessionImpl prev, next;
@@ -53,7 +54,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
         this.remoteAddress = remoteAddress;
         this.localAddress = localAddress;
         this.requestReader = new HttpRequestReader(inputStream);
-        this.outputStream = new UnsyncBufferedOutputStream(outputStream, 1024);
+        this.outputStream = new OutputWrapper(outputStream, 1024);
         this.socket = acceptSocket;
     }
 
@@ -74,7 +75,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                             return;
                         }
 
-                        String connection = request.headers.getFirst("connection");
+                        String connection = request.headers.getFirst(HttpHeaderField.CONNECTION);
                         boolean keepAlive = "HTTP/1.1".equals(request.getHttpVersion()) && (connection == null || !connection.equals("close"));
 
                         if (!r.isAvailable()) {
@@ -89,7 +90,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                             return;
                         }
 
-                        if (!keepAlive || "close".equals(r.headers.getFirst("connection"))) {
+                        if (!keepAlive || "close".equals(r.headers.getFirst(HttpHeaderField.CONNECTION))) {
                             return;
                         }
                     } finally {
@@ -126,29 +127,31 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 : ((SocketChannel) socket).isOpen();
     }
 
+    private static final byte[] HTTP_VERSION = "HTTP/1.1 ".getBytes(StandardCharsets.US_ASCII);
+
     /**
      * Sends given response to the socket.
      */
-    public void send(HttpRequestImpl request, HttpResponseImpl response, UnsyncBufferedOutputStream out, boolean keepAlive) throws IOException {
+    public void send(HttpRequestImpl request, HttpResponseImpl response, OutputWrapper out, boolean keepAlive) throws IOException {
         if (response.status == null) {
             throw new Error("sendResponse(): Status can't be null.");
         }
 
-        out.writeASCII("HTTP/1.1 ");
+        out.write(HTTP_VERSION);
         out.writeStatus(response.status);
         out.writeCRLF();
 
-        if (request == null || !request.headers.containsKey("date")) {
-            out.writeHttpHeader("date", Constants.HTTP_TIME_FORMATTER.format(Instant.now()));
+        if (request == null || !request.headers.containsKey(HttpHeaderField.DATE)) {
+            out.writeHttpHeader(HttpHeaderField.DATE, Constants.HTTP_TIME_FORMATTER.format(Instant.now()));
         }
 
         response.headers.writeHeadersTo(out);
 
-        if (!keepAlive && !response.headers.containsKey("connection")) {
-            out.writeHttpHeader("connection", "close");
+        if (!keepAlive && !response.headers.containsKey(HttpHeaderField.CONNECTION)) {
+            out.writeHttpHeader(HttpHeaderField.CONNECTION, "close");
         }
 
-        String contentType = response.headers.getFirst("content-type");
+        String contentType = response.headers.getFirst(HttpHeaderField.CONTENT_TYPE);
 
         long inputLength;
         Object preprocessedData;
@@ -178,10 +181,10 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             }
 
             boolean autoGZip;
-            if (response.headers.containsKey("content-encoding")) {
+            if (response.headers.containsKey(HttpHeaderField.CONTENT_ENCODING)) {
                 autoGZip = false;
             } else {
-                String acceptEncoding = request != null ? request.headers.getFirst("accept-encoding") : null;
+                String acceptEncoding = request != null ? request.headers.getFirst(HttpHeaderField.ACCEPT_ENCODING) : null;
                 if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
                     autoGZip = false;
                 } else if (contentType == null || (inputLength >= 0 && inputLength <= 512)) { // TODO: magic number
@@ -192,7 +195,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             }
 
             if (autoGZip) {
-                out.writeHttpHeader("content-encoding", "gzip");
+                out.writeHttpHeader(HttpHeaderField.CONTENT_ENCODING, "gzip");
             }
 
             long outputLength;
@@ -205,15 +208,15 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 useGZipOutputStream = false;
             }
 
-            if (outputLength >= 0 && !response.headers.containsKey("content-length")) {
-                out.writeHttpHeader("content-length", Long.toString(outputLength));
+            if (outputLength >= 0 && !response.headers.containsKey(HttpHeaderField.CONTENT_LENGTH)) {
+                out.writeHttpHeader(HttpHeaderField.CONTENT_LENGTH, Long.toString(outputLength));
             }
 
             boolean chunkedTransfer = outputLength < 0;
             HttpRequest.Method method = request != null ? request.method : null;
 
             if (method != HttpRequest.Method.HEAD && chunkedTransfer) {
-                out.writeHttpHeader("transfer-encoding", "chunked");
+                out.writeHttpHeader(HttpHeaderField.TRANSFER_ENCODING, "chunked");
             }
             out.writeCRLF();
             if (method != HttpRequest.Method.HEAD && outputLength != 0) {
@@ -225,7 +228,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
         }
     }
 
-    private void sendBody(UnsyncBufferedOutputStream out,
+    private void sendBody(OutputWrapper out,
             /* InputStream | byte[] */ Object preprocessedData,
                           long inputLength, boolean chunkedTransfer,
                           boolean useGZipOutputStream) throws IOException {

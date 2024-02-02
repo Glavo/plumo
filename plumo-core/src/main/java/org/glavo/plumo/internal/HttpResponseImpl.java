@@ -15,18 +15,17 @@
  */
 package org.glavo.plumo.internal;
 
+import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.internal.util.MultiStringMap;
 import org.glavo.plumo.internal.util.Utils;
 
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.*;
 
 public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
 
-    public MultiStringMap headers = new MultiStringMap();
+    public Headers headers = new Headers();
 
     public Status status;
 
@@ -43,10 +42,10 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         this.headerIsAlias = false;
 
         this.status = Status.OK;
-        this.headers = new MultiStringMap();
+        this.headers = new Headers();
     }
 
-    public HttpResponseImpl(MultiStringMap old) {
+    public HttpResponseImpl(Headers old) {
         this.frozen = false;
         this.headerIsAlias = true;
 
@@ -60,7 +59,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         this.status = status;
         this.body = body;
 
-        this.headers.putDirect("content-type", contentType);
+        this.headers.putDirect(HttpHeaderField.CONTENT_TYPE, contentType);
     }
 
     private HttpResponseImpl copyIfFrozen() {
@@ -110,7 +109,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         Objects.requireNonNull(value);
 
         HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
-        response.headers.putDirect(canonicalName, value);
+        response.headers.putDirect(HttpHeaderField.of(canonicalName), value);
         return response;
     }
 
@@ -122,9 +121,9 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
 
         if (size == 0) {
-            response.headers.putDirect(canonicalName, null);
+            response.headers.putDirect(HttpHeaderField.of(canonicalName), null);
         } else if (size == 1) {
-            response.headers.putDirect(canonicalName, values.get(0));
+            response.headers.putDirect(HttpHeaderField.of(canonicalName), values.get(0));
         } else {
             ArrayList<String> clone = new ArrayList<>(size);
             for (String value : values) {
@@ -133,7 +132,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
             if (clone.size() != size) {
                 throw new ConcurrentModificationException();
             }
-            response.headers.putDirect(canonicalName, clone);
+            response.headers.putDirect(HttpHeaderField.of(canonicalName), clone);
         }
 
         return response;
@@ -145,7 +144,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         Objects.requireNonNull(value);
 
         HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
-        response.headers.addDirect(canonicalName, value);
+        response.headers.addDirect(HttpHeaderField.of(canonicalName), value);
         return response;
     }
 
@@ -160,7 +159,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         }
 
         HttpResponseImpl response = copyIfFrozen().ensureHeaderUnaliased();
-        response.headers.putDirect(canonicalName, null);
+        response.headers.putDirect(HttpHeaderField.of(canonicalName), null);
         return response;
     }
 
@@ -229,7 +228,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         builder.append("HttpResponse {\n");
         builder.append("    ").append("HTTP/1.1 ").append(status).append("\n");
 
-        if (!headers.containsKey("date")) {
+        if (!headers.containsKey(HttpHeaderField.DATE)) {
             builder.append("    date: <calculated when request is sent>\n");
         }
 

@@ -16,8 +16,8 @@
 package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpDataDecoder;
+import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
-import org.glavo.plumo.internal.util.MultiStringMap;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +29,7 @@ public final class HttpRequestImpl implements HttpRequest {
     private final SocketAddress remoteAddress;
     private final SocketAddress localAddress;
 
-    public final MultiStringMap headers = new MultiStringMap();
+    public final Headers headers = new Headers();
 
     // Initialize in HttpRequestReader
     Method method;
@@ -66,17 +66,17 @@ public final class HttpRequestImpl implements HttpRequest {
 
     @Override
     public boolean containsHeader(String name) {
-        return headers.containsKey(name.toLowerCase(Locale.ROOT));
+        return headers.containsKey(HttpHeaderField.of(name));
     }
 
     @Override
     public String getHeader(String name) {
-        return headers.getFirst(name.toLowerCase(Locale.ROOT));
+        return headers.getFirst(HttpHeaderField.of(name));
     }
 
     @Override
     public List<String> getHeaders(String name) {
-        return headers.get(name.toLowerCase(Locale.ROOT));
+        return headers.get(HttpHeaderField.of(name));
     }
 
     private boolean hasGetBody = false;
@@ -132,13 +132,13 @@ public final class HttpRequestImpl implements HttpRequest {
     }
 
     @Override
-    public Map<String, List<String>> getHeaders() {
+    public Map<HttpHeaderField, List<String>> getHeaders() {
         return headers;
     }
 
     @Override
     public String getHost() {
-        return headers.getFirst("host");
+        return headers.getFirst(HttpHeaderField.HOST);
     }
 
     private Map<String, List<String>> cookies;
@@ -146,7 +146,7 @@ public final class HttpRequestImpl implements HttpRequest {
     @Override
     public Map<String, List<String>> getCookies() {
         if (cookies == null) {
-            cookies = new MultiStringMap();
+            cookies = new HashMap<>();
             // TODO
         }
 

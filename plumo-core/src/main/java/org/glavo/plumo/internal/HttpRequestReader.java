@@ -15,6 +15,7 @@
  */
 package org.glavo.plumo.internal;
 
+import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.internal.util.Utils;
@@ -28,7 +29,6 @@ import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Locale;
 
 public class HttpRequestReader implements Closeable {
 
@@ -141,7 +141,7 @@ public class HttpRequestReader implements Closeable {
 //            }
 //        }
 
-        String contentLength = request.headers.getFirst("content-length");
+        String contentLength = request.headers.getFirst(HttpHeaderField.CONTENT_LENGTH);
         long len;
 
         if (contentLength != null) {
@@ -443,7 +443,7 @@ public class HttpRequestReader implements Closeable {
 
         String value = off < 0 ? "" : new String(buf, off, end - off, HEADER_ENCODING).trim();
 
-        request.headers.addDirect(name.toLowerCase(Locale.ROOT), value);
+        request.headers.addDirect(HttpHeaderField.of(name), value);
     }
 
     private final class BoundedInputStream extends InputStream {

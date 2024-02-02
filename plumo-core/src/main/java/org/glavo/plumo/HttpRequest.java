@@ -39,7 +39,7 @@ public interface HttpRequest {
 
     InetAddress getLocalInetAddress();
 
-    Map<String, List<String>> getHeaders();
+    Map<HttpHeaderField, List<String>> getHeaders();
 
     boolean containsHeader(String name);
 

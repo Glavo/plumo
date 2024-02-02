@@ -1,9 +1,14 @@
 package org.glavo.plumo.internal.util;
 
+import org.glavo.plumo.HttpHeaderField;
+import org.glavo.plumo.HttpResponse;
+import org.glavo.plumo.internal.Constants;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
 
 public final class OutputWrapper extends OutputStream implements WritableByteChannel {
 
@@ -196,4 +201,30 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
 
         return srcLen;
     }
+
+    private static boolean isASCII(String str, int off, int len) {
+        while (off < len) {
+            if (str.charAt(off++) >= 128) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void writeStatus(HttpResponse.Status status) throws IOException {
+        status.writeTo(this);
+    }
+
+    public void writeCRLF() throws IOException {
+        write(Constants.CRLF, 0, 2);
+    }
+
+    public void writeHttpHeader(HttpHeaderField field, String value) throws IOException {
+        field.writeTo(this);
+        write(Constants.HTTP_HEADER_SEPARATOR);
+        write(value.getBytes(StandardCharsets.US_ASCII));
+        writeCRLF();
+    }
+
 }

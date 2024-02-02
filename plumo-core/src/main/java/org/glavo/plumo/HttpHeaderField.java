@@ -18,11 +18,22 @@ package org.glavo.plumo;
 import org.glavo.plumo.internal.util.Utils;
 import org.jetbrains.annotations.ApiStatus;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public final class HttpHeaderField {
+
+    public static final HttpHeaderField ACCEPT_ENCODING = ofTrusted("accept-encoding");
+    public static final HttpHeaderField DATE = ofTrusted("date");
+    public static final HttpHeaderField HOST = ofTrusted("host");
+    public static final HttpHeaderField CONNECTION = ofTrusted("connection");
+    public static final HttpHeaderField CONTENT_ENCODING = ofTrusted("content-encoding");
+    public static final HttpHeaderField CONTENT_LENGTH = ofTrusted("content-length");
+    public static final HttpHeaderField CONTENT_TYPE = ofTrusted("content-type");
+    public static final HttpHeaderField TRANSFER_ENCODING = ofTrusted("transfer-encoding");
 
     private static HttpHeaderField ofTrusted(String value) {
         return new HttpHeaderField(value.getBytes(StandardCharsets.ISO_8859_1), value);
@@ -74,8 +85,8 @@ public final class HttpHeaderField {
     }
 
     @ApiStatus.Internal
-    public void get(ByteBuffer target, int offset, int length) {
-        target.put(bytes, offset, length);
+    public void writeTo(OutputStream output) throws IOException {
+        output.write(bytes);
     }
 
     public int length() {

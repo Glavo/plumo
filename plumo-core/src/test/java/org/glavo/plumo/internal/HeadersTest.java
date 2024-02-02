@@ -1,6 +1,6 @@
 package org.glavo.plumo.internal;
 
-import org.glavo.plumo.internal.util.MultiStringMap;
+import org.glavo.plumo.HttpHeaderField;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -8,18 +8,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public final class HeadersTest {
-    private static final Set<String> HEADERS = Set.of(
-            "accept", "allow", "authorization",
-            "connection", "content-length", "content-type", "cookie",
-            "date",
-            "etag", "expires",
-            "host",
-            "last-modified",
-            "set-cookie"
-
-    );
-
-    private static final List<String> RANDOM_HEADERS = new ArrayList<>();
+    private static final List<HttpHeaderField> RANDOM_HEADERS = new ArrayList<>();
 
     static {
         Random random = new Random(0);
@@ -31,33 +20,33 @@ public final class HeadersTest {
             for (int j = 0; j < len; j++) {
                 builder.append((char) ('a' + random.nextInt(26)));
             }
-            RANDOM_HEADERS.add(builder.toString());
+            RANDOM_HEADERS.add(HttpHeaderField.of(builder.toString()));
         }
     }
 
     private static void testPutHeader(int offset, int length) {
-        MultiStringMap multiStringMap = new MultiStringMap();
+        Headers multiStringMap = new Headers();
         for (int i = offset; i < offset + length; i++) {
-            String header = RANDOM_HEADERS.get(i);
+            HttpHeaderField field = RANDOM_HEADERS.get(i);
             try {
                 assertEquals(i - offset, multiStringMap.size());
-                assertFalse(multiStringMap.containsKey(header));
-                assertNull(multiStringMap.getFirst(header));
-                assertNull(multiStringMap.get(header));
+                assertFalse(multiStringMap.containsKey(field));
+                assertNull(multiStringMap.getFirst(field));
+                assertNull(multiStringMap.get(field));
 
-                multiStringMap.putDirect(header, "foo");
+                multiStringMap.putDirect(field, "foo");
 
                 assertEquals(i + 1 - offset, multiStringMap.size());
-                assertTrue(multiStringMap.containsKey(header));
-                assertEquals("foo", multiStringMap.getFirst(header));
-                assertEquals(List.of("foo"), multiStringMap.get(header));
+                assertTrue(multiStringMap.containsKey(field));
+                assertEquals("foo", multiStringMap.getFirst(field));
+                assertEquals(List.of("foo"), multiStringMap.get(field));
 
-                multiStringMap.putDirect(header, "foo");
+                multiStringMap.putDirect(field, "foo");
                 assertEquals(i + 1 - offset, multiStringMap.size());
-                assertEquals("foo", multiStringMap.getFirst(header));
-                assertEquals(List.of("foo"), multiStringMap.get(header));
+                assertEquals("foo", multiStringMap.getFirst(field));
+                assertEquals(List.of("foo"), multiStringMap.get(field));
             } catch (AssertionError error) {
-                throw new AssertionError("header: " + header, error);
+                throw new AssertionError("header: " + field, error);
             }
         }
     }
