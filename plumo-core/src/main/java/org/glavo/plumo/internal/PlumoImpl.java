@@ -161,7 +161,8 @@ public final class PlumoImpl implements Plumo {
 
     @Override
     public boolean isRunning() {
-        return latch != null && latch.getCount() == 1;
+        int state = this.state.get();
+        return state == STATE_RUNNING || state == STATE_SHUTDOWN;
     }
 
     @Override
