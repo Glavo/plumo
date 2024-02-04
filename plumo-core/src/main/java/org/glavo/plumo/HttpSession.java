@@ -16,5 +16,7 @@
 package org.glavo.plumo;
 
 public interface HttpSession {
+    void setUserData(Object data);
 
+    Object getUserData();
 }

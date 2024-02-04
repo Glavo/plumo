@@ -47,6 +47,8 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
     // Use in HttpServerImpl
     volatile HttpSessionImpl prev, next;
 
+    private Object userData;
+
     public HttpSessionImpl(PlumoImpl server, Closeable acceptSocket,
                            SocketAddress remoteAddress, SocketAddress localAddress,
                            InputStream inputStream, OutputWrapper outputStream) {
@@ -291,5 +293,14 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
         } else {
             out.write((byte[]) preprocessedData, 0, (int) inputLength);
         }
+    }
+
+    @Override
+    public Object getUserData() {
+        return userData;
+    }
+
+    public void setUserData(Object userData) {
+        this.userData = userData;
     }
 }
