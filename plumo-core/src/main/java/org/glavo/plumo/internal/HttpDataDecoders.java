@@ -16,6 +16,7 @@
 package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpDataDecoder;
+import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.ParameterParser;
 
@@ -51,7 +52,7 @@ public final class HttpDataDecoders {
                 throw new OutOfMemoryError("Request body is too large");
             }
 
-            Charset encoding = ParameterParser.getEncoding(response.getHeader("content-type"));
+            Charset encoding = ParameterParser.getEncoding(response.getHeader(HttpHeaderField.CONTENT_TYPE));
 
             if (size < 0) {
                 InputStreamReader reader = new InputStreamReader(input, encoding);
