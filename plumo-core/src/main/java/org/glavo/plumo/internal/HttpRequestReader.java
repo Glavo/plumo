@@ -522,46 +522,4 @@ public class HttpRequestReader implements Closeable {
             this.closed = true;
         }
     }
-
-    private final class MultiPartInputStream extends InputStream {
-        private boolean closed = false;
-
-        private void ensureOpen() throws IOException {
-            if (closed) {
-                throw new IOException("Stream closed");
-            }
-        }
-
-        private final byte[] boundary;
-
-        private long partCount = 0;
-        private int possibleOffset;
-
-        MultiPartInputStream(byte[] boundary) {
-            this.boundary = boundary;
-        }
-
-        @Override
-        public int read() throws IOException {
-            ensureOpen();
-            if (bufferRemaining > 0) {
-                return HttpRequestReader.this.read();
-            }
-
-
-            // TODO
-            return 0;
-        }
-
-        @Override
-        public void close() throws IOException {
-            if (closed) {
-                return;
-            }
-
-            closed = true;
-
-            // TODO
-        }
-    }
 }

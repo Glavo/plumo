@@ -30,7 +30,7 @@ public interface ErrorHandler {
             resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR", "text/plain");
         }
 
-        ((HttpSessionImpl) session).send(null, (HttpResponseImpl) resp, ((HttpSessionImpl) session).outputStream, false);
+        ((HttpSessionImpl) session).send(null, (HttpResponseImpl) resp, ((HttpSessionImpl) session).output, false);
     }
 
     default void handleUnrecoverableException(HttpSession session, Throwable exception) {

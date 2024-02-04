@@ -42,7 +42,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
     public final SocketAddress localAddress;
 
     public final HttpRequestReader requestReader;
-    public final OutputWrapper outputStream;
+    public final OutputWrapper output;
 
     // Use in HttpServerImpl
     volatile HttpSessionImpl prev, next;
@@ -51,12 +51,12 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
 
     public HttpSessionImpl(PlumoImpl server, Closeable acceptSocket,
                            SocketAddress remoteAddress, SocketAddress localAddress,
-                           InputStream inputStream, OutputWrapper outputStream) {
+                           InputStream inputStream, OutputWrapper output) {
         this.server = server;
         this.remoteAddress = remoteAddress;
         this.localAddress = localAddress;
         this.requestReader = new HttpRequestReader(inputStream);
-        this.outputStream = outputStream;
+        this.output = output;
         this.socket = acceptSocket;
     }
 
@@ -86,7 +86,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                         }
 
                         try {
-                            send(request, r, outputStream, keepAlive);
+                            send(request, r, output, keepAlive);
                         } catch (IOException ioe) {
                             handler.handleUnrecoverableException(this, ioe);
                             return;
@@ -118,7 +118,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
     public void close() {
         HttpHandler handler = server.handler;
 
-        handler.safeClose(this.outputStream);
+        handler.safeClose(this.output);
         handler.safeClose(this.requestReader);
         handler.safeClose(this.socket);
     }
