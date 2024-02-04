@@ -53,7 +53,6 @@ public class WebServer implements HttpHandler {
     private static final String OPEN_HTML = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/></head><body>";
     private static final String CLOSE_HTML = "</body></html>";
 
-    private static final HttpResponse NOT_FOUND = HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND).freeze();
     private static final HttpResponse FORBIDDEN = HttpResponse.newResponse(HttpResponse.Status.FORBIDDEN).freeze();
     private static final HttpResponse INTERNAL_ERROR = HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR).freeze();
 
