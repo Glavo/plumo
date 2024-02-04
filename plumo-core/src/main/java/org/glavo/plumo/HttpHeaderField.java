@@ -27,12 +27,18 @@ import java.util.Arrays;
 public final class HttpHeaderField {
 
     public static final HttpHeaderField ACCEPT_ENCODING = ofTrusted("accept-encoding");
+    public static final HttpHeaderField ALLOW = ofTrusted("allow");
     public static final HttpHeaderField DATE = ofTrusted("date");
-    public static final HttpHeaderField HOST = ofTrusted("host");
     public static final HttpHeaderField CONNECTION = ofTrusted("connection");
     public static final HttpHeaderField CONTENT_ENCODING = ofTrusted("content-encoding");
     public static final HttpHeaderField CONTENT_LENGTH = ofTrusted("content-length");
+    public static final HttpHeaderField CONTENT_RANGE = ofTrusted("content-range");
     public static final HttpHeaderField CONTENT_TYPE = ofTrusted("content-type");
+    public static final HttpHeaderField IF_MODIFIED_SINCE = ofTrusted("if-modified-since");
+    public static final HttpHeaderField LAST_MODIFIED = ofTrusted("last-modified");
+    public static final HttpHeaderField LOCATION = ofTrusted("location");
+    public static final HttpHeaderField HOST = ofTrusted("host");
+    public static final HttpHeaderField RANGE = ofTrusted("range");
     public static final HttpHeaderField TRANSFER_ENCODING = ofTrusted("transfer-encoding");
 
     private static HttpHeaderField ofTrusted(String value) {

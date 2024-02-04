@@ -15,10 +15,7 @@
  */
 package org.glavo.plumo.webserver;
 
-import org.glavo.plumo.HttpHandler;
-import org.glavo.plumo.HttpRequest;
-import org.glavo.plumo.HttpResponse;
-import org.glavo.plumo.Plumo;
+import org.glavo.plumo.*;
 import org.glavo.plumo.webserver.internal.ContentRange;
 import org.glavo.plumo.webserver.internal.MimeTable;
 import org.glavo.plumo.webserver.internal.Utils;
@@ -47,7 +44,7 @@ public class WebServer implements HttpHandler {
     private static final DateTimeFormatter LOG_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm:ss Z", Locale.US);
 
     private static final HttpResponse METHOD_NOT_ALLOWED = HttpResponse.newResponse(HttpResponse.Status.METHOD_NOT_ALLOWED)
-            .addHeader("allow", "HEAD, GET")
+            .addHeader(HttpHeaderField.ALLOW, "HEAD, GET")
             .freeze();
 
     private static final String OPEN_HTML = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/></head><body>";
@@ -121,7 +118,7 @@ public class WebServer implements HttpHandler {
 
     private static HttpResponse rangeNotSatisfiable(long fileSize) {
         return HttpResponse.newResponse(HttpResponse.Status.RANGE_NOT_SATISFIABLE)
-                .withHeader("content-range", "bytes */" + fileSize);
+                .withHeader(HttpHeaderField.CONTENT_RANGE, "bytes */" + fileSize);
     }
 
     private HttpResponse notFound(URI uri) {
@@ -174,7 +171,7 @@ public class WebServer implements HttpHandler {
         builder.append("</ul>" + CLOSE_HTML);
 
         return HttpResponse.newResponse()
-                .withHeader("content-type", "text/html; charset=UTF-8")
+                .withHeader(HttpHeaderField.CONTENT_TYPE, "text/html; charset=UTF-8")
                 .withBody(builder.toString());
     }
 
@@ -185,7 +182,7 @@ public class WebServer implements HttpHandler {
         String mime = mimeTable.getContentTypeFor(file.getFileName().toString());
 
         if (mime != null && doCache) {
-            if (httpTime.equals(request.getHeader("if-modified-since"))) {
+            if (httpTime.equals(request.getHeader(HttpHeaderField.IF_MODIFIED_SINCE))) {
                 return HttpResponse.newResponse(HttpResponse.Status.NOT_MODIFIED);
             }
         }
@@ -202,9 +199,9 @@ public class WebServer implements HttpHandler {
 
         try {
             HttpResponse response = HttpResponse.newResponse()
-                    .withHeader("last-modified", HTTP_TIME_FORMATTER.format(lastModifiedTime));
+                    .withHeader(HttpHeaderField.LAST_MODIFIED, HTTP_TIME_FORMATTER.format(lastModifiedTime));
             if (mime != null) {
-                response = response.withHeader("content-type", mime);
+                response = response.withHeader(HttpHeaderField.CONTENT_TYPE, mime);
             }
 
             long fileSize;
@@ -214,7 +211,7 @@ public class WebServer implements HttpHandler {
                 return INTERNAL_ERROR;
             }
 
-            String range = request.getHeader("range");
+            String range = request.getHeader(HttpHeaderField.RANGE);
             if (range != null) {
                 ContentRange[] ranges = ContentRange.parseRanges(range);
                 if (ranges == null) {
@@ -248,13 +245,13 @@ public class WebServer implements HttpHandler {
                     channel.position(start);
 
                     response = response.withStatus(HttpResponse.Status.PARTIAL_CONTENT)
-                            .withHeader("content-range", "bytes " + start + "-" + end + "/" + fileSize)
+                            .withHeader(HttpHeaderField.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + fileSize)
                             .withBody(Channels.newInputStream(channel), end - start + 1);
                 } else {
                     MultiPartByteRangesInputStream input = new MultiPartByteRangesInputStream(channel, fileSize, ranges, mime);
 
                     response = response.withStatus(HttpResponse.Status.PARTIAL_CONTENT)
-                            .withHeader("content-type", "multipart/byteranges; boundary=" + input.getBoundary())
+                            .withHeader(HttpHeaderField.CONTENT_TYPE, "multipart/byteranges; boundary=" + input.getBoundary())
                             .withBody(input, input.getContentLength());
                 }
                 shouldCloseChannel = false;
@@ -355,7 +352,7 @@ public class WebServer implements HttpHandler {
 
             if (p.isEmpty() || p.charAt(p.length() - 1) != '/') {
                 return HttpResponse.newResponse(HttpResponse.Status.REDIRECT)
-                        .withHeader("location", appendURI(uri, "/"));
+                        .withHeader(HttpHeaderField.LOCATION, appendURI(uri, "/"));
             }
 
             Path indexFile = findIndexFile(path);

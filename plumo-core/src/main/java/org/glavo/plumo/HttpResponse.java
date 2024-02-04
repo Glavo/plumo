@@ -46,6 +46,14 @@ public /*sealed*/ interface HttpResponse {
 
     HttpResponse withStatus(Status status);
 
+    default HttpResponse withStatus(int statusCode) {
+        return withStatus(Status.get(statusCode));
+    }
+
+    default HttpResponse withStatus(int statusCode, String description) {
+        return withStatus(new Status(statusCode, description));
+    }
+
     HttpResponse withHeader(HttpHeaderField field, String value);
 
     default HttpResponse withHeader(String field, String value) {
@@ -107,13 +115,6 @@ public /*sealed*/ interface HttpResponse {
         public static final Status MULTI_STATUS = register(207, "Multi-Status");
 
         public static final Status REDIRECT = register(301, "Moved Permanently");
-        /**
-         * Many user agents mishandle 302 in ways that violate the RFC1945 spec
-         * (i.e., redirect a POST to a GET). 303 and 307 were added in RFC2616 to
-         * address this. You should prefer 303 and 307 unless the calling user agent
-         * does not support 303 and 307 functionality
-         */
-        @Deprecated
         public static final Status FOUND = register(302, "Found");
         public static final Status REDIRECT_SEE_OTHER = register(303, "See Other");
         public static final Status NOT_MODIFIED = register(304, "Not Modified");
