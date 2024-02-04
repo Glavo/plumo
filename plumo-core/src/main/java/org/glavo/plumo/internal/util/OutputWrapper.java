@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
-import java.nio.charset.StandardCharsets;
 
 public final class OutputWrapper extends OutputStream implements WritableByteChannel {
 
@@ -212,6 +211,21 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
         return true;
     }
 
+    public void writeASCII(String string) throws IOException {
+        writeASCII(string, 0, string.length());
+    }
+
+    public void writeASCII(String string, int off, int len) throws IOException {
+        for (int i = off, end = off + len; i < end; i++) {
+            char ch = string.charAt(i);
+            if (ch > 128) {
+                throw new IOException("Non-ASCII character: " + ch);
+            }
+
+            write(ch);
+        }
+    }
+
     public void writeStatus(HttpResponse.Status status) throws IOException {
         status.writeTo(this);
     }
@@ -223,7 +237,7 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
     public void writeHttpHeader(HttpHeaderField field, String value) throws IOException {
         field.writeTo(this);
         write(Constants.HTTP_HEADER_SEPARATOR);
-        write(value.getBytes(StandardCharsets.US_ASCII));
+        writeASCII(value);
         writeCRLF();
     }
 
