@@ -201,16 +201,6 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
         return srcLen;
     }
 
-    private static boolean isASCII(String str, int off, int len) {
-        while (off < len) {
-            if (str.charAt(off++) >= 128) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     public void writeASCII(String string) throws IOException {
         writeASCII(string, 0, string.length());
     }
@@ -240,5 +230,4 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
         writeASCII(value);
         writeCRLF();
     }
-
 }
