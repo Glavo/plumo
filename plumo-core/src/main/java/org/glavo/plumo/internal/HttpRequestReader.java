@@ -32,13 +32,17 @@ public final class HttpRequestReader implements Closeable {
     public HttpRequestReader(InputStream inputStream) {
         this.inputStream = inputStream;
         this.inputChannel = null;
-        this.lineBuffer = ByteBuffer.allocate(LINE_BUFFER_LENGTH).limit(0);
+        this.lineBuffer = ByteBuffer.allocate(LINE_BUFFER_LENGTH);
+
+        lineBuffer.limit(0);
     }
 
     public HttpRequestReader(ReadableByteChannel inputChannel) {
         this.inputStream = null;
         this.inputChannel = inputChannel;
-        this.lineBuffer = ByteBuffer.allocateDirect(LINE_BUFFER_LENGTH).limit(0);
+        this.lineBuffer = ByteBuffer.allocateDirect(LINE_BUFFER_LENGTH);
+
+        lineBuffer.limit(0);
     }
 
     public int read() throws IOException {
@@ -51,7 +55,8 @@ public final class HttpRequestReader implements Closeable {
                 lineBuffer.limit(0);
                 return -1;
             } else {
-                return lineBuffer.flip().get() & 0xff;
+                lineBuffer.flip();
+                return lineBuffer.get() & 0xff;
             }
         } else {
             return inputStream.read();

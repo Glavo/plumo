@@ -62,7 +62,10 @@ public final class Utils {
             return new String(buffer.array(), buffer.arrayOffset() + offset, end - offset, charset);
         } else {
             byte[] bytes = new byte[end - offset];
-            buffer.duplicate().limit(end).position(offset).get(bytes);
+            ByteBuffer duplicate = buffer.duplicate();
+            duplicate.limit(end);
+            duplicate.position(offset);
+            duplicate.get(bytes);
             return new String(bytes, charset);
         }
     }
