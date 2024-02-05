@@ -10,8 +10,10 @@ public final class HttpHeaderFieldTest {
 
     @Test
     public void testVerification() {
+        assertThrows(NullPointerException.class, () -> HttpHeaderField.of(null));
         assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of(""));
         assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of("content type"));
+        assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of("Content Type"));
         assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of("测试"));
         assertThrows(IllegalArgumentException.class, () -> HttpHeaderField.of("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"));
     }
