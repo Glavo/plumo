@@ -49,7 +49,8 @@ public final class HttpRequestReader implements Closeable {
         if (lineBuffer.hasRemaining()) {
             return lineBuffer.get() & 0xff;
         } else if (inputChannel != null) {
-            lineBuffer.limit(1).position(0);
+            lineBuffer.limit(1);
+            lineBuffer.position(0);
             int n = inputChannel.read(lineBuffer);
             if (n < 0) {
                 lineBuffer.limit(0);
