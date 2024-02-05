@@ -51,11 +51,11 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
 
     public HttpSessionImpl(PlumoImpl server, Closeable acceptSocket,
                            SocketAddress remoteAddress, SocketAddress localAddress,
-                           InputStream inputStream, OutputWrapper output) {
+                           HttpRequestReader requestReader, OutputWrapper output) {
         this.server = server;
         this.remoteAddress = remoteAddress;
         this.localAddress = localAddress;
-        this.requestReader = new HttpRequestReader(inputStream);
+        this.requestReader = requestReader;
         this.output = output;
         this.socket = acceptSocket;
     }

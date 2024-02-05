@@ -331,7 +331,8 @@ public final class PlumoImpl implements Plumo {
                         }
                         exec(new HttpSessionImpl(this, socket,
                                 socket.getRemoteSocketAddress(), socket.getLocalSocketAddress(),
-                                socket.getInputStream(), new OutputWrapper(socket.getOutputStream(), 1024)));
+                                new HttpRequestReader(socket.getInputStream()),
+                                new OutputWrapper(socket.getOutputStream(), 1024)));
                     } catch (IOException e) {
                         DefaultLogger.log(DefaultLogger.Level.INFO, "Communication with the client broken", e);
                     }
@@ -344,7 +345,7 @@ public final class PlumoImpl implements Plumo {
                         final SocketChannel socketChannel = serverSocketChannel.accept();
                         exec(new HttpSessionImpl(this, socketChannel,
                                 socketChannel.getRemoteAddress(), socketChannel.getLocalAddress(),
-                                Channels.newInputStream(socketChannel),
+                                new HttpRequestReader(socketChannel),
                                 new OutputWrapper(socketChannel, 1024)));
                     } catch (IOException e) {
                         DefaultLogger.log(DefaultLogger.Level.INFO, "Communication with the client broken", e);
