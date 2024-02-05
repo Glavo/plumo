@@ -3,6 +3,7 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
+import org.glavo.plumo.internal.util.InputWrapper;
 import org.glavo.plumo.internal.util.Utils;
 
 import java.io.Closeable;
@@ -76,6 +77,41 @@ public final class HttpRequestReader implements Closeable {
             return inputChannel.read(ByteBuffer.wrap(b, off, len));
         } else {
             return inputStream.read(b, off, len);
+        }
+    }
+
+    public int read(ByteBuffer dst) throws IOException {
+        int dstRemaining = dst.remaining();
+        if (dstRemaining <= 0) {
+            return 0;
+        }
+
+        if (lineBuffer.hasRemaining()) {
+            int lineBufferRemaining = lineBuffer.remaining();
+            if (dstRemaining >= lineBufferRemaining) {
+                dst.put(lineBuffer);
+                return lineBufferRemaining;
+            } else {
+                ByteBuffer duplicate = lineBuffer.duplicate();
+                duplicate.limit(duplicate.position() + dstRemaining);
+                dst.put(duplicate);
+                return dstRemaining;
+            }
+        } else if (inputChannel != null) {
+            return inputChannel.read(dst);
+        } else if (dst.hasArray()) {
+            int n = inputStream.read(dst.array(), dst.arrayOffset() + dst.position(), dstRemaining);
+            if (n > 0) {
+                dst.position(dst.position() + n);
+            }
+            return n;
+        } else {
+            byte[] temp = new byte[dstRemaining];
+            int n = inputStream.read(temp);
+            if (n > 0) {
+                dst.put(temp, 0, n);
+            }
+            return n;
         }
     }
 
@@ -445,7 +481,7 @@ public final class HttpRequestReader implements Closeable {
         }
     }
 
-    private final class BoundedInputStream extends InputStream {
+    private final class BoundedInputStream extends InputWrapper {
         private boolean closed = false;
 
         private final long limit;
@@ -508,17 +544,41 @@ public final class HttpRequestReader implements Closeable {
         }
 
         @Override
+        public int read(ByteBuffer dst) throws IOException {
+            if (dst.remaining() < (limit - totalRead)) {
+                int n = HttpRequestReader.this.read(dst);
+                if (n > 0) {
+                    totalRead += n;
+                }
+                return n;
+            } else {
+                ByteBuffer duplicate = dst.duplicate();
+                duplicate.limit((int) (duplicate.position() + (limit - totalRead)));
+                int n = HttpRequestReader.this.read(duplicate);
+                if (n > 0) {
+                    totalRead += n;
+                    dst.position(dst.position() + n);
+                }
+                return n;
+            }
+        }
+
+        @Override
+        public boolean isOpen() {
+            return !closed && !HttpRequestReader.this.closed;
+        }
+
+        @Override
         public void close() throws IOException {
-            if (closed) {
+            if (closed || HttpRequestReader.this.closed) {
                 return;
             }
+            this.closed = true;
 
             if (totalRead < limit) {
                 forceSkip(limit - totalRead);
                 totalRead = limit;
             }
-
-            this.closed = true;
         }
     }
 }

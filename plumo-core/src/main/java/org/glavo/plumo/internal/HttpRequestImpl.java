@@ -18,6 +18,7 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpDataDecoder;
 import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
+import org.glavo.plumo.internal.util.InputWrapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,7 +37,7 @@ public final class HttpRequestImpl implements HttpRequest {
     URI uri;
     String rawUri;
     String httpVersion;
-    InputStream body;
+    InputWrapper body;
     long bodySize;
 
     public HttpRequestImpl(SocketAddress remoteAddress, SocketAddress localAddress) {
