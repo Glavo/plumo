@@ -23,12 +23,12 @@ import static org.glavo.plumo.internal.Constants.LINE_BUFFER_LENGTH;
 public final class HttpRequestReader implements Closeable {
     private static final Charset HEADER_ENCODING = StandardCharsets.UTF_8;
 
-    private final InputStream inputStream;
-    private final ReadableByteChannel inputChannel;
+    final InputStream inputStream;
+    final ReadableByteChannel inputChannel;
 
-    private final ByteBuffer lineBuffer;
+    final ByteBuffer lineBuffer;
 
-    private boolean closed = false;
+    boolean closed = false;
 
     public HttpRequestReader(InputStream inputStream) {
         this.inputStream = inputStream;
@@ -353,7 +353,7 @@ public final class HttpRequestReader implements Closeable {
 
         request.bodySize = len;
         if (len > 0) {
-            request.body = new BoundedInputStream(len);
+            request.body = new BoundedInput(this, len);
         }
     }
 
@@ -481,13 +481,15 @@ public final class HttpRequestReader implements Closeable {
         }
     }
 
-    private final class BoundedInputStream extends InputWrapper {
+    private static class BoundedInput extends InputWrapper {
+        private final HttpRequestReader reader;
         private boolean closed = false;
 
         private final long limit;
         private long totalRead = 0;
 
-        BoundedInputStream(long limit) {
+        BoundedInput(HttpRequestReader reader, long limit) {
+            this.reader = reader;
             this.limit = limit;
         }
 
@@ -508,7 +510,7 @@ public final class HttpRequestReader implements Closeable {
             ensureOpen();
 
             if (totalRead < limit) {
-                int res = HttpRequestReader.this.read();
+                int res = reader.read();
                 if (res >= 0) {
                     totalRead++;
                 }
@@ -530,7 +532,7 @@ public final class HttpRequestReader implements Closeable {
             if (maxRead > 0) {
                 int nTryRead = (int) Math.min(len, maxRead);
 
-                int res = HttpRequestReader.this.read(b, off, nTryRead);
+                int res = reader.read(b, off, nTryRead);
                 if (res > 0) {
                     assert res <= nTryRead;
                     totalRead += res;
@@ -546,7 +548,7 @@ public final class HttpRequestReader implements Closeable {
         @Override
         public int read(ByteBuffer dst) throws IOException {
             if (dst.remaining() < (limit - totalRead)) {
-                int n = HttpRequestReader.this.read(dst);
+                int n = reader.read(dst);
                 if (n > 0) {
                     totalRead += n;
                 }
@@ -554,7 +556,7 @@ public final class HttpRequestReader implements Closeable {
             } else {
                 ByteBuffer duplicate = dst.duplicate();
                 duplicate.limit((int) (duplicate.position() + (limit - totalRead)));
-                int n = HttpRequestReader.this.read(duplicate);
+                int n = reader.read(duplicate);
                 if (n > 0) {
                     totalRead += n;
                     dst.position(dst.position() + n);
@@ -565,20 +567,102 @@ public final class HttpRequestReader implements Closeable {
 
         @Override
         public boolean isOpen() {
-            return !closed && !HttpRequestReader.this.closed;
+            return !closed && !reader.closed;
         }
 
         @Override
         public void close() throws IOException {
-            if (closed || HttpRequestReader.this.closed) {
+            if (closed || reader.closed) {
                 return;
             }
             this.closed = true;
 
             if (totalRead < limit) {
-                forceSkip(limit - totalRead);
+                reader.forceSkip(limit - totalRead);
                 totalRead = limit;
             }
+        }
+    }
+
+    private static final class RawFormDataInput extends InputWrapper {
+
+        private final HttpRequestReader reader;
+        private final byte[] endBoundary;
+        private ByteBuffer singleBuffer;
+
+        private int remaining = -1;
+
+        private boolean closed;
+
+        private RawFormDataInput(HttpRequestReader reader, byte[] boundary) {
+            this.reader = reader;
+            this.endBoundary = new byte[boundary.length + 6];
+
+            endBoundary[0] = '\r';
+            endBoundary[1] = '\n';
+            endBoundary[2] = '-';
+            endBoundary[3] = '-';
+            System.arraycopy(boundary, 0, endBoundary, 4, boundary.length);
+            endBoundary[endBoundary.length - 2] = '-';
+            endBoundary[endBoundary.length - 1] = '-';
+        }
+
+        @Override
+        public boolean isOpen() {
+            return !closed && !reader.closed;
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (singleBuffer == null) {
+                singleBuffer = ByteBuffer.allocate(1);
+            } else {
+                singleBuffer.clear();
+            }
+            int n = read(singleBuffer);
+            return n == 1 ? singleBuffer.get(0) & 0xff : -1;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            return read(ByteBuffer.wrap(b, off, len));
+        }
+
+        @Override
+        public int read(ByteBuffer dst) throws IOException {
+            if (remaining == 0) {
+                return -1;
+            }
+
+            if (!dst.hasRemaining()) {
+                return 0;
+            }
+
+            if (remaining > 0) {
+                int oldLimit = reader.lineBuffer.limit();
+
+                int n = Math.min(dst.remaining(), remaining);
+                reader.lineBuffer.limit(reader.lineBuffer.position() + n);
+                dst.put(reader.lineBuffer);
+                reader.lineBuffer.limit(oldLimit);
+
+                remaining -= n;
+
+                return n;
+            }
+
+            if (!reader.lineBuffer.hasRemaining()) {
+                if (reader.readMore() <= 0) {
+                    throw new EOFException();
+                }
+            }
+
+            int maxRead = Integer.min(dst.remaining(), reader.lineBuffer.remaining());
+
+            // TODO
+
+
+            return 0;
         }
     }
 }
