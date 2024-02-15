@@ -512,14 +512,16 @@ public class WebServer implements HttpHandler {
 
         WebServer server = new WebServer(root, new MimeTable(), outputLevel, System.out, doCache);
 
-        Plumo plumo = Plumo.create();
+        Plumo.Builder builder = Plumo.newBuilder();
         if (inetSocketAddress != null) {
-            plumo.bind(inetSocketAddress);
+            builder.bind(inetSocketAddress);
         } else {
-            plumo.bind(unixAddr);
+            builder.bind(unixAddr);
         }
-        plumo.setHandler(server);
-        plumo.startInNewThread(false);
+        builder.handler(server);
+
+        Plumo plumo = builder.build();
+        plumo.start(false);
 
         if (unixAddr == null) {
             InetSocketAddress localAddress = (InetSocketAddress) plumo.getLocalAddress();

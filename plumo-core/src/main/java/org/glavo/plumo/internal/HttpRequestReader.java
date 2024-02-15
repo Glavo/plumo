@@ -397,7 +397,7 @@ public final class HttpRequestReader implements Closeable {
         request.method = method;
         request.rawUri = rawUri;
         request.uri = uri;
-        request.httpVersion = httpVersion;
+        request.httpVersion = httpVersion.substring("HTTP/".length());
     }
 
     private static void processHeaderLine(HttpRequestImpl request, ByteBuffer lineBuffer, int off, int end) throws HttpResponseException {

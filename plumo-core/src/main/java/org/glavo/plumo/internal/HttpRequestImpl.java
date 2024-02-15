@@ -156,7 +156,7 @@ public final class HttpRequestImpl implements HttpRequest {
                 .append(", ")
                 .append("local-address=").append(localAddress)
                 .append("] {\n");
-        builder.append("    ").append(method).append(' ').append(rawUri).append(' ').append(httpVersion).append('\n');
+        builder.append("    ").append(method).append(' ').append(rawUri).append(" HTTP/").append(httpVersion).append('\n');
         headers.forEachHeader((k, v) -> builder.append("    ").append(k).append(": ").append(v).append('\n'));
         builder.append("}");
         return builder.toString();

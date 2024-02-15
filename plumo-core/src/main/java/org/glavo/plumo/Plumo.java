@@ -15,6 +15,7 @@
  */
 package org.glavo.plumo;
 
+import org.glavo.plumo.internal.PlumoBuilderImpl;
 import org.glavo.plumo.internal.PlumoImpl;
 
 import javax.net.ssl.SSLContext;
@@ -23,36 +24,41 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Path;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 public interface Plumo {
 
-    static Plumo create() {
-        return new PlumoImpl();
+    interface Builder {
+        default Builder bind(int port) {
+            return bind(new InetSocketAddress(port));
+        }
+
+        default Builder bind(String host, int port) {
+            return bind(new InetSocketAddress(host, port));
+        }
+
+        Builder bind(InetSocketAddress address);
+
+        default Builder bind(Path path) {
+            return bind(path, false);
+        }
+
+        Builder bind(Path path, boolean deleteIfExists);
+
+        Builder handler(HttpHandler handler);
+
+        Builder socketTimeout(long timeout);
+
+        Builder sslContext(SSLContext sslContext);
+
+        Builder enabledSSLProtocols(String[] protocols);
+
+        Plumo build();
     }
 
-    default void bind(int port) {
-        bind(new InetSocketAddress(port));
+    static Plumo.Builder newBuilder() {
+        return new PlumoBuilderImpl();
     }
-
-    default void bind(String host, int port) {
-        bind(new InetSocketAddress(host, port));
-    }
-
-    void bind(InetSocketAddress address);
-
-    default void bind(Path path) {
-        bind(path, false);
-    }
-
-    void bind(Path path, boolean deleteIfExists);
-
-    void setSSLContext(SSLContext sslContext);
-
-    void setEnabledSSLProtocols(String[] protocols);
-
-    void setSocketTimeout(int timeout);
-
-    void setHandler(HttpHandler handler);
 
     // ---
 
@@ -62,23 +68,25 @@ public interface Plumo {
 
     String getProtocol();
 
-    void start() throws IOException;
+    void startAndWait() throws IOException;
 
-    default void startInNewThread() throws IOException {
-        startInNewThread(true);
+    default void start() throws IOException {
+        start(true);
     }
 
-    void startInNewThread(boolean daemon) throws IOException;
+    void start(boolean daemon) throws IOException;
 
-    void startInNewThread(ThreadFactory threadFactory) throws IOException;
+    void start(ThreadFactory threadFactory) throws IOException;
 
     void stop();
 
     void awaitTermination() throws InterruptedException;
 
+    boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException;
+
     static void main(String[] args) throws Exception {
-        Plumo plumo = Plumo.create();
-        plumo.startInNewThread();
+        Plumo plumo = Plumo.newBuilder().build();
+        plumo.start();
         System.out.println("Listening on " + plumo.getLocalAddress());
         plumo.awaitTermination();
     }
