@@ -520,8 +520,7 @@ public class WebServer implements HttpHandler {
         }
         builder.handler(server);
 
-        Plumo plumo = builder.build();
-        plumo.start(false);
+        Plumo plumo = builder.start(false);
 
         if (unixAddr == null) {
             InetSocketAddress localAddress = (InetSocketAddress) plumo.getLocalAddress();

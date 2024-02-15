@@ -54,6 +54,28 @@ public interface Plumo {
         Builder enabledSSLProtocols(String[] protocols);
 
         Plumo build();
+
+        default Plumo start() throws IOException {
+            Plumo plumo = build();
+            plumo.start();
+            return plumo;
+        }
+
+        default Plumo start(boolean daemon) throws IOException {
+            Plumo plumo = build();
+            plumo.start(daemon);
+            return plumo;
+        }
+
+        default Plumo start(ThreadFactory threadFactory) throws IOException {
+            Plumo plumo = build();
+            plumo.start(threadFactory);
+            return plumo;
+        }
+
+        default void startAndWait() throws IOException {
+            build().startAndWait();
+        }
     }
 
     static Plumo.Builder newBuilder() {

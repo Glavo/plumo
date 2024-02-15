@@ -199,21 +199,21 @@ public final class PlumoImpl implements Plumo {
 
                 this.localAddress = serverSocketChannel.getLocalAddress();
             }
-
-            if (threadFactory == null) {
-                this.run();
-            } else {
-                threadFactory.newThread(this::run).start();
-            }
         } catch (Throwable e) {
-            status = STATUS_FINISH;
-            handler.safeClose(serverSocketOrChannel);
-            serverSocketOrChannel = null;
-            if (shutdownExecutor) {
-                Utils.shutdown(executor);
-            }
+            finish();
             lock.unlock();
             throw e;
+        }
+
+        if (threadFactory != null) {
+            try {
+                threadFactory.newThread(this::run).start();
+            } catch (Throwable e) {
+                finish();
+                throw e;
+            }
+        } else {
+            this.run();
         }
     }
 
@@ -221,7 +221,7 @@ public final class PlumoImpl implements Plumo {
         lock.lock();
         try {
             if (this.status != STATUS_INIT) {
-                throw new IllegalStateException("status: " + this.status);
+                return;
             }
 
             this.status = STATUS_RUNNING;
@@ -301,8 +301,10 @@ public final class PlumoImpl implements Plumo {
                 }
             }
         } finally {
+            if (latch.getCount() > 0) {
+                latch.countDown();
+            }
             lock.unlock();
-            latch.countDown();
         }
     }
 
