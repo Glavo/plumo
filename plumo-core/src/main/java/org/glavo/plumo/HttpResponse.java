@@ -19,6 +19,7 @@ import org.glavo.plumo.internal.HttpResponseImpl;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -163,24 +164,24 @@ public /*sealed*/ interface HttpResponse {
         @SuppressWarnings("deprecation")
         private static byte[] binary(int statusCode, String description) {
             String statusCodeStr = String.valueOf(statusCode);
-            boolean descriptionIsEmpty = description == null || description.isEmpty();
+            if (description == null || description.isEmpty()) {
+                return statusCodeStr.getBytes(ISO_8859_1);
+            }
 
-            int binaryLength = statusCodeStr.length() + (descriptionIsEmpty ? 0 : description.length() + 1);
+            int binaryLength = statusCodeStr.length() + description.length() + 1;
             byte[] binary = new byte[binaryLength];
 
             statusCodeStr.getBytes(0, statusCodeStr.length(), binary, 0);
-            if (!descriptionIsEmpty) {
-                binary[statusCodeStr.length()] = ' ';
+            binary[statusCodeStr.length()] = ' ';
 
-                int offset = statusCodeStr.length() + 1;
-                for (int i = 0; i < description.length(); i++) {
-                    char ch = description.charAt(i);
+            int offset = statusCodeStr.length() + 1;
+            for (int i = 0; i < description.length(); i++) {
+                char ch = description.charAt(i);
 
-                    if (ch > 0 && ch < 128) {
-                        binary[offset + i] = (byte) ch;
-                    } else {
-                        throw new IllegalArgumentException();
-                    }
+                if (ch > 0 && ch < 128) {
+                    binary[offset + i] = (byte) ch;
+                } else {
+                    throw new IllegalArgumentException();
                 }
             }
 
