@@ -176,7 +176,7 @@ public /*sealed*/ interface HttpResponse {
                 for (int i = 0; i < description.length(); i++) {
                     char ch = description.charAt(i);
 
-                    if (ch < 128) {
+                    if (ch > 0 && ch < 128) {
                         binary[offset + i] = (byte) ch;
                     } else {
                         throw new IllegalArgumentException();
