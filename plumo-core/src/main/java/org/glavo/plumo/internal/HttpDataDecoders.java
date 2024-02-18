@@ -18,6 +18,7 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpDataDecoder;
 import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
+import org.glavo.plumo.internal.util.InputWrapper;
 import org.glavo.plumo.internal.util.ParameterParser;
 
 import java.io.ByteArrayInputStream;
@@ -32,7 +33,7 @@ public final class HttpDataDecoders {
     public static final HttpDataDecoder<InputStream, Object, RuntimeException> INPUT_STREAM = new HttpDataDecoder<InputStream, Object, RuntimeException>() {
         @Override
         public InputStream decode(HttpRequest request, InputStream input, Object arg) {
-            return input == null ? new ByteArrayInputStream(Constants.EMPTY_BYTE_ARRAY) : input;
+            return input == null ? InputWrapper.nullInputWrapper() : input;
         }
 
         @Override

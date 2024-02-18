@@ -4,12 +4,10 @@ import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 import org.glavo.plumo.internal.util.InputWrapper;
+import org.glavo.plumo.internal.util.ParameterParser;
 import org.glavo.plumo.internal.util.Utils;
 
-import java.io.Closeable;
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -17,6 +15,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Map;
 
 import static org.glavo.plumo.internal.Constants.LINE_BUFFER_LENGTH;
 
@@ -330,30 +329,53 @@ public final class HttpRequestReader implements Closeable {
     }
 
     private void endOfHeader(HttpRequestImpl request) throws HttpResponseException {
-//        if (request.getContentType() != null && request.getContentType().isMultipart()) {
-//            if (request.method == HttpRequest.Method.POST) {
-//                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "TODO"); // TODO: Multipart Body
-//            } else {
-//                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Invalid Content-Type.");
-//            }
-//        }
+        String contentType = request.getHeader(HttpHeaderField.CONTENT_TYPE);
 
-        String contentLength = request.headers.getFirst(HttpHeaderField.CONTENT_LENGTH);
-        long len;
+        if (contentType != null && contentType.startsWith("multipart/form-data")) {
+            int offset = contentType.indexOf(';');
+            if (offset < 0) {
+                offset = 0;
+            }
 
-        if (contentLength != null) {
-            try {
-                len = Long.parseLong(contentLength);
-            } catch (NumberFormatException e) {
-                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Invalid Content-Length.");
+            ParameterParser parser = new ParameterParser(contentType, offset, ';');
+            String boundary = null;
+
+            Map.Entry<String, String> parameter;
+            while ((parameter = parser.nextParameter()) != null) {
+                if (parameter.getKey().equals("boundary")) {
+                    boundary = parameter.getValue();
+                    break;
+                }
+            }
+
+            if (boundary != null && request.method == HttpRequest.Method.POST) {
+                request.body = new RawFormDataInput(this, boundary);
+            } else {
+                throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Invalid Content-Type.");
             }
         } else {
-            len = 0L;
-        }
 
-        request.bodySize = len;
-        if (len > 0) {
-            request.body = new BoundedInput(this, len);
+            String contentLength = request.headers.getFirst(HttpHeaderField.CONTENT_LENGTH);
+            long len;
+
+            if (contentLength != null) {
+                try {
+                    len = Long.parseLong(contentLength);
+                } catch (NumberFormatException e) {
+                    throw new HttpResponseException(HttpResponse.Status.BAD_REQUEST, "BAD REQUEST: Invalid Content-Length.");
+                }
+            } else {
+                len = 0L;
+            }
+
+            request.bodySize = len;
+            if (len == 0) {
+                request.body = null;
+            } else if (len > 0) {
+                request.body = new BoundedInput(this, len);
+            } else {
+                throw new HttpResponseException(HttpResponse.Status.INTERNAL_ERROR, "TODO");
+            }
         }
     }
 
@@ -594,15 +616,16 @@ public final class HttpRequestReader implements Closeable {
 
         private boolean closed;
 
-        private RawFormDataInput(HttpRequestReader reader, byte[] boundary) {
+        @SuppressWarnings("deprecation")
+        private RawFormDataInput(HttpRequestReader reader, String boundary) {
             this.reader = reader;
-            this.endBoundary = new byte[boundary.length + 6];
+            this.endBoundary = new byte[boundary.length() + 6];
 
             endBoundary[0] = '\r';
             endBoundary[1] = '\n';
             endBoundary[2] = '-';
             endBoundary[3] = '-';
-            System.arraycopy(boundary, 0, endBoundary, 4, boundary.length);
+            boundary.getBytes(0, boundary.length(), endBoundary, 4);
             endBoundary[endBoundary.length - 2] = '-';
             endBoundary[endBoundary.length - 1] = '-';
         }
@@ -628,6 +651,24 @@ public final class HttpRequestReader implements Closeable {
             return read(ByteBuffer.wrap(b, off, len));
         }
 
+        private int findPossibleEnding() {
+            out:
+            for (int i = reader.lineBuffer.position(), limit = reader.lineBuffer.limit(); i < limit; i++) {
+                if (reader.lineBuffer.get(i) == '\r') {
+                    int maxScan = Integer.min(limit - i, endBoundary.length);
+
+                    for (int j = 0; j < maxScan; j++) {
+                        if (reader.lineBuffer.get(i + j) != endBoundary[j]) {
+                            continue out;
+                        }
+                    }
+
+                    return i;
+                }
+            }
+            return -1;
+        }
+
         @Override
         public int read(ByteBuffer dst) throws IOException {
             if (remaining == 0) {
@@ -639,15 +680,9 @@ public final class HttpRequestReader implements Closeable {
             }
 
             if (remaining > 0) {
-                int oldLimit = reader.lineBuffer.limit();
-
                 int n = Math.min(dst.remaining(), remaining);
-                reader.lineBuffer.limit(reader.lineBuffer.position() + n);
-                dst.put(reader.lineBuffer);
-                reader.lineBuffer.limit(oldLimit);
-
+                Utils.putBytes(dst, reader.lineBuffer, n);
                 remaining -= n;
-
                 return n;
             }
 
@@ -657,12 +692,37 @@ public final class HttpRequestReader implements Closeable {
                 }
             }
 
-            int maxRead = Integer.min(dst.remaining(), reader.lineBuffer.remaining());
+            int ending = findPossibleEnding();
+            if (ending == 0) {
+                while (reader.lineBuffer.remaining() < endBoundary.length) {
+                    if (reader.readMore() <= 0) {
+                        throw new EOFException();
+                    }
+                }
 
-            // TODO
+                ending = findPossibleEnding();
+                if (ending == 0) {
+                    remaining = 0;
+                    return -1;
+                }
+            }
 
+            // assert ending != 0;
 
-            return 0;
+            int n;
+
+            if (ending > 0) {
+                if (ending + endBoundary.length == reader.lineBuffer.limit()) {
+                    remaining = ending - reader.lineBuffer.position();
+                }
+
+                n = Integer.min(dst.remaining(), ending - reader.lineBuffer.position());
+            } else {
+                n = Integer.min(dst.remaining(), reader.lineBuffer.remaining());
+            }
+
+            Utils.putBytes(dst, reader.lineBuffer, n);
+            return n;
         }
     }
 }

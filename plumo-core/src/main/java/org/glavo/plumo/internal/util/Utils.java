@@ -70,6 +70,13 @@ public final class Utils {
         }
     }
 
+    public static void putBytes(ByteBuffer dst, ByteBuffer src, int n) {
+        int oldLimit = src.limit();
+        src.limit(src.position() + n);
+        dst.put(src);
+        src.limit(oldLimit);
+    }
+
     public static void shutdown(Executor executor) {
         if (!(executor instanceof ExecutorService)) {
             return;
