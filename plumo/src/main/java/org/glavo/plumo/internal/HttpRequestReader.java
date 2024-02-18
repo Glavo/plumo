@@ -581,6 +581,8 @@ public final class HttpRequestReader implements Closeable {
                 int n = reader.read(dst);
                 if (n > 0) {
                     totalRead += n;
+                } else {
+                    throw new EOFException();
                 }
                 return n;
             } else {
@@ -590,6 +592,8 @@ public final class HttpRequestReader implements Closeable {
                 if (n > 0) {
                     totalRead += n;
                     dst.position(dst.position() + n);
+                } else {
+                    throw new EOFException();
                 }
                 return n;
             }
