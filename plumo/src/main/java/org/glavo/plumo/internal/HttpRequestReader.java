@@ -518,7 +518,7 @@ public final class HttpRequestReader implements Closeable {
         }
     }
 
-    private static class BoundedInput extends InputWrapper {
+    static class BoundedInput extends InputWrapper {
         private final HttpRequestReader reader;
 
         private final long limit;
@@ -614,7 +614,7 @@ public final class HttpRequestReader implements Closeable {
         }
     }
 
-    private static final class RawFormDataInput extends InputWrapper {
+    static final class RawFormDataInput extends InputWrapper {
 
         private final HttpRequestReader reader;
         private final byte[] endBoundary;

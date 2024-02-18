@@ -15,6 +15,100 @@
  */
 package org.glavo.plumo.internal;
 
-public final class HttpRequestReaderTest {
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
+import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public final class HttpRequestReaderTest {
+    @FunctionalInterface
+    private interface Action {
+        void accept(HttpRequestReader reader) throws Throwable;
+    }
+
+    private List<DynamicTest> createTest(String name, byte[] data, Action action) {
+        return Arrays.asList(
+                DynamicTest.dynamicTest(name + " (InputStream)", () -> action.accept(new HttpRequestReader(new ByteArrayInputStream(data)))),
+                DynamicTest.dynamicTest(name + " (ByteChannel)", () -> action.accept(new HttpRequestReader(Channels.newChannel(new ByteArrayInputStream(data)))))
+        );
+    }
+
+    @TestFactory
+    public Stream<DynamicTest> testBoundedInput() {
+        return IntStream.of(512, 8192, 8192 + 512)
+                .mapToObj(length -> {
+                    byte[] data = new byte[length];
+                    new Random(0).nextBytes(data);
+                    return data;
+                })
+                .flatMap(data -> Stream.of(0, 1, 16, data.length / 2, data.length)
+                        .flatMap(prefixLength -> {
+                            List<DynamicTest> tests = new ArrayList<>();
+                            tests.addAll(createTest("BoundedInput::read(byte[]) (length=" + data.length + ")", data, reader -> {
+                                HttpRequestReader.BoundedInput input = new HttpRequestReader.BoundedInput(reader, prefixLength);
+
+                                byte[] temp = new byte[prefixLength];
+
+                                int offset = 0;
+                                int read;
+                                while ((read = input.read(temp, offset, temp.length - offset)) > 0) {
+                                    offset += read;
+
+                                    if (offset >= temp.length) {
+                                        int newLength = temp.length * 2;
+                                        if (newLength < 0 || newLength > Constants.MAX_ARRAY_LENGTH) {
+                                            newLength = Constants.MAX_ARRAY_LENGTH;
+                                        }
+
+                                        if (newLength <= temp.length) {
+                                            throw new OutOfMemoryError("Request body is too large");
+                                        }
+
+                                        temp = Arrays.copyOf(temp, newLength);
+                                    }
+                                }
+
+                                assertArrayEquals(Arrays.copyOf(data, prefixLength), Arrays.copyOf(temp, offset));
+                            }));
+
+
+                            for (boolean isDirect : new boolean[]{false, true}) {
+                                tests.addAll(createTest("testBoundedInput::read(ByteBuffer) (length=" + data.length + ", isDirect=" + isDirect + ")", data, reader -> {
+                                    HttpRequestReader.BoundedInput input = new HttpRequestReader.BoundedInput(reader, prefixLength);
+
+                                    ByteBuffer temp = isDirect ? ByteBuffer.allocateDirect(prefixLength * 2) : ByteBuffer.allocate(prefixLength * 2);
+
+                                    while (input.read(temp) > 0) {
+                                        if (!temp.hasRemaining()) {
+                                            int newCap = temp.capacity() * 2;
+                                            ByteBuffer newTemp = isDirect ? ByteBuffer.allocateDirect(newCap) : ByteBuffer.allocate(newCap);
+                                            temp.flip();
+                                            newTemp.put(temp);
+
+                                            temp = newTemp;
+                                        }
+                                    }
+
+                                    temp.flip();
+
+                                    byte[] result = new byte[temp.remaining()];
+                                    temp.get(result);
+
+                                    assertArrayEquals(Arrays.copyOf(data, prefixLength), result);
+                                }));
+                            }
+
+                            return tests.stream();
+                        }));
+    }
 }
