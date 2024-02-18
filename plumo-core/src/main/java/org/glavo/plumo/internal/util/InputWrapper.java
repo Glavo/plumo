@@ -11,14 +11,6 @@ import java.util.Objects;
 public abstract class InputWrapper extends InputStream implements ReadableByteChannel {
     public static InputWrapper nullInputWrapper() {
         return new InputWrapper() {
-            private volatile boolean closed;
-
-            private void ensureOpen() throws IOException {
-                if (closed) {
-                    throw new IOException("Stream closed");
-                }
-            }
-
             @Override
             public int available() throws IOException {
                 ensureOpen();
@@ -92,15 +84,22 @@ public abstract class InputWrapper extends InputStream implements ReadableByteCh
             }
 
             @Override
-            public boolean isOpen() {
-                return !closed;
-            }
-
-            @Override
             public void close() throws IOException {
                 closed = true;
             }
         };
     }
 
+    protected volatile boolean closed;
+
+    protected void ensureOpen() throws IOException {
+        if (closed) {
+            throw new IOException("Stream closed");
+        }
+    }
+
+    @Override
+    public boolean isOpen() {
+        return !closed;
+    }
 }

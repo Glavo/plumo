@@ -505,7 +505,6 @@ public final class HttpRequestReader implements Closeable {
 
     private static class BoundedInput extends InputWrapper {
         private final HttpRequestReader reader;
-        private boolean closed = false;
 
         private final long limit;
         private long totalRead = 0;
@@ -513,12 +512,6 @@ public final class HttpRequestReader implements Closeable {
         BoundedInput(HttpRequestReader reader, long limit) {
             this.reader = reader;
             this.limit = limit;
-        }
-
-        private void ensureOpen() throws IOException {
-            if (closed) {
-                throw new IOException("Stream closed");
-            }
         }
 
         @Override
@@ -637,6 +630,8 @@ public final class HttpRequestReader implements Closeable {
 
         @Override
         public int read() throws IOException {
+            ensureOpen();
+
             if (singleBuffer == null) {
                 singleBuffer = ByteBuffer.allocate(1);
             } else {
@@ -671,6 +666,8 @@ public final class HttpRequestReader implements Closeable {
 
         @Override
         public int read(ByteBuffer dst) throws IOException {
+            ensureOpen();
+
             if (remaining == 0) {
                 return -1;
             }
@@ -723,6 +720,30 @@ public final class HttpRequestReader implements Closeable {
 
             Utils.putBytes(dst, reader.lineBuffer, n);
             return n;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (closed || reader.closed) {
+                return;
+            }
+            this.closed = true;
+
+            if (remaining == 0) {
+                return;
+            }
+
+            if (remaining > 0) {
+                reader.lineBuffer.position(reader.lineBuffer.position() + remaining);
+                remaining = 0;
+                return;
+            }
+
+
+            ByteBuffer skipBuffer = ByteBuffer.allocate(8192);
+            while (read(skipBuffer) > 0) {
+                skipBuffer.clear();
+            }
         }
     }
 }
