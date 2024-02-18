@@ -1,8 +1,8 @@
-rootProject.name = "plumo"
+rootProject.name = "plumo-base"
 
 include(
     "benchmark",
     "webserver",
-    "plumo-core",
+    "plumo",
     "plumo-http2",
 )

@@ -3,5 +3,5 @@ tasks.compileJava {
 }
 
 dependencies {
-    implementation(project(":plumo-core"))
+    implementation(project(":plumo"))
 }

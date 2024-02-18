@@ -6,7 +6,7 @@ subprojects {
     group = "org.glavo"
     version = "0.1.0" + "-SNAPSHOT"
 
-    if (!project.name.startsWith("plumo-")) {
+    if (!project.name.startsWith("plumo")) {
         return@subprojects
     }
 
@@ -19,7 +19,7 @@ subprojects {
     }
 
     dependencies {
-        compileOnlyApi("org.jetbrains:annotations:24.0.1")
+        compileOnlyApi("org.jetbrains:annotations:24.1.0")
         testImplementation(platform("org.junit:junit-bom:5.10.2"))
         testImplementation("org.junit.jupiter:junit-jupiter")
     }

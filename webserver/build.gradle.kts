@@ -43,5 +43,5 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":plumo-core"))
+    implementation(project(":plumo"))
 }

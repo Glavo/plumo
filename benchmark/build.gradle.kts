@@ -13,7 +13,7 @@ dependencies {
     implementation("org.openjdk.jmh:jmh-core:$jmhVersion")
     annotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
 
-    implementation(project(":plumo-core"))
+    implementation(project(":plumo"))
 }
 
 tasks.compileJava {

@@ -38,16 +38,15 @@ public abstract class InputWrapper extends InputStream implements ReadableByteCh
                 return -1;
             }
 
-            @Override
+            // @Override
             public byte[] readAllBytes() throws IOException {
                 ensureOpen();
                 return new byte[0];
             }
 
-            @Override
+            // @Override
             public int readNBytes(byte[] b, int off, int len)
                     throws IOException {
-                Objects.checkFromIndexSize(off, len, b.length);
                 ensureOpen();
                 return 0;
             }
@@ -77,7 +76,7 @@ public abstract class InputWrapper extends InputStream implements ReadableByteCh
                 }
             }
 
-            @Override
+            // @Override
             public long transferTo(OutputStream out) throws IOException {
                 ensureOpen();
                 return 0L;
