@@ -102,7 +102,25 @@ public final class HttpDataDecoders {
                 throw new OutOfMemoryError("Request body is too large");
             }
 
-            if (size < 0) {
+            if (size >= 0) {
+                byte[] bytes = new byte[(int) size];
+
+                int offset = 0;
+                while (offset < size) {
+                    int read = input.read(bytes, offset, (int) (size - offset));
+                    if (read > 0) {
+                        offset += read;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (offset == size) {
+                    return bytes;
+                } else {
+                    return Arrays.copyOf(bytes, offset);
+                }
+            } else {
                 byte[] bytes = new byte[512];
 
                 int offset = 0;
@@ -125,24 +143,6 @@ public final class HttpDataDecoders {
                 }
 
                 if (offset < bytes.length) {
-                    return Arrays.copyOf(bytes, offset);
-                } else {
-                    return bytes;
-                }
-            } else {
-                byte[] bytes = new byte[(int) size];
-
-                int offset = 0;
-                while (offset < size) {
-                    int read = input.read(bytes, offset, (int) (size - offset));
-                    if (read > 0) {
-                        offset += read;
-                    } else {
-                        break;
-                    }
-                }
-
-                if (offset < size) {
                     return Arrays.copyOf(bytes, offset);
                 } else {
                     return bytes;
