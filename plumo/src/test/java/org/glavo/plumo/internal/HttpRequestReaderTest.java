@@ -54,7 +54,7 @@ public final class HttpRequestReaderTest {
                 .flatMap(data -> Stream.of(0, 1, 16, data.length / 2, data.length)
                         .flatMap(prefixLength -> {
                             List<DynamicTest> tests = new ArrayList<>();
-                            tests.addAll(createTest("BoundedInput::read(byte[]) (length=" + data.length + ")", data, reader -> {
+                            tests.addAll(createTest(String.format("BoundedInput::read(byte[]) (length=%d, prefixLength=%d)", data.length, prefixLength), data, reader -> {
                                 HttpRequestReader.BoundedInput input = new HttpRequestReader.BoundedInput(reader, prefixLength);
 
                                 byte[] temp = new byte[prefixLength];
@@ -83,7 +83,7 @@ public final class HttpRequestReaderTest {
 
 
                             for (boolean isDirect : new boolean[]{false, true}) {
-                                tests.addAll(createTest("testBoundedInput::read(ByteBuffer) (length=" + data.length + ", isDirect=" + isDirect + ")", data, reader -> {
+                                tests.addAll(createTest(String.format("testBoundedInput::read(ByteBuffer) (length=%d, prefixLength=%d, isDirect=%s)", data.length, prefixLength, isDirect), data, reader -> {
                                     HttpRequestReader.BoundedInput input = new HttpRequestReader.BoundedInput(reader, prefixLength);
 
                                     ByteBuffer temp = isDirect ? ByteBuffer.allocateDirect(prefixLength * 2) : ByteBuffer.allocate(prefixLength * 2);
@@ -105,6 +105,20 @@ public final class HttpRequestReaderTest {
                                     temp.get(result);
 
                                     assertArrayEquals(Arrays.copyOf(data, prefixLength), result);
+                                }));
+                            }
+
+                            if (prefixLength > 0) {
+                                tests.addAll(createTest(String.format("testBoundedInput::close() (length=%d, prefixLength=%d)", data.length, prefixLength), data, reader -> {
+                                    byte[] temp = new byte[prefixLength];
+                                    try (HttpRequestReader.BoundedInput input = new HttpRequestReader.BoundedInput(reader, data.length)) {
+                                        int offset = 0;
+                                        int read;
+                                        while ((read = input.read(temp, offset, temp.length - offset)) > 0) {
+                                            offset += read;
+                                        }
+                                    }
+                                    assertEquals(-1, reader.read(temp, 0, prefixLength));
                                 }));
                             }
 

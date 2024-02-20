@@ -521,8 +521,8 @@ public final class HttpRequestReader implements Closeable {
     static class BoundedInput extends InputWrapper {
         private final HttpRequestReader reader;
 
-        private final long limit;
-        private long totalRead = 0;
+        final long limit;
+        long totalRead = 0;
 
         BoundedInput(HttpRequestReader reader, long limit) {
             this.reader = reader;
@@ -577,23 +577,24 @@ public final class HttpRequestReader implements Closeable {
 
         @Override
         public int read(ByteBuffer dst) throws IOException {
-            if (dst.remaining() < (limit - totalRead)) {
+            long available = limit - totalRead;
+            if (dst.remaining() < available) {
                 int n = reader.read(dst);
                 if (n > 0) {
                     totalRead += n;
                 } else {
-                    throw new EOFException();
+                    return -1;
                 }
                 return n;
             } else {
                 ByteBuffer duplicate = dst.duplicate();
-                duplicate.limit((int) (duplicate.position() + (limit - totalRead)));
+                duplicate.limit(duplicate.position() + (int) available);
                 int n = reader.read(duplicate);
                 if (n > 0) {
                     totalRead += n;
                     dst.position(dst.position() + n);
                 } else {
-                    throw new EOFException();
+                    return -1;
                 }
                 return n;
             }
@@ -606,7 +607,7 @@ public final class HttpRequestReader implements Closeable {
 
         @Override
         public void close() throws IOException {
-            if (closed || reader.closed) {
+            if (!isOpen()) {
                 return;
             }
             this.closed = true;
