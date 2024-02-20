@@ -16,14 +16,21 @@
 package org.glavo.plumo;
 
 import org.glavo.plumo.internal.HttpDataDecoders;
+import org.glavo.plumo.internal.util.InputWrapper;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 
 public interface HttpDataDecoder<V, A, E extends Throwable> {
     HttpDataDecoder<InputStream, ?, RuntimeException> INPUT_STREAM = HttpDataDecoders.INPUT_STREAM;
+    HttpDataDecoder<ReadableByteChannel, Object, RuntimeException> BYTE_CHANNEL = HttpDataDecoders.BYTE_CHANNEL;
     HttpDataDecoder<String, ?, IOException> TEXT = HttpDataDecoders.TEXT;
     HttpDataDecoder<byte[], ?, IOException> BYTES = HttpDataDecoders.BYTES;
+    HttpDataDecoder<ByteBuffer, Object, IOException> BYTE_BUFFER = HttpDataDecoders.BYTE_BUFFER;
 
-    V decode(HttpRequest request, InputStream input, A arg) throws E;
+    @ApiStatus.Experimental
+    V decode(HttpRequest request, InputWrapper input, A arg) throws E;
 }

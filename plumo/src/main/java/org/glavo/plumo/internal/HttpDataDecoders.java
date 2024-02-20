@@ -25,26 +25,42 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.Map;
 
 public final class HttpDataDecoders {
 
     public static final HttpDataDecoder<InputStream, Object, RuntimeException> INPUT_STREAM = new HttpDataDecoder<InputStream, Object, RuntimeException>() {
         @Override
-        public InputStream decode(HttpRequest request, InputStream input, Object arg) {
-            return input == null ? InputWrapper.nullInputWrapper() : input;
+        public InputStream decode(HttpRequest request, InputWrapper input, Object arg) {
+            return input != null ? input : InputWrapper.nullInputWrapper();
         }
 
         @Override
         public String toString() {
-            return "InputStream";
+            return "HttpDataDecoder.INPUT_STREAM";
         }
     };
 
+    public static final HttpDataDecoder<ReadableByteChannel, Object, RuntimeException> BYTE_CHANNEL = new HttpDataDecoder<ReadableByteChannel, Object, RuntimeException>() {
+        @Override
+        public ReadableByteChannel decode(HttpRequest request, InputWrapper input, Object arg) {
+            return input != null ? input : InputWrapper.nullInputWrapper();
+        }
+
+        @Override
+        public String toString() {
+            return "HttpDataDecoder.BYTE_CHANNEL";
+        }
+    };
+
+
     public static final HttpDataDecoder<String, Object, IOException> TEXT = new HttpDataDecoder<String, Object, IOException>() {
         @Override
-        public String decode(HttpRequest response, InputStream input, Object arg) throws IOException {
+        public String decode(HttpRequest response, InputWrapper input, Object arg) throws IOException {
             long size = response.getBodySize();
             if (size == 0 || input == null) {
                 return "";
@@ -86,13 +102,13 @@ public final class HttpDataDecoders {
 
         @Override
         public String toString() {
-            return "text";
+            return "HttpDataDecoder.TEXT";
         }
     };
 
     public static final HttpDataDecoder<byte[], Object, IOException> BYTES = new HttpDataDecoder<byte[], Object, IOException>() {
         @Override
-        public byte[] decode(HttpRequest response, InputStream input, Object arg) throws IOException {
+        public byte[] decode(HttpRequest response, InputWrapper input, Object arg) throws IOException {
             long size = response.getBodySize();
             if (size == 0 || input == null) {
                 return Constants.EMPTY_BYTE_ARRAY;
@@ -152,10 +168,48 @@ public final class HttpDataDecoders {
 
         @Override
         public String toString() {
-            return "bytes";
+            return "HttpDataDecoder.BYTES";
         }
     };
 
-    private HttpDataDecoders(){
+    public static final HttpDataDecoder<ByteBuffer, Object, IOException> BYTE_BUFFER = new HttpDataDecoder<ByteBuffer, Object, IOException>() {
+        @Override
+        public ByteBuffer decode(HttpRequest response, InputWrapper input, Object arg) throws IOException {
+            long size = response.getBodySize();
+            if (size == 0 || input == null) {
+                return ByteBuffer.allocate(0);
+            }
+
+            if (size > Constants.MAX_ARRAY_LENGTH) {
+                throw new OutOfMemoryError("Request body is too large");
+            }
+
+            ByteBuffer buffer = input.allocateTempByteBuffer(size > 0 ? (int) size : 8192);
+
+            while (input.read(buffer) > 0) {
+                if (!buffer.hasRemaining()) {
+                    if (size > 0) {
+                        break;
+                    } else {
+                        ByteBuffer newBuffer = input.allocateTempByteBuffer(buffer.position() * 2);
+                        buffer.flip();
+                        newBuffer.put(buffer);
+                        buffer = newBuffer;
+                    }
+                }
+            }
+
+            buffer.flip();
+            return buffer;
+
+        }
+
+        @Override
+        public String toString() {
+            return "HttpDataDecoder.BYTES";
+        }
+    };
+
+    private HttpDataDecoders() {
     }
 }

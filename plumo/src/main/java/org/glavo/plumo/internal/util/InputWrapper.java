@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
-import java.util.Objects;
 
 public abstract class InputWrapper extends InputStream implements ReadableByteChannel {
     public static InputWrapper nullInputWrapper() {
@@ -115,5 +114,9 @@ public abstract class InputWrapper extends InputStream implements ReadableByteCh
     @Override
     public boolean isOpen() {
         return !closed;
+    }
+
+    public ByteBuffer allocateTempByteBuffer(int capacity) {
+        return ByteBuffer.allocate(capacity);
     }
 }

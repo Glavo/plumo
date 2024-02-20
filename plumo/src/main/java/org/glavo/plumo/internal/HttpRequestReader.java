@@ -60,6 +60,10 @@ public final class HttpRequestReader implements Closeable {
         lineBuffer.limit(0);
     }
 
+    public ByteBuffer allocateTempByteBuffer(int capacity) {
+        return inputChannel != null ? ByteBuffer.allocateDirect(capacity) : ByteBuffer.allocate(capacity);
+    }
+
     public int read() throws IOException {
         if (lineBuffer.hasRemaining()) {
             return lineBuffer.get() & 0xff;
@@ -518,14 +522,41 @@ public final class HttpRequestReader implements Closeable {
         }
     }
 
-    static class BoundedInput extends InputWrapper {
-        private final HttpRequestReader reader;
+    static abstract class AbstractInputWrapper extends InputWrapper {
+        protected final HttpRequestReader reader;
 
+        AbstractInputWrapper(HttpRequestReader reader) {
+            this.reader = reader;
+        }
+
+        @Override
+        public ByteBuffer allocateTempByteBuffer(int capacity) {
+            return reader.allocateTempByteBuffer(capacity);
+        }
+
+        @Override
+        public boolean isOpen() {
+            return !closed && !reader.closed;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (isOpen()) {
+                this.closed = true;
+                closeImpl();
+            }
+        }
+
+
+        protected abstract void closeImpl() throws IOException;
+    }
+
+    static class BoundedInput extends AbstractInputWrapper {
         final long limit;
         long totalRead = 0;
 
         BoundedInput(HttpRequestReader reader, long limit) {
-            this.reader = reader;
+            super(reader);
             this.limit = limit;
         }
 
@@ -601,17 +632,7 @@ public final class HttpRequestReader implements Closeable {
         }
 
         @Override
-        public boolean isOpen() {
-            return !closed && !reader.closed;
-        }
-
-        @Override
-        public void close() throws IOException {
-            if (!isOpen()) {
-                return;
-            }
-            this.closed = true;
-
+        protected void closeImpl() throws IOException {
             if (totalRead < limit) {
                 reader.forceSkip(limit - totalRead);
                 totalRead = limit;
@@ -619,9 +640,8 @@ public final class HttpRequestReader implements Closeable {
         }
     }
 
-    static final class RawFormDataInput extends InputWrapper {
+    static final class RawFormDataInput extends AbstractInputWrapper {
 
-        private final HttpRequestReader reader;
         private final byte[] endBoundary;
         private ByteBuffer singleBuffer;
 
@@ -631,7 +651,7 @@ public final class HttpRequestReader implements Closeable {
 
         @SuppressWarnings("deprecation")
         private RawFormDataInput(HttpRequestReader reader, String boundary) {
-            this.reader = reader;
+            super(reader);
             this.endBoundary = new byte[boundary.length() + 6];
 
             endBoundary[0] = '\r';
@@ -743,12 +763,7 @@ public final class HttpRequestReader implements Closeable {
         }
 
         @Override
-        public void close() throws IOException {
-            if (closed || reader.closed) {
-                return;
-            }
-            this.closed = true;
-
+        protected void closeImpl() throws IOException {
             if (remaining == 0) {
                 return;
             }
