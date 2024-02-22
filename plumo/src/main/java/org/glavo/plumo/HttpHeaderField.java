@@ -76,17 +76,18 @@ public final class HttpHeaderField {
     }
 
     private final byte[] bytes;
-    private int hash;
+    private final int hashCode;
 
     private String string;
 
     private HttpHeaderField(byte[] bytes) {
-        this.bytes = bytes;
+        this(bytes, null);
     }
 
     private HttpHeaderField(byte[] bytes, String string) {
         this.bytes = bytes;
         this.string = string;
+        this.hashCode = Arrays.hashCode(bytes);
     }
 
     @ApiStatus.Internal
@@ -100,16 +101,7 @@ public final class HttpHeaderField {
 
     @Override
     public int hashCode() {
-        int h = this.hash;
-        if (h != 0) {
-            return h;
-        }
-
-        h = Arrays.hashCode(bytes);
-        if (h == 0) {
-            h = 644954127; // magic number
-        }
-        return this.hash = h;
+        return hashCode;
     }
 
     @Override
