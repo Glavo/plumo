@@ -1,13 +1,21 @@
 package org.glavo.plumo.internal.util;
 
+import org.apache.http.impl.io.ChunkedInputStream;
+import org.apache.http.impl.io.HttpTransportMetricsImpl;
+import org.apache.http.impl.io.SessionInputBufferImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -93,5 +101,37 @@ public final class OutputWrapperTest {
                 output.write(buffer);
             } while (n < res.length);
         });
+    }
+
+
+    public static List<Arguments> testTransferChunkedFromArguments() {
+        List<Arguments> arguments = new ArrayList<>();
+
+        for (int seed = 0; seed < 4; seed++) {
+            for (int length: new int[] {0, 10, 8192}) {
+                arguments.add(Arguments.of(seed, length, true));
+                arguments.add(Arguments.of(seed, length, false));
+            }
+        }
+
+        return arguments;
+    }
+
+    @ParameterizedTest
+    @MethodSource("testTransferChunkedFromArguments")
+    public void testTransferChunkedFrom(int seed, int length, boolean channel) throws IOException {
+        Random random = new Random(seed);
+        byte[] data = new byte[length];
+        random.nextBytes(data);
+
+        ByteArrayOutputStream ba = new ByteArrayOutputStream();
+        try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 8192) : new OutputWrapper(ba, 8192)) {
+            output.transferChunkedFrom(Channels.newChannel(new ByteArrayInputStream(data)));
+        }
+
+        SessionInputBufferImpl inputBuffer = new SessionInputBufferImpl(new HttpTransportMetricsImpl(), 8192);
+        inputBuffer.bind(new ByteArrayInputStream(ba.toByteArray()));
+
+        assertArrayEquals(data, new ChunkedInputStream(inputBuffer).readAllBytes());
     }
 }
