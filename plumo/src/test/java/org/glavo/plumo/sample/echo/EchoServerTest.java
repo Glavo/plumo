@@ -39,7 +39,8 @@ public class EchoServerTest {
 
     @AfterAll
     public static void stopServer() {
-        server.stop();
+        server.stopAndWait();
+        assertFalse(server.isRunning());
         server = null;
     }
 

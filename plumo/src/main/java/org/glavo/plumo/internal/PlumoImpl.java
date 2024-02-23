@@ -127,6 +127,26 @@ public final class PlumoImpl implements Plumo {
     }
 
     @Override
+    public void stopAndWait() {
+        stop();
+
+        boolean running = isRunning();
+        boolean interrupted = false;
+        while (running) {
+            try {
+                running = !awaitTermination(1L, TimeUnit.DAYS);
+            } catch (InterruptedException e) {
+                if (!interrupted) {
+                    interrupted = true;
+                }
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Override
     public void awaitTermination() throws InterruptedException {
         if (status < STATUS_FINISH) {
             latch.await();

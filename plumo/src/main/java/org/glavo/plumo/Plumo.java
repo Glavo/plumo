@@ -16,7 +16,6 @@
 package org.glavo.plumo;
 
 import org.glavo.plumo.internal.PlumoBuilderImpl;
-import org.glavo.plumo.internal.PlumoImpl;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
@@ -103,6 +102,8 @@ public interface Plumo {
     void start(ThreadFactory threadFactory) throws IOException;
 
     void stop();
+
+    void stopAndWait();
 
     void awaitTermination() throws InterruptedException;
 
