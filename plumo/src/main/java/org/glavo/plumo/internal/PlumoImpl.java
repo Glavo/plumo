@@ -211,8 +211,9 @@ public final class PlumoImpl implements Plumo {
             }
         } catch (Throwable e) {
             finish();
-            lock.unlock();
             throw e;
+        } finally {
+            lock.unlock();
         }
 
         if (threadFactory != null) {
