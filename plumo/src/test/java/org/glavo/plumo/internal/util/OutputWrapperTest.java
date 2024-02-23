@@ -151,16 +151,33 @@ public final class OutputWrapperTest {
     @ParameterizedTest
     @MethodSource("testTransferFromArguments")
     public void testTransferGZipFrom(int seed, int length, byte[] data, boolean channel) throws IOException {
-        ByteArrayOutputStream ba = new ByteArrayOutputStream();
-        try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 512) : new OutputWrapper(ba, 512)) {
-            output.transferGZipFrom(Channels.newChannel(new ByteArrayInputStream(data)));
+        {
+            ByteArrayOutputStream ba = new ByteArrayOutputStream();
+            try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 512) : new OutputWrapper(ba, 512)) {
+                output.transferGZipFrom(Channels.newChannel(new ByteArrayInputStream(data)));
+            }
+
+            SessionInputBufferImpl inputBuffer = new SessionInputBufferImpl(new HttpTransportMetricsImpl(), 8192);
+            inputBuffer.bind(new ByteArrayInputStream(ba.toByteArray()));
+
+            try (InputStream input = new GZIPInputStream(new ChunkedInputStream(inputBuffer))) {
+                assertArrayEquals(data, input.readAllBytes());
+            }
         }
 
-        SessionInputBufferImpl inputBuffer = new SessionInputBufferImpl(new HttpTransportMetricsImpl(), 8192);
-        inputBuffer.bind(new ByteArrayInputStream(ba.toByteArray()));
 
-        try (InputStream input = new GZIPInputStream(new ChunkedInputStream(inputBuffer))) {
-            assertArrayEquals(data, input.readAllBytes());
+        {
+            ByteArrayOutputStream ba = new ByteArrayOutputStream();
+            try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 512) : new OutputWrapper(ba, 512)) {
+                output.transferGZipFrom(data, 0, length);
+            }
+
+            SessionInputBufferImpl inputBuffer = new SessionInputBufferImpl(new HttpTransportMetricsImpl(), 8192);
+            inputBuffer.bind(new ByteArrayInputStream(ba.toByteArray()));
+
+            try (InputStream input = new GZIPInputStream(new ChunkedInputStream(inputBuffer))) {
+                assertArrayEquals(data, input.readAllBytes());
+            }
         }
     }
 }

@@ -224,7 +224,8 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                         output.transferFrom(input);
                     }
                 } else if (autoGZip) {
-                    output.transferGZipFrom(Channels.newChannel(new ByteArrayInputStream((byte[]) preprocessedData))); // TODO: opt
+                    byte[] data = (byte[]) preprocessedData;
+                    output.transferGZipFrom(data, 0, data.length);
                 } else {
                     out.write((byte[]) preprocessedData, 0, (int) inputLength);
                 }

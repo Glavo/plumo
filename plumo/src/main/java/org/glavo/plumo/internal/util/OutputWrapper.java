@@ -334,4 +334,29 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
         write(CHUNKED_FINISH);
     }
 
+    public void transferGZipFrom(byte[] input, int offset, int length) throws IOException {
+        initDeflateContext();
+
+        writeChunk(GZIP_HEADER, 0, GZIP_HEADER.length);
+        deflater.setInput(input, offset, length);
+        crc32.update(input, offset, length);
+        deflater.finish();
+
+        while (!deflater.finished()) {
+            int len = deflater.deflate(gzipWriteBuffer, 0, gzipWriteBuffer.length);
+            if (len > 0) {
+                writeChunk(gzipWriteBuffer, 0, len);
+            }
+        }
+
+        write('8');
+        write(Constants.CRLF);
+        gzipReadBuffer.putInt(0, (int) crc32.getValue());
+        gzipReadBuffer.putInt(4, deflater.getTotalIn());
+        write(gzipReadBuffer.array(), 0, 8);
+        write(Constants.CRLF);
+
+        write(CHUNKED_FINISH);
+    }
+
 }
