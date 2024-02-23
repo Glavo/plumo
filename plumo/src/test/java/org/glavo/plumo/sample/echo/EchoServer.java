@@ -15,12 +15,17 @@
  */
 package org.glavo.plumo.sample.echo;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 
 public final class EchoServer implements HttpHandler {
+
+    static final Gson GSON =  new GsonBuilder().setPrettyPrinting().create();
+
     @Override
     public HttpResponse handle(HttpRequest request) throws Exception {
         JsonObject jsonObject = new JsonObject();
@@ -33,6 +38,6 @@ public final class EchoServer implements HttpHandler {
         request.getHeaders().forEach((k, v) -> headers.addProperty(k.toString(), v.get(0)));
         jsonObject.add("headers", headers);
 
-        return HttpResponse.newTextResponse(jsonObject.toString());
+        return HttpResponse.newTextResponse(GSON.toJson(jsonObject));
     }
 }

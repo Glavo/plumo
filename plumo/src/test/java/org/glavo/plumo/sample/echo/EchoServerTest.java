@@ -15,6 +15,7 @@
  */
 package org.glavo.plumo.sample.echo;
 
+import com.google.gson.JsonObject;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -25,6 +26,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 public class EchoServerTest {
 
     private static Plumo server;
@@ -32,7 +35,6 @@ public class EchoServerTest {
     @BeforeAll
     public static void startServer() throws IOException {
         server = Plumo.newBuilder().handler(new EchoServer()).start();
-        System.out.println(server.getPort());
     }
 
     @AfterAll
@@ -46,11 +48,21 @@ public class EchoServerTest {
         OkHttpClient client = new OkHttpClient.Builder()
                 .build();
         Request request = new Request.Builder()
-                .url("http://localhost:" + server.getPort())
+                .url("http://localhost:" + server.getPort() + "/test-url")
+                .addHeader("user-agent", "echo-client/1.0")
                 .get()
                 .build();
         try (Response response = client.newCall(request).execute()) {
-            // TODO
+            JsonObject jsonObject = EchoServer.GSON.fromJson(response.body().string(), JsonObject.class);
+
+            assertEquals("1.1", jsonObject.getAsJsonPrimitive("http-version").getAsString());
+            assertEquals("GET", jsonObject.getAsJsonPrimitive("method").getAsString());
+            assertEquals("/test-url", jsonObject.getAsJsonPrimitive("uri").getAsString());
+            assertEquals("/test-url", jsonObject.getAsJsonPrimitive("raw-uri").getAsString());
+
+            JsonObject headers = jsonObject.getAsJsonObject("headers");
+            assertEquals("Keep-Alive", headers.getAsJsonPrimitive("connection").getAsString());
+            assertEquals("echo-client/1.0", headers.getAsJsonPrimitive("user-agent").getAsString());
         }
     }
 }
