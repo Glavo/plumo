@@ -7,7 +7,12 @@ import org.glavo.plumo.internal.Constants;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.CRC32;
+import java.util.zip.Deflater;
 
 public final class OutputWrapper extends OutputStream implements WritableByteChannel {
 
@@ -62,6 +67,10 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
                 //noinspection ThrowFromFinallyBlock
                 throw closeException;
             }
+        }
+
+        if (deflater != null) {
+            deflater.end();
         }
     }
 
@@ -229,5 +238,96 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
         write(Constants.HTTP_HEADER_SEPARATOR);
         writeASCII(value);
         writeCRLF();
+    }
+
+    public void transferFrom(ReadableByteChannel input) throws IOException {
+        while (input.read(buffer) > 0) {
+            if (!buffer.hasRemaining()) {
+                flushBuffer();
+            }
+        }
+    }
+
+    private static final byte[] CHUNKED_FINISH = {'0', '\r', '\n', '\r', '\n'};
+
+    public void transferChunkedFrom(ReadableByteChannel input) throws IOException {
+        flushBuffer();
+
+        int read;
+        while ((read = input.read(buffer)) > 0) {
+            if (outputChannel != null) {
+                Utils.writeFully(outputChannel, ByteBuffer.wrap(Integer.toHexString(read).getBytes(StandardCharsets.ISO_8859_1)));
+                Utils.writeFully(outputChannel, ByteBuffer.wrap(Constants.CRLF));
+                flushBuffer();
+                Utils.writeFully(outputChannel, ByteBuffer.wrap(Constants.CRLF));
+            } else {
+                outputStream.write(Integer.toHexString(read).getBytes(StandardCharsets.ISO_8859_1));
+                outputStream.write(Constants.CRLF);
+                flushBuffer();
+                outputStream.write(Constants.CRLF);
+            }
+        }
+        write(CHUNKED_FINISH);
+    }
+
+    private static final byte[] GZIP_HEADER = new byte[]{0x1f, (byte) 0x8b, 0x08, 0, 0, 0, 0, 0, 0, (byte) 0xff};
+
+    private Deflater deflater;
+    private CRC32 crc32;
+    private ByteBuffer gzipReadBuffer;
+    private byte[] gzipWriteBuffer;
+
+    private void initDeflateContext() {
+        if (deflater == null) {
+            deflater = new Deflater();
+            crc32 = new CRC32();
+            gzipReadBuffer = ByteBuffer.allocate(512).order(ByteOrder.LITTLE_ENDIAN);
+            gzipWriteBuffer = new byte[512];
+        } else {
+            deflater.reset();
+            gzipReadBuffer.clear();
+            crc32.reset();
+        }
+    }
+
+    private void writeChunk(byte[] array, int offset, int length) throws IOException {
+        write(Integer.toHexString(length).getBytes(StandardCharsets.ISO_8859_1));
+        write(Constants.CRLF);
+        write(array, offset, length);
+        write(Constants.CRLF);
+    }
+
+    public void transferGZipFrom(ReadableByteChannel input) throws IOException {
+        initDeflateContext();
+
+        write(GZIP_HEADER);
+        while (input.read(gzipReadBuffer) > 0) {
+            gzipReadBuffer.flip();
+
+            deflater.setInput(gzipReadBuffer.array(), 0, gzipReadBuffer.limit());
+            while (!deflater.needsInput()) {
+                int len = deflater.deflate(gzipWriteBuffer, 0, gzipWriteBuffer.length);
+                if (len > 0) {
+                    writeChunk(gzipWriteBuffer, 0, len);
+                    crc32.update(gzipWriteBuffer, 0, len);
+                }
+            }
+
+            gzipReadBuffer.clear();
+        }
+
+        deflater.finish();
+        while (!deflater.finished()) {
+            int len = deflater.deflate(gzipWriteBuffer, 0, gzipWriteBuffer.length);
+            if (len > 0) {
+                writeChunk(gzipWriteBuffer, 0, len);
+                crc32.update(gzipWriteBuffer, 0, len);
+            }
+        }
+
+        gzipReadBuffer.putInt(0, (int) crc32.getValue());
+        gzipReadBuffer.putInt(4, deflater.getTotalIn());
+
+        write(gzipReadBuffer.array(), 0, 8);
     }
 }

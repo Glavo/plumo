@@ -15,7 +15,10 @@
  */
 package org.glavo.plumo.internal.util;
 
+import java.io.EOFException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -96,6 +99,14 @@ public final class Utils {
         }
     }
 
+
+    public static void writeFully(WritableByteChannel channel, ByteBuffer buffer) throws IOException {
+        while (buffer.hasRemaining()) {
+            if (channel.write(buffer) <= 0) {
+                throw new EOFException();
+            }
+        }
+    }
     private Utils() {
     }
 }
