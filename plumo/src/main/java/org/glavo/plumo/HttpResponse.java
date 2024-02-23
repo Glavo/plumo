@@ -34,6 +34,10 @@ public /*sealed*/ interface HttpResponse {
         return newResponse().withStatus(status);
     }
 
+    static HttpResponse newTextResponse(String text) {
+        return newTextResponse(Status.OK, text, "text/plain");
+    }
+
     static HttpResponse newTextResponse(String text, String contentType) {
         return newTextResponse(Status.OK, text, contentType);
     }

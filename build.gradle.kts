@@ -25,6 +25,10 @@ subprojects {
 
         // https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
         testImplementation("org.apache.httpcomponents:httpclient:4.5.14")
+        // https://mvnrepository.com/artifact/com.google.code.gson/gson
+        testImplementation("com.google.code.gson:gson:2.10.1")
+        // https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
+        testImplementation("com.squareup.okhttp3:okhttp:4.12.0")
     }
 
     tasks.test {

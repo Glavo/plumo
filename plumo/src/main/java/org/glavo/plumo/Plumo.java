@@ -86,6 +86,8 @@ public interface Plumo {
 
     boolean isRunning();
 
+    int getPort();
+
     SocketAddress getLocalAddress();
 
     String getProtocol();

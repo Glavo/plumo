@@ -25,6 +25,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -87,6 +88,15 @@ public final class PlumoImpl implements Plumo {
     public boolean isRunning() {
         int status = this.status;
         return status > STATUS_INIT && status < STATUS_FINISH;
+    }
+
+    @Override
+    public int getPort() {
+        if (localAddress instanceof InetSocketAddress) {
+            return ((InetSocketAddress) localAddress).getPort();
+        } else {
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Override
