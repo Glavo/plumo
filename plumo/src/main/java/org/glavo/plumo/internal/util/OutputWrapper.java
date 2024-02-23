@@ -279,7 +279,7 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
 
     private void initDeflateContext() {
         if (deflater == null) {
-            deflater = new Deflater();
+            deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
             crc32 = new CRC32();
             gzipReadBuffer = ByteBuffer.allocate(512).order(ByteOrder.LITTLE_ENDIAN);
             gzipWriteBuffer = new byte[512];
@@ -300,16 +300,16 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
     public void transferGZipFrom(ReadableByteChannel input) throws IOException {
         initDeflateContext();
 
-        write(GZIP_HEADER);
+        writeChunk(GZIP_HEADER, 0, GZIP_HEADER.length);
         while (input.read(gzipReadBuffer) > 0) {
             gzipReadBuffer.flip();
 
             deflater.setInput(gzipReadBuffer.array(), 0, gzipReadBuffer.limit());
+            crc32.update(gzipReadBuffer.array(), 0, gzipReadBuffer.limit());
             while (!deflater.needsInput()) {
                 int len = deflater.deflate(gzipWriteBuffer, 0, gzipWriteBuffer.length);
                 if (len > 0) {
                     writeChunk(gzipWriteBuffer, 0, len);
-                    crc32.update(gzipWriteBuffer, 0, len);
                 }
             }
 
@@ -321,13 +321,17 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
             int len = deflater.deflate(gzipWriteBuffer, 0, gzipWriteBuffer.length);
             if (len > 0) {
                 writeChunk(gzipWriteBuffer, 0, len);
-                crc32.update(gzipWriteBuffer, 0, len);
             }
         }
 
+        write('8');
+        write(Constants.CRLF);
         gzipReadBuffer.putInt(0, (int) crc32.getValue());
         gzipReadBuffer.putInt(4, deflater.getTotalIn());
-
         write(gzipReadBuffer.array(), 0, 8);
+        write(Constants.CRLF);
+
+        write(CHUNKED_FINISH);
     }
+
 }

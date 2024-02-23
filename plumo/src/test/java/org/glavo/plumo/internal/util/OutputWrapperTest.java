@@ -12,11 +12,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.zip.GZIPInputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -104,13 +106,17 @@ public final class OutputWrapperTest {
     }
 
 
-    public static List<Arguments> testTransferChunkedFromArguments() {
+    public static List<Arguments> testTransferFromArguments() {
         List<Arguments> arguments = new ArrayList<>();
 
         for (int seed = 0; seed < 4; seed++) {
             for (int length: new int[] {0, 10, 8192}) {
-                arguments.add(Arguments.of(seed, length, true));
-                arguments.add(Arguments.of(seed, length, false));
+                Random random = new Random(seed);
+                byte[] data = new byte[length];
+                random.nextBytes(data);
+
+                arguments.add(Arguments.of(seed, length, data, true));
+                arguments.add(Arguments.of(seed, length, data, false));
             }
         }
 
@@ -118,14 +124,21 @@ public final class OutputWrapperTest {
     }
 
     @ParameterizedTest
-    @MethodSource("testTransferChunkedFromArguments")
-    public void testTransferChunkedFrom(int seed, int length, boolean channel) throws IOException {
-        Random random = new Random(seed);
-        byte[] data = new byte[length];
-        random.nextBytes(data);
-
+    @MethodSource("testTransferFromArguments")
+    public void testTransferFrom(int seed, int length, byte[] data, boolean channel) throws IOException {
         ByteArrayOutputStream ba = new ByteArrayOutputStream();
-        try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 8192) : new OutputWrapper(ba, 8192)) {
+        try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 512) : new OutputWrapper(ba, 512)) {
+            output.transferFrom(Channels.newChannel(new ByteArrayInputStream(data)));
+        }
+
+        assertArrayEquals(data, ba.toByteArray());
+    }
+
+    @ParameterizedTest
+    @MethodSource("testTransferFromArguments")
+    public void testTransferChunkedFrom(int seed, int length, byte[] data, boolean channel) throws IOException {
+        ByteArrayOutputStream ba = new ByteArrayOutputStream();
+        try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 512) : new OutputWrapper(ba, 512)) {
             output.transferChunkedFrom(Channels.newChannel(new ByteArrayInputStream(data)));
         }
 
@@ -133,5 +146,21 @@ public final class OutputWrapperTest {
         inputBuffer.bind(new ByteArrayInputStream(ba.toByteArray()));
 
         assertArrayEquals(data, new ChunkedInputStream(inputBuffer).readAllBytes());
+    }
+
+    @ParameterizedTest
+    @MethodSource("testTransferFromArguments")
+    public void testTransferGZipFrom(int seed, int length, byte[] data, boolean channel) throws IOException {
+        ByteArrayOutputStream ba = new ByteArrayOutputStream();
+        try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 512) : new OutputWrapper(ba, 512)) {
+            output.transferGZipFrom(Channels.newChannel(new ByteArrayInputStream(data)));
+        }
+
+        SessionInputBufferImpl inputBuffer = new SessionInputBufferImpl(new HttpTransportMetricsImpl(), 8192);
+        inputBuffer.bind(new ByteArrayInputStream(ba.toByteArray()));
+
+        try (InputStream input = new GZIPInputStream(new ChunkedInputStream(inputBuffer))) {
+            assertArrayEquals(data, input.readAllBytes());
+        }
     }
 }
