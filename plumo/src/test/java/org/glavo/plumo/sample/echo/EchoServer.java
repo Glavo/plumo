@@ -38,6 +38,6 @@ public final class EchoServer implements HttpHandler {
         request.getHeaders().forEach((k, v) -> headers.addProperty(k.toString(), v.get(0)));
         jsonObject.add("headers", headers);
 
-        return HttpResponse.newTextResponse(GSON.toJson(jsonObject));
+        return HttpResponse.newTextResponse(GSON.toJson(jsonObject), "application/json");
     }
 }

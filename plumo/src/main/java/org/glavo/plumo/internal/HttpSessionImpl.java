@@ -176,7 +176,13 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             } else if (body instanceof Path) {
                 SeekableByteChannel channel = Files.newByteChannel((Path) body);
                 preprocessedData = needToClose = channel;
-                inputLength = channel.size();
+
+                try {
+                    inputLength = channel.size();
+                } catch (Throwable e) {
+                    server.handler.safeClose(channel);
+                    throw e;
+                }
             } else {
                 throw new InternalError("unexpected type: " + body.getClass());
             }
@@ -188,7 +194,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                 String acceptEncoding = request != null ? request.headers.getFirst(HttpHeaderField.ACCEPT_ENCODING) : null;
                 if (acceptEncoding == null || !acceptEncoding.contains("gzip")) {
                     autoGZip = false;
-                } else if (contentType == null || (inputLength >= 0 && inputLength <= 512)) { // TODO: magic number
+                } else if (contentType == null || inputLength < 16) {
                     autoGZip = false;
                 } else {
                     autoGZip = contentType.startsWith("text/") || contentType.startsWith("application/json");
