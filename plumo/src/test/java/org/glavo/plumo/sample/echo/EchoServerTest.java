@@ -20,50 +20,58 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.glavo.plumo.Plumo;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import javax.net.SocketFactory;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class EchoServerTest {
 
-    private static Plumo server;
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void test(boolean unixDomainSocket) throws IOException {
+        Plumo.Builder builder = Plumo.newBuilder().handler(new EchoServer());
 
-    @BeforeAll
-    public static void startServer() throws IOException {
-        server = Plumo.newBuilder().handler(new EchoServer()).start();
-    }
+        Path socketFile = null;
+        if (unixDomainSocket) {
+            socketFile = Files.createTempFile("echo-", ".socket");
+            builder.bind(socketFile, true);
+        }
 
-    @AfterAll
-    public static void stopServer() {
-        server.stopAndWait();
-        assertFalse(server.isRunning());
-        server = null;
-    }
+        try (Plumo server = builder.start()) {
+            OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
+            if (unixDomainSocket) {
+                clientBuilder.socketFactory(new UnixDomainSocketFactory(socketFile));
+            }
 
-    @Test
-    public void test() throws IOException {
-        OkHttpClient client = new OkHttpClient.Builder()
-                .build();
-        Request request = new Request.Builder()
-                .url("http://localhost:" + server.getPort() + "/test-url")
-                .addHeader("user-agent", "echo-client/1.0")
-                .get()
-                .build();
-        try (Response response = client.newCall(request).execute()) {
-            JsonObject jsonObject = EchoServer.GSON.fromJson(response.body().string(), JsonObject.class);
+            OkHttpClient client = clientBuilder.build();
 
-            assertEquals("1.1", jsonObject.getAsJsonPrimitive("http-version").getAsString());
-            assertEquals("GET", jsonObject.getAsJsonPrimitive("method").getAsString());
-            assertEquals("/test-url", jsonObject.getAsJsonPrimitive("uri").getAsString());
-            assertEquals("/test-url", jsonObject.getAsJsonPrimitive("raw-uri").getAsString());
+            Request request = new Request.Builder()
+                    .url("http://localhost" + (unixDomainSocket ? "" : ":" + server.getPort()) + "/test-url")
+                    .addHeader("user-agent", "echo-client/1.0")
+                    .get()
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                JsonObject jsonObject = EchoServer.GSON.fromJson(response.body().string(), JsonObject.class);
 
-            JsonObject headers = jsonObject.getAsJsonObject("headers");
-            assertEquals("Keep-Alive", headers.getAsJsonPrimitive("connection").getAsString());
-            assertEquals("echo-client/1.0", headers.getAsJsonPrimitive("user-agent").getAsString());
+                assertEquals("1.1", jsonObject.getAsJsonPrimitive("http-version").getAsString());
+                assertEquals("GET", jsonObject.getAsJsonPrimitive("method").getAsString());
+                assertEquals("/test-url", jsonObject.getAsJsonPrimitive("uri").getAsString());
+                assertEquals("/test-url", jsonObject.getAsJsonPrimitive("raw-uri").getAsString());
+
+                JsonObject headers = jsonObject.getAsJsonObject("headers");
+                assertEquals("Keep-Alive", headers.getAsJsonPrimitive("connection").getAsString());
+                assertEquals("echo-client/1.0", headers.getAsJsonPrimitive("user-agent").getAsString());
+            }
+        }
+
+        if (unixDomainSocket) {
+            assertFalse(Files.exists(socketFile));
         }
     }
 }
