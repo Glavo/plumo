@@ -15,21 +15,24 @@
  */
 package org.glavo.plumo.internal;
 
+import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpResponse;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.*;
 
-public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
+public final class HttpResponseImpl implements HttpResponse {
 
     public Headers headers = new Headers();
 
     public Status status;
 
-    // InputStream | String | byte[] | Path
+    // InputStream | ReadableByteChannel | String | byte[] | Path
     public Object body;
     public long contentLength;
     private boolean closed = false;
@@ -62,12 +65,16 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         this.headers.putDirect(HttpHeaderField.CONTENT_TYPE, contentType);
     }
 
+    boolean isReusable() {
+        return !(body instanceof InputStream);
+    }
+
     private HttpResponseImpl copyIfFrozen() {
         if (!frozen) {
             return this;
         }
 
-        assert !(body instanceof InputStream);
+        assert isReusable();
 
         HttpResponseImpl response = new HttpResponseImpl(this.headers);
         response.body = this.body;
@@ -87,7 +94,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
     @Override
     public HttpResponse freeze() {
         if (!frozen) {
-            if (body instanceof InputStream) {
+            if (!isReusable()) {
                 throw new UnsupportedOperationException("The response body is not reusable");
             }
 
@@ -152,6 +159,8 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
         return response;
     }
 
+    // ----
+
     @Override
     public HttpResponse withBody(byte[] data) {
         HttpResponseImpl response = copyIfFrozen();
@@ -179,6 +188,17 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
     }
 
     @Override
+    public HttpResponse withBody(ReadableByteChannel data, long contentLength) {
+        Objects.requireNonNull(data);
+
+        HttpResponseImpl response = copyIfFrozen();
+        response.body = data;
+        response.contentLength = contentLength;
+        return response;
+    }
+
+
+    @Override
     public HttpResponse withBody(Path file) {
         Objects.requireNonNull(file);
 
@@ -198,21 +218,15 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
     // ----
 
     public boolean isAvailable() {
-        return !(body instanceof InputStream) || !closed;
+        return isReusable() || !closed;
     }
 
-    @Override
-    public void close() {
-        if (!(body instanceof InputStream) || closed) {
+    public void close(HttpHandler handler) {
+        if (isReusable() || closed) {
             return;
         }
-
         closed = true;
-        try {
-            ((InputStream) body).close();
-        } catch (IOException ignored) {
-        }
-        // TODO IOUtils.safeClose((InputStream) body);
+        handler.safeClose((Closeable) body);
     }
 
     @Override
@@ -232,7 +246,7 @@ public final class HttpResponseImpl implements HttpResponse, AutoCloseable {
             builder.append("<string body, length=").append(((String) body).length()).append('>');
         } else if (body instanceof byte[]) {
             builder.append("<binary body, length=").append(((byte[]) body).length).append('>');
-        } else if (body instanceof InputStream) {
+        } else if (body instanceof InputStream || body instanceof ReadableByteChannel) {
             builder.append("<binary body, ");
             if (contentLength < 0) {
                 builder.append("unknown length>");

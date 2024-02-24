@@ -19,6 +19,7 @@ import org.glavo.plumo.internal.HttpResponseImpl;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.io.*;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -91,6 +92,8 @@ public /*sealed*/ interface HttpResponse {
     HttpResponse withBody(byte[] data);
 
     HttpResponse withBody(String data);
+
+    HttpResponse withBody(ReadableByteChannel data, long contentLength);
 
     HttpResponse withBody(InputStream data, long contentLength);
 

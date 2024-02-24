@@ -22,7 +22,6 @@ import org.glavo.plumo.internal.util.ParameterParser;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -64,30 +63,38 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
         HttpHandler handler = server.handler;
         try {
             while (isOpen()) {
+                HttpRequestImpl request = null;
                 try {
-                    HttpRequestImpl request = new HttpRequestImpl(remoteAddress, localAddress);
+                    request = new HttpRequestImpl(remoteAddress, localAddress);
                     try {
                         requestReader.readHeader(request);
                     } catch (EOFException e) {
                         return;
                     }
-                    try (HttpResponseImpl r = (HttpResponseImpl) handler.handle(request)) {
-                        if (r == null) {
-                            return;
+
+                    HttpResponseImpl r = null;
+                    try {
+                        try {
+                            r = (HttpResponseImpl) handler.handle(request);
+                            if (r == null) {
+                                return;
+                            }
+
+                            if (!r.isAvailable()) {
+                                r.close(handler);
+                                throw new AssertionError("The response has been sent before");
+                            }
+                        } catch (Throwable e) {
+                            r = (HttpResponseImpl) handler.handleRecoverableException(this, request, e);
                         }
 
                         String connection = request.headers.getFirst(HttpHeaderField.CONNECTION);
                         boolean keepAlive = "HTTP/1.1".equals(request.getHttpVersion()) && (connection == null || !connection.equals("close"));
 
-                        if (!r.isAvailable()) {
-                            handler.handleUnrecoverableException(this, new AssertionError("The response has been sent before"));
-                            return;
-                        }
-
                         try {
                             send(request, r, output, keepAlive);
                         } catch (IOException ioe) {
-                            handler.handleUnrecoverableException(this, ioe);
+                            handler.handleUnrecoverableException(this, request, ioe);
                             return;
                         }
 
@@ -95,19 +102,18 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                             return;
                         }
                     } finally {
+                        if (r != null) {
+                            r.close(handler);
+                        }
                         request.finish();
                     }
                 } catch (SocketTimeoutException e) {
                     return;
-                } catch (SocketException e) {
-                    // throw it out to close socket
-                    throw e;
-                } catch (IOException | UncheckedIOException e) {
-                    handler.handleRecoverableException(this, e);
+                } catch (Exception e) {
+                    handler.handleUnrecoverableException(this, request, e);
+                    return;
                 }
             }
-        } catch (Exception e) {
-            handler.handleUnrecoverableException(this, e);
         } finally {
             server.close(this);
         }
@@ -163,6 +169,9 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             if (body == null) {
                 preprocessedData = null;
                 inputLength = 0L;
+            } else if (body instanceof ReadableByteChannel) {
+                preprocessedData = body;
+                inputLength = response.contentLength;
             } else if (body instanceof InputStream) {
                 preprocessedData = Channels.newChannel((InputStream) body);
                 inputLength = response.contentLength;

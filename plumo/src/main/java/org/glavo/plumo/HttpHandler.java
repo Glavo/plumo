@@ -15,9 +15,41 @@
  */
 package org.glavo.plumo;
 
-import org.glavo.plumo.internal.ErrorHandler;
+import org.glavo.plumo.internal.*;
+
+import javax.net.ssl.SSLException;
+import java.io.Closeable;
+import java.io.IOException;
 
 @FunctionalInterface
-public interface HttpHandler extends ErrorHandler {
+public interface HttpHandler {
     HttpResponse handle(HttpRequest request) throws Exception;
+
+    default HttpResponse handleRecoverableException(HttpSession session, HttpRequest request, Throwable exception) {
+        HttpResponse resp;
+        if (exception instanceof HttpResponseException) {
+            resp = ((HttpResponseException) exception).getResponse();
+        } else if (exception instanceof SSLException) {
+            resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SSL PROTOCOL FAILURE: " + exception.getMessage(), "text/plain");
+        } else {
+            DefaultLogger.log(DefaultLogger.Level.WARNING, "Server internal error", exception);
+            resp = HttpResponse.newTextResponse(HttpResponse.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR", "text/plain");
+        }
+
+        return resp;
+    }
+
+    default void handleUnrecoverableException(HttpSession session, HttpRequest request, Throwable exception) {
+        DefaultLogger.log(DefaultLogger.Level.ERROR, "An unrecoverable exception has occurred", exception);
+    }
+
+    default void safeClose(Closeable closeable) {
+        try {
+            if (closeable != null) {
+                closeable.close();
+            }
+        } catch (IOException e) {
+            DefaultLogger.log(DefaultLogger.Level.ERROR, "Could not close", e);
+        }
+    }
 }
