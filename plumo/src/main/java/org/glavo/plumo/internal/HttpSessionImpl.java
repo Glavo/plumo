@@ -79,24 +79,19 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                             if (r == null) {
                                 return;
                             }
-
-                            if (!r.isAvailable()) {
-                                r.close(handler);
-                                throw new AssertionError("The response has been sent before");
-                            }
                         } catch (Throwable e) {
                             r = (HttpResponseImpl) handler.handleRecoverableException(this, request, e);
+                        }
+
+                        if (!r.isAvailable()) {
+                            r.close(handler);
+                            throw new IOException("The response has been sent before");
                         }
 
                         String connection = request.headers.getFirst(HttpHeaderField.CONNECTION);
                         boolean keepAlive = "HTTP/1.1".equals(request.getHttpVersion()) && (connection == null || !connection.equals("close"));
 
-                        try {
-                            send(request, r, output, keepAlive);
-                        } catch (IOException ioe) {
-                            handler.handleUnrecoverableException(this, request, ioe);
-                            return;
-                        }
+                        send(request, r, output, keepAlive);
 
                         if (!keepAlive || "close".equals(r.headers.getFirst(HttpHeaderField.CONNECTION))) {
                             return;
