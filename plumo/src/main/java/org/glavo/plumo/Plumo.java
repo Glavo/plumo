@@ -25,7 +25,7 @@ import java.nio.file.Path;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-public interface Plumo extends AutoCloseable {
+public interface Plumo {
 
     interface Builder {
         default Builder bind(int port) {
@@ -108,11 +108,6 @@ public interface Plumo extends AutoCloseable {
     void awaitTermination() throws InterruptedException;
 
     boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException;
-
-    @Override
-    default void close() {
-        stopAndWait();
-    }
 
     static void main(String[] args) throws Exception {
         Plumo plumo = Plumo.newBuilder().build();

@@ -20,10 +20,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.glavo.plumo.Plumo;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
-import javax.net.SocketFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,25 +31,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class EchoServerTest {
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    public void test(boolean unixDomainSocket) throws IOException {
-        Plumo.Builder builder = Plumo.newBuilder().handler(new EchoServer());
+    private static void test(Plumo.Builder serverBuilder, OkHttpClient.Builder clientBuilder, boolean unixDomainSocket) throws IOException {
+        OkHttpClient client = clientBuilder.build();
 
-        Path socketFile = null;
-        if (unixDomainSocket) {
-            socketFile = Files.createTempFile("echo-", ".socket");
-            builder.bind(socketFile, true);
-        }
-
-        try (Plumo server = builder.start()) {
-            OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
-            if (unixDomainSocket) {
-                clientBuilder.socketFactory(new UnixDomainSocketFactory(socketFile));
-            }
-
-            OkHttpClient client = clientBuilder.build();
-
+        Plumo server = serverBuilder.start();
+        try {
             Request request = new Request.Builder()
                     .url("http://localhost" + (unixDomainSocket ? "" : ":" + server.getPort()) + "/test-url")
                     .addHeader("user-agent", "echo-client/1.0")
@@ -68,10 +53,30 @@ public class EchoServerTest {
                 assertEquals("Keep-Alive", headers.getAsJsonPrimitive("connection").getAsString());
                 assertEquals("echo-client/1.0", headers.getAsJsonPrimitive("user-agent").getAsString());
             }
+
+            assertTrue(server.isRunning());
+        } finally {
+            server.stopAndWait();
         }
 
-        if (unixDomainSocket) {
-            assertFalse(Files.exists(socketFile));
-        }
+        assertFalse(server.isRunning());
+    }
+
+
+    @Test
+    public void testOnInet() throws IOException {
+        test(Plumo.newBuilder().handler(new EchoServer()), new OkHttpClient.Builder(), false);
+    }
+
+    @Test
+    @EnabledIf("org.glavo.plumo.internal.util.UnixDomainSocketUtils#isAvailable")
+    public void testOnUnixDomainSocket() throws IOException {
+        Path socketFile = Files.createTempFile("echo-", ".socket");
+        test(
+                Plumo.newBuilder().handler(new EchoServer()).bind(socketFile, true),
+                new OkHttpClient.Builder().socketFactory(new UnixDomainSocketFactory(socketFile)),
+                true
+        );
+        assertFalse(Files.exists(socketFile));
     }
 }

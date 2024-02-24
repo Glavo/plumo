@@ -64,6 +64,10 @@ public final class UnixDomainSocketUtils {
         openUnixDomainServerSocketChannel = openUnixDomainServerSocketChannelHandle;
     }
 
+    public static boolean isAvailable() {
+        return AVAILABLE;
+    }
+
     public static void checkAvailable() {
         if (!AVAILABLE) {
             throw new UnsupportedOperationException("Please upgrade to Java 16+");
