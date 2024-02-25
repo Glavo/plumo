@@ -20,6 +20,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.glavo.plumo.Plumo;
+import org.glavo.plumo.util.UnixDomainSocket;
+import org.glavo.plumo.util.UnixDomainSocketFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -74,7 +76,7 @@ public class EchoServerTest {
         Path socketFile = Files.createTempFile("echo-", ".socket");
         test(
                 Plumo.newBuilder().handler(new EchoServer()).bind(socketFile, true),
-                new OkHttpClient.Builder().socketFactory(new UnixDomainSocketFactory(socketFile)),
+                UnixDomainSocket.newClientBuilder(socketFile),
                 true
         );
         assertFalse(Files.exists(socketFile));

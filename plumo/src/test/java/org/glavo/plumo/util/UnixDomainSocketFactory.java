@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glavo.plumo.sample.echo;
+package org.glavo.plumo.util;
 
 import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
 
@@ -26,7 +26,7 @@ import java.net.StandardProtocolFamily;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 
-final class UnixDomainSocketFactory extends SocketFactory {
+public final class UnixDomainSocketFactory extends SocketFactory {
     private final Path path;
 
     public UnixDomainSocketFactory(Path path) {

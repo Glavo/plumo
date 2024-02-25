@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glavo.plumo.sample.echo;
+package org.glavo.plumo.util;
+
+import okhttp3.OkHttpClient;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,9 +27,14 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-final class UnixDomainSocket extends Socket {
+public final class UnixDomainSocket extends Socket {
+
+    public static OkHttpClient.Builder newClientBuilder(Path socketFile) {
+        return new OkHttpClient.Builder().socketFactory(new UnixDomainSocketFactory(socketFile));
+    }
 
     private final SocketChannel channel;
 
