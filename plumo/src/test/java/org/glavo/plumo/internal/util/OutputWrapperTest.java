@@ -169,7 +169,21 @@ public final class OutputWrapperTest {
         {
             ByteArrayOutputStream ba = new ByteArrayOutputStream();
             try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 512) : new OutputWrapper(ba, 512)) {
-                output.transferGZipFrom(data, 0, length);
+                output.transferGZipFrom(ByteBuffer.wrap(data));
+            }
+
+            SessionInputBufferImpl inputBuffer = new SessionInputBufferImpl(new HttpTransportMetricsImpl(), 8192);
+            inputBuffer.bind(new ByteArrayInputStream(ba.toByteArray()));
+
+            try (InputStream input = new GZIPInputStream(new ChunkedInputStream(inputBuffer))) {
+                assertArrayEquals(data, input.readAllBytes());
+            }
+        }
+
+        {
+            ByteArrayOutputStream ba = new ByteArrayOutputStream();
+            try (OutputWrapper output = channel ? new OutputWrapper(Channels.newChannel(ba), 512) : new OutputWrapper(ba, 512)) {
+                output.transferGZipFrom(ByteBuffer.wrap(data).asReadOnlyBuffer());
             }
 
             SessionInputBufferImpl inputBuffer = new SessionInputBufferImpl(new HttpTransportMetricsImpl(), 8192);

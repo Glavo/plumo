@@ -19,6 +19,7 @@ import org.glavo.plumo.internal.HttpResponseImpl;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.List;
@@ -89,7 +90,15 @@ public /*sealed*/ interface HttpResponse {
         return removeHeader(f);
     }
 
-    HttpResponse withBody(byte[] data);
+    default HttpResponse withBody(byte[] data) {
+        return withBody(ByteBuffer.wrap(data));
+    }
+
+    default HttpResponse withBody(byte[] data, int offset, int length) {
+        return withBody(ByteBuffer.wrap(data, offset, length));
+    }
+
+    HttpResponse withBody(ByteBuffer data);
 
     HttpResponse withBody(String data);
 

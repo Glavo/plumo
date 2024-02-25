@@ -22,6 +22,7 @@ import org.glavo.plumo.HttpResponse;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.*;
@@ -32,7 +33,7 @@ public final class HttpResponseImpl implements HttpResponse {
 
     public Status status;
 
-    // InputStream | ReadableByteChannel | String | byte[] | Path
+    // InputStream | ReadableByteChannel | String | ByteBuffer | Path
     public Object body;
     public long contentLength;
     private boolean closed = false;
@@ -162,10 +163,10 @@ public final class HttpResponseImpl implements HttpResponse {
     // ----
 
     @Override
-    public HttpResponse withBody(byte[] data) {
+    public HttpResponse withBody(ByteBuffer data) {
         HttpResponseImpl response = copyIfFrozen();
         response.body = data;
-        response.contentLength = data.length;
+        response.contentLength = -1L;
         return response;
     }
 
@@ -244,8 +245,8 @@ public final class HttpResponseImpl implements HttpResponse {
         builder.append("\n    ");
         if (body instanceof String) {
             builder.append("<string body, length=").append(((String) body).length()).append('>');
-        } else if (body instanceof byte[]) {
-            builder.append("<binary body, length=").append(((byte[]) body).length).append('>');
+        } else if (body instanceof ByteBuffer) {
+            builder.append("<binary body, length=").append(((ByteBuffer) body).remaining()).append('>');
         } else if (body instanceof InputStream || body instanceof ReadableByteChannel) {
             builder.append("<binary body, ");
             if (contentLength < 0) {
@@ -253,7 +254,6 @@ public final class HttpResponseImpl implements HttpResponse {
             } else {
                 builder.append("length=").append(contentLength).append('>');
             }
-
         } else if (body instanceof Path) {
             builder.append("<file body, path=").append(body).append('>');
         } else {

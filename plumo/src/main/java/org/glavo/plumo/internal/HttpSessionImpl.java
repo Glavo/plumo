@@ -18,11 +18,13 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.*;
 import org.glavo.plumo.internal.util.OutputWrapper;
 import org.glavo.plumo.internal.util.ParameterParser;
+import org.glavo.plumo.internal.util.Utils;
 
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
@@ -156,7 +158,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
         String contentType = response.headers.getFirst(HttpHeaderField.CONTENT_TYPE);
 
         long inputLength;
-        Object preprocessedData; // ReadableByteChannel | byte[]
+        Object preprocessedData; // ReadableByteChannel | byte[] | ByteBuffer
 
         Closeable needToClose = null;
         try {
@@ -170,12 +172,13 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             } else if (body instanceof InputStream) {
                 preprocessedData = Channels.newChannel((InputStream) body);
                 inputLength = response.contentLength;
-            } else if (body instanceof byte[]) {
-                preprocessedData = body;
-                inputLength = ((byte[]) body).length;
+            } else if (body instanceof ByteBuffer) {
+                ByteBuffer byteBuffer = (ByteBuffer) body;
+                preprocessedData = byteBuffer.duplicate();
+                inputLength = byteBuffer.remaining();
             } else if (body instanceof String) {
                 byte[] ba = ((String) body).getBytes(ParameterParser.getEncoding(contentType));
-                preprocessedData = ba;
+                preprocessedData = ByteBuffer.wrap(ba);
                 inputLength = ba.length;
             } else if (body instanceof Path) {
                 SeekableByteChannel channel = Files.newByteChannel((Path) body);
@@ -234,10 +237,10 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                         output.transferFrom(input);
                     }
                 } else if (autoGZip) {
-                    byte[] data = (byte[]) preprocessedData;
-                    output.transferGZipFrom(data, 0, data.length);
+                    ByteBuffer data = (ByteBuffer) preprocessedData;
+                    output.transferGZipFrom(data);
                 } else {
-                    out.write((byte[]) preprocessedData, 0, (int) inputLength);
+                    Utils.writeFully(out, (ByteBuffer) preprocessedData);
                 }
             }
             out.flush();

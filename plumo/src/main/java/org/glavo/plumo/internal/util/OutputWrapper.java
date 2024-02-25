@@ -6,6 +6,9 @@ import org.glavo.plumo.internal.Constants;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.ReadableByteChannel;
@@ -69,8 +72,8 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
             }
         }
 
-        if (deflater != null) {
-            deflater.end();
+        if (deflateContext != null) {
+            deflateContext.close();
         }
     }
 
@@ -272,21 +275,13 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
 
     private static final byte[] GZIP_HEADER = new byte[]{0x1f, (byte) 0x8b, 0x08, 0, 0, 0, 0, 0, 0, (byte) 0xff};
 
-    private Deflater deflater;
-    private CRC32 crc32;
-    private ByteBuffer gzipReadBuffer;
-    private byte[] gzipWriteBuffer;
+    private DeflateContext deflateContext;
 
     private void initDeflateContext() {
-        if (deflater == null) {
-            deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
-            crc32 = new CRC32();
-            gzipReadBuffer = ByteBuffer.allocate(512).order(ByteOrder.LITTLE_ENDIAN);
-            gzipWriteBuffer = new byte[512];
+        if (deflateContext == null) {
+            deflateContext = new DeflateContext();
         } else {
-            deflater.reset();
-            gzipReadBuffer.clear();
-            crc32.reset();
+            deflateContext.reset();
         }
     }
 
@@ -299,6 +294,11 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
 
     public void transferGZipFrom(ReadableByteChannel input) throws IOException {
         initDeflateContext();
+
+        Deflater deflater = deflateContext.deflater;
+        CRC32 crc32 = deflateContext.crc32;
+        ByteBuffer gzipReadBuffer = deflateContext.gzipReadBuffer;
+        byte[] gzipWriteBuffer = deflateContext.gzipWriteBuffer;
 
         writeChunk(GZIP_HEADER, 0, GZIP_HEADER.length);
         while (input.read(gzipReadBuffer) > 0) {
@@ -334,12 +334,33 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
         write(CHUNKED_FINISH);
     }
 
-    public void transferGZipFrom(byte[] input, int offset, int length) throws IOException {
+
+
+    public void transferGZipFrom(ByteBuffer buffer) throws IOException {
+        if (!buffer.hasArray() && DeflateContext.deflaterSetInput == null) {
+            transferGZipFrom(InputWrapper.wrap(buffer));
+            return;
+        }
+
         initDeflateContext();
 
+        Deflater deflater = deflateContext.deflater;
+        CRC32 crc32 = deflateContext.crc32;
+        ByteBuffer gzipReadBuffer = deflateContext.gzipReadBuffer;
+        byte[] gzipWriteBuffer = deflateContext.gzipWriteBuffer;
+
         writeChunk(GZIP_HEADER, 0, GZIP_HEADER.length);
-        deflater.setInput(input, offset, length);
-        crc32.update(input, offset, length);
+
+        int oldPosition = buffer.position();
+        crc32.update(buffer);
+        buffer.position(oldPosition);
+
+        if (buffer.hasArray()) {
+            deflater.setInput(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+        } else {
+            DeflateContext.setInput(deflater, buffer);
+        }
+
         deflater.finish();
 
         while (!deflater.finished()) {
@@ -359,4 +380,52 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
         write(CHUNKED_FINISH);
     }
 
+    private static final class DeflateContext {
+        private static final MethodHandle deflaterSetInput;
+
+        static {
+            MethodHandle handle = null;
+            try {
+                handle = MethodHandles.publicLookup().findVirtual(Deflater.class, "setInput", MethodType.methodType(void.class, ByteBuffer.class));
+            } catch (Throwable ignored) {
+            }
+
+            deflaterSetInput = handle;
+        }
+
+        private static void setInput(Deflater deflater, ByteBuffer buffer) {
+            assert DeflateContext.deflaterSetInput != null;
+
+            try {
+                DeflateContext.deflaterSetInput.invokeExact(deflater, buffer);
+            } catch (RuntimeException | Error e) {
+                throw e;
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+
+        private final Deflater deflater;
+        private final CRC32 crc32;
+        private final ByteBuffer gzipReadBuffer;
+        private final byte[] gzipWriteBuffer;
+
+        DeflateContext() {
+            deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
+            crc32 = new CRC32();
+            gzipReadBuffer = ByteBuffer.allocate(512).order(ByteOrder.LITTLE_ENDIAN);
+            gzipWriteBuffer = new byte[512];
+        }
+
+        void reset() {
+            deflater.reset();
+            gzipReadBuffer.clear();
+            crc32.reset();
+        }
+
+        void close() {
+            deflater.end();
+        }
+    }
 }

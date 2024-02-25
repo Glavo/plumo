@@ -103,6 +103,41 @@ public abstract class InputWrapper extends InputStream implements ReadableByteCh
         };
     }
 
+    public static InputWrapper wrap(ByteBuffer input) {
+        return new InputWrapper() {
+            @Override
+            public int read() throws IOException {
+                if (input.hasRemaining()) {
+                    return input.get() & 0xFF;
+                } else {
+                    return -1;
+                }
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) throws IOException {
+                return read(ByteBuffer.wrap(b, off, len));
+            }
+
+            @Override
+            public int read(ByteBuffer dst) throws IOException {
+                int dstRemaining = dst.remaining();
+                if (dstRemaining == 0) {
+                    return 0;
+                }
+
+                int inputRemaining = input.remaining();
+                if (inputRemaining == 0) {
+                    return -1;
+                }
+
+                int maxRead = Math.min(dstRemaining, inputRemaining);
+                Utils.putBytes(dst, input, maxRead);
+                return maxRead;
+            }
+        };
+    }
+
     protected volatile boolean closed;
 
     protected void ensureOpen() throws IOException {
