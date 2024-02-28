@@ -29,15 +29,19 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SimpleServerTest {
+public final class SimpleServerTest {
 
-    private static void test(OkHttpClient client, String url) throws IOException {
+    @FunctionalInterface
+    private interface Action {
+        void accept(Response response) throws IOException;
+    }
+
+    private static void test(OkHttpClient client, String url, Action action) throws IOException {
         try (Response response = client.newCall(new Request.Builder()
                 .url(url)
                 .get()
                 .build()).execute()) {
-            assertEquals(200, response.code());
-            assertArrayEquals(SimpleServer.TEST_DATA, response.body().bytes());
+            action.accept(response);
         }
     }
 
@@ -48,17 +52,21 @@ public class SimpleServerTest {
         try {
             String urlBase = "http://localhost" + (unixDomainSocket ? "" : ":" + server.getPort());
 
-            test(client, urlBase + "/byte-array");
-            test(client, urlBase + "/byte-buffer");
-            test(client, urlBase + "/byte-buffer?direct=true");
+            Action assertValue = response -> {
+                assertEquals(200, response.code());
+                assertArrayEquals(SimpleServer.TEST_DATA, response.body().bytes());
+            };
 
-            try (Response response = client.newCall(new Request.Builder()
-                    .url(urlBase + "/unknown")
-                    .get()
-                    .build()).execute()) {
+            test(client, urlBase + "/ByteArray", assertValue);
+            test(client, urlBase + "/ByteBuffer", assertValue);
+            test(client, urlBase + "/ByteBuffer?direct=true", assertValue);
+            test(client, urlBase + "/InputStream", assertValue);
+            test(client, urlBase + "/InputStream?unknown-length=true", assertValue);
+
+            test(client, urlBase + "/unknown", response -> {
                 assertEquals(404, response.code());
                 assertEquals(0, response.body().contentLength());
-            }
+            });
 
             assertTrue(server.isRunning());
         } finally {

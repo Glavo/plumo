@@ -18,9 +18,12 @@ package org.glavo.plumo.sample.simple;
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
+import org.glavo.plumo.internal.util.ParameterParser;
 
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Random;
 
 public final class SimpleServer implements HttpHandler {
@@ -34,13 +37,14 @@ public final class SimpleServer implements HttpHandler {
     @Override
     public HttpResponse handle(HttpRequest request) throws Exception {
         URI uri = request.getURI();
+        Map<String, String> query = ParameterParser.parseQuery(uri.getQuery());
         if (request.getMethod() == HttpRequest.Method.GET) {
 
             switch (uri.getPath()) {
-                case "/byte-array":
+                case "/ByteArray":
                     return HttpResponse.newResponse().withBody(TEST_DATA);
-                case "/byte-buffer": {
-                    ByteBuffer buffer = "direct=true".equals(uri.getQuery())
+                case "/ByteBuffer": {
+                    ByteBuffer buffer = "true".equals(query.get("direct"))
                             ? ByteBuffer.allocateDirect(TEST_DATA.length * 2)
                             : ByteBuffer.allocate(TEST_DATA.length * 2);
 
@@ -50,7 +54,20 @@ public final class SimpleServer implements HttpHandler {
 
                     return HttpResponse.newResponse().withBody(TEST_DATA);
                 }
+                case "/InputStream": {
+                    long contentLength;
 
+                    if ("true".equals(query.get("unknown-length"))) {
+                        contentLength = -1;
+                    } else {
+                        contentLength = TEST_DATA.length;
+                    }
+
+                    return HttpResponse.newResponse().withBody(new ByteArrayInputStream(TEST_DATA), contentLength);
+                }
+                case "/String": {
+
+                }
                 default:
                     return HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND);
             }

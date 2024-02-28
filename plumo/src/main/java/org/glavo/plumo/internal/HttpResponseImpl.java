@@ -182,6 +182,10 @@ public final class HttpResponseImpl implements HttpResponse {
     public HttpResponse withBody(InputStream data, long contentLength) {
         Objects.requireNonNull(data);
 
+        if (contentLength < -1L) {
+            throw new IllegalArgumentException();
+        }
+
         HttpResponseImpl response = copyIfFrozen();
         response.body = data;
         response.contentLength = contentLength;
@@ -191,6 +195,10 @@ public final class HttpResponseImpl implements HttpResponse {
     @Override
     public HttpResponse withBody(ReadableByteChannel data, long contentLength) {
         Objects.requireNonNull(data);
+
+        if (contentLength < -1L) {
+            throw new IllegalArgumentException();
+        }
 
         HttpResponseImpl response = copyIfFrozen();
         response.body = data;

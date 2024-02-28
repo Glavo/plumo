@@ -18,6 +18,8 @@ package org.glavo.plumo.internal.util;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public final class ParameterParser {
@@ -50,6 +52,23 @@ public final class ParameterParser {
         return StandardCharsets.UTF_8;
     }
 
+    public static Map<String, String> parseQuery(String query) {
+        if (query == null) {
+            return Collections.emptyMap();
+        }
+
+        HashMap<String, String> res = new HashMap<>();
+
+        ParameterParser parser = new ParameterParser(query, '&');
+        AbstractMap.SimpleImmutableEntry<String, String> entry;
+
+        while ((entry = parser.nextParameter(true)) != null) {
+            res.put(entry.getKey(), entry.getValue());
+        }
+
+        return res;
+    }
+
     private final String input;
     private int offset;
     private final int limit;
@@ -61,8 +80,6 @@ public final class ParameterParser {
     }
 
     public ParameterParser(String input, int offset, char separator) {
-        assert separator == ';' || separator == ',';
-
         this.input = input;
         this.offset = offset;
         this.limit = input.length();
