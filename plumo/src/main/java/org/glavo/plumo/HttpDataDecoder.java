@@ -30,7 +30,4 @@ public interface HttpDataDecoder<V, A, E extends Throwable> {
     HttpDataDecoder<String, ?, IOException> TEXT = HttpDataDecoders.TEXT;
     HttpDataDecoder<byte[], ?, IOException> BYTES = HttpDataDecoders.BYTES;
     HttpDataDecoder<ByteBuffer, Object, IOException> BYTE_BUFFER = HttpDataDecoders.BYTE_BUFFER;
-
-    @ApiStatus.Experimental
-    V decode(HttpRequest request, InputWrapper input, A arg) throws E;
 }

@@ -23,6 +23,7 @@ import org.glavo.plumo.internal.util.ParameterParser;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Random;
 

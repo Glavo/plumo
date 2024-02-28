@@ -102,7 +102,15 @@ public /*sealed*/ interface HttpResponse {
 
     HttpResponse withBody(String data);
 
+    default HttpResponse withBody(ReadableByteChannel data) {
+        return withBody(data, -1L);
+    }
+
     HttpResponse withBody(ReadableByteChannel data, long contentLength);
+
+    default HttpResponse withBody(InputStream data) {
+        return withBody(data, -1L);
+    }
 
     HttpResponse withBody(InputStream data, long contentLength);
 

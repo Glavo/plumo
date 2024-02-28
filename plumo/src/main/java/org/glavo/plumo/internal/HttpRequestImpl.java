@@ -21,7 +21,6 @@ import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.InputWrapper;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.*;
 import java.util.*;
 
@@ -83,14 +82,14 @@ public final class HttpRequestImpl implements HttpRequest {
     private boolean hasGetBody = false;
 
     @Override
-    public <V, A, E extends Throwable> V getBody(HttpDataDecoder<V, A, E> type, A arg) throws E {
-        Objects.requireNonNull(type);
+    public <V, A, E extends Throwable> V getBody(HttpDataDecoder<V, A, E> decoder, A arg) throws E {
+        Objects.requireNonNull(decoder);
         if (hasGetBody) {
             throw new IllegalStateException();
         }
 
         hasGetBody = true;
-        return type.decode(this, body, arg);
+        return ((HttpDataDecoders.Decoder<V, A, E>) decoder).decode(this, body, arg);
     }
 
     @Override

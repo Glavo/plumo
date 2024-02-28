@@ -20,6 +20,7 @@ import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.InputWrapper;
 import org.glavo.plumo.internal.util.ParameterParser;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -33,7 +34,11 @@ import java.util.Map;
 
 public final class HttpDataDecoders {
 
-    public static final HttpDataDecoder<InputStream, Object, RuntimeException> INPUT_STREAM = new HttpDataDecoder<InputStream, Object, RuntimeException>() {
+    public static abstract class Decoder<V, A, E extends Throwable> implements HttpDataDecoder<V, A, E> {
+        public abstract V decode(HttpRequest request, InputWrapper input, A arg) throws E;
+    }
+
+    public static final HttpDataDecoder<InputStream, Object, RuntimeException> INPUT_STREAM = new Decoder<InputStream, Object, RuntimeException>() {
         @Override
         public InputStream decode(HttpRequest request, InputWrapper input, Object arg) {
             return input != null ? input : InputWrapper.nullInputWrapper();
@@ -45,7 +50,7 @@ public final class HttpDataDecoders {
         }
     };
 
-    public static final HttpDataDecoder<ReadableByteChannel, Object, RuntimeException> BYTE_CHANNEL = new HttpDataDecoder<ReadableByteChannel, Object, RuntimeException>() {
+    public static final HttpDataDecoder<ReadableByteChannel, Object, RuntimeException> BYTE_CHANNEL = new Decoder<ReadableByteChannel, Object, RuntimeException>() {
         @Override
         public ReadableByteChannel decode(HttpRequest request, InputWrapper input, Object arg) {
             return input != null ? input : InputWrapper.nullInputWrapper();
@@ -58,7 +63,7 @@ public final class HttpDataDecoders {
     };
 
 
-    public static final HttpDataDecoder<String, Object, IOException> TEXT = new HttpDataDecoder<String, Object, IOException>() {
+    public static final HttpDataDecoder<String, Object, IOException> TEXT = new Decoder<String, Object, IOException>() {
         @Override
         public String decode(HttpRequest response, InputWrapper input, Object arg) throws IOException {
             long size = response.getBodySize();
@@ -106,7 +111,7 @@ public final class HttpDataDecoders {
         }
     };
 
-    public static final HttpDataDecoder<byte[], Object, IOException> BYTES = new HttpDataDecoder<byte[], Object, IOException>() {
+    public static final HttpDataDecoder<byte[], Object, IOException> BYTES = new Decoder<byte[], Object, IOException>() {
         @Override
         public byte[] decode(HttpRequest response, InputWrapper input, Object arg) throws IOException {
             long size = response.getBodySize();
@@ -172,7 +177,7 @@ public final class HttpDataDecoders {
         }
     };
 
-    public static final HttpDataDecoder<ByteBuffer, Object, IOException> BYTE_BUFFER = new HttpDataDecoder<ByteBuffer, Object, IOException>() {
+    public static final HttpDataDecoder<ByteBuffer, Object, IOException> BYTE_BUFFER = new Decoder<ByteBuffer, Object, IOException>() {
         @Override
         public ByteBuffer decode(HttpRequest response, InputWrapper input, Object arg) throws IOException {
             long size = response.getBodySize();
