@@ -20,9 +20,7 @@ import org.glavo.plumo.HttpHeaderField;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.internal.util.InputWrapper;
 import org.glavo.plumo.internal.util.ParameterParser;
-import org.jetbrains.annotations.ApiStatus;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.Map;
 
 public final class HttpDataDecoders {
 
@@ -211,7 +208,7 @@ public final class HttpDataDecoders {
 
         @Override
         public String toString() {
-            return "HttpDataDecoder.BYTES";
+            return "HttpDataDecoder.BYTE_BUFFER";
         }
     };
 
