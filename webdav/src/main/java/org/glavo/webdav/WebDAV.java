@@ -30,8 +30,6 @@ public final class WebDAV {
         }
     }
 
-
-
     public static void main(String[] args) {
         // TODO
     }
