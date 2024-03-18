@@ -112,7 +112,7 @@ public interface Plumo {
     static void main(String[] args) throws Exception {
         Plumo plumo = Plumo.newBuilder().build();
         plumo.start();
-        System.out.println("Listening on port " + plumo.getPort());
+        System.out.println("Listening on port " + plumo.getPort() + " (http://localhost:" + plumo.getPort() + ")");
         plumo.awaitTermination();
     }
 }
