@@ -21,7 +21,6 @@ import okhttp3.Request;
 import okhttp3.Response;
 import org.glavo.plumo.Plumo;
 import org.glavo.plumo.util.UnixDomainSocket;
-import org.glavo.plumo.util.UnixDomainSocketFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
