@@ -56,7 +56,7 @@ public final class PlumoImpl implements Plumo {
     final HttpHandler handler;
     private final String protocol;
 
-    private volatile Thread deleteUnixDomainSocketHook;
+    private volatile Thread shutdownHook;
 
     private volatile SocketAddress localAddress;
 
@@ -237,7 +237,7 @@ public final class PlumoImpl implements Plumo {
                         }
                     });
                     Runtime.getRuntime().addShutdownHook(hook);
-                    deleteUnixDomainSocketHook = hook;
+                    shutdownHook = hook;
                 }
 
                 this.localAddress = serverSocketChannel.getLocalAddress();
@@ -343,12 +343,12 @@ public final class PlumoImpl implements Plumo {
                     Files.deleteIfExists(unixDomainSocketPath);
                 } catch (IOException ignored) {
                 }
+            }
 
-                Thread hook = deleteUnixDomainSocketHook;
-                deleteUnixDomainSocketHook = null;
-                if (hook != null) {
-                    Runtime.getRuntime().removeShutdownHook(hook);
-                }
+            Thread hook = shutdownHook;
+            shutdownHook = null;
+            if (hook != null) {
+                Runtime.getRuntime().removeShutdownHook(hook);
             }
         } finally {
             if (latch.getCount() > 0) {
