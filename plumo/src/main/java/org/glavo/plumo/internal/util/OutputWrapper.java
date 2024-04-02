@@ -334,8 +334,6 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
         write(CHUNKED_FINISH);
     }
 
-
-
     public void transferGZipFrom(ByteBuffer buffer) throws IOException {
         if (!buffer.hasArray() && DeflateContext.deflaterSetInput == null) {
             transferGZipFrom(InputWrapper.wrap(buffer));
