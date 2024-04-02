@@ -134,7 +134,6 @@ public final class PlumoBuilderImpl implements Plumo.Builder {
             }
         }
 
-
         return new PlumoImpl(address, unixDomainSocketPath, deleteUnixDomainSocketFileIfExists,
                 executor, shutdownExecutor,
                 sslContext, sslProtocols,
