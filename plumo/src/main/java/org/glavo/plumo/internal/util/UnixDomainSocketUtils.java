@@ -55,8 +55,7 @@ public final class UnixDomainSocketUtils {
                     .bindTo(unixProtocolFamily);
 
             available = true;
-        } catch (Throwable e) {
-            e.printStackTrace();
+        } catch (Throwable ignored) {
         }
 
         AVAILABLE = available;
