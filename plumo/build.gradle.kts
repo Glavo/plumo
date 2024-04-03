@@ -10,6 +10,11 @@ application {
     applicationDefaultJvmArgs = listOf("--enable-preview")
 }
 
+tasks.compileModuleInfo {
+    moduleMainClass = mainClassName
+    moduleVersion = project.version.toString()
+}
+
 tasks.jar {
     manifest.attributes(
         "Main-Class" to mainClassName

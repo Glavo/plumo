@@ -403,7 +403,6 @@ public final class OutputWrapper extends OutputStream implements WritableByteCha
             }
         }
 
-
         private final Deflater deflater;
         private final CRC32 crc32;
         private final ByteBuffer gzipReadBuffer;
