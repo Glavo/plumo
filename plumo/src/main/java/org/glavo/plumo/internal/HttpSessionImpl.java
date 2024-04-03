@@ -91,7 +91,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                         }
 
                         String connection = request.headers.getFirst(HttpHeaderField.CONNECTION);
-                        boolean keepAlive = "HTTP/1.1".equals(request.getHttpVersion()) && (connection == null || !connection.equals("close"));
+                        boolean keepAlive = "1.1".equals(request.getHttpVersion()) && (connection == null || !connection.equals("close"));
 
                         send(request, r, output, keepAlive);
 
