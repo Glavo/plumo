@@ -22,12 +22,16 @@ import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 public final class EchoServer implements HttpHandler {
 
     static final Gson GSON =  new GsonBuilder().setPrettyPrinting().create();
 
     @Override
     public HttpResponse handle(HttpRequest request) throws Exception {
+        assertEquals("1.1", request.getHttpVersion());
+
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("http-version", request.getHttpVersion());
         jsonObject.addProperty("method", request.getMethod().toString());
