@@ -24,8 +24,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static java.nio.charset.StandardCharsets.ISO_8859_1;
-
 public final class Utils {
 
     private static final boolean[] IS_SEPARATOR = new boolean[128];

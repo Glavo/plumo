@@ -21,6 +21,7 @@ import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -114,5 +115,21 @@ public interface Plumo {
         plumo.start();
         System.out.println("Listening on port " + plumo.getPort() + " (http://localhost:" + plumo.getPort() + ")");
         plumo.awaitTermination();
+
+
+        Plumo.newBuilder()
+                .handler(request -> {
+
+
+
+                    HttpResponse.newResponse()
+                            .withHeader("content-type", "text/html; charset=UTF-8")
+                            .withBody("<html></html>");
+
+
+
+                    return HttpResponse.newResponse().withBody("Hello World!");
+                })
+                .start();
     }
 }
