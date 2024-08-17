@@ -117,7 +117,7 @@ public final class PlumoBuilderImpl implements Plumo.Builder {
         if (executor == null) {
             final AtomicLong requestCount = new AtomicLong();
 
-            if (Constants.USE_VIRTUAL_THREAD == Boolean.TRUE || (Constants.USE_VIRTUAL_THREAD == null && VirtualThreadUtils.newThread != null)) {
+            if (Constants.USE_VIRTUAL_THREAD == Boolean.TRUE || (Constants.USE_VIRTUAL_THREAD == null && VirtualThreadUtils.isSupported())) {
                 VirtualThreadUtils.checkAvailable();
                 executor = command -> {
                     Thread t = VirtualThreadUtils.newVirtualThread(command);

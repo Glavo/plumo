@@ -20,7 +20,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 public final class VirtualThreadUtils {
-    public static final MethodHandle newThread;
+    private static final MethodHandle newThread;
+
     public static final boolean NEED_ENABLE_PREVIEW;
 
     static {
@@ -50,6 +51,10 @@ public final class VirtualThreadUtils {
                     ? "Preview Features not enabled, need to run with --enable-preview"
                     : "Please upgrade to Java 19+");
         }
+    }
+
+    public static boolean isSupported() {
+        return newThread != null;
     }
 
     public static Thread newVirtualThread(Runnable command) {

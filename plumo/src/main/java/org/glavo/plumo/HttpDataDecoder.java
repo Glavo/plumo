@@ -16,8 +16,6 @@
 package org.glavo.plumo;
 
 import org.glavo.plumo.internal.HttpDataDecoders;
-import org.glavo.plumo.internal.util.InputWrapper;
-import org.jetbrains.annotations.ApiStatus;
 
 import java.io.IOException;
 import java.io.InputStream;
