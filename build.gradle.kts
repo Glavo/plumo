@@ -20,7 +20,7 @@ subprojects {
 
     dependencies {
         compileOnlyApi("org.jetbrains:annotations:24.1.0")
-        testImplementation(platform("org.junit:junit-bom:5.10.2"))
+        testImplementation(platform("org.junit:junit-bom:5.11.0"))
         testImplementation("org.junit.jupiter:junit-jupiter")
 
         // https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
