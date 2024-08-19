@@ -162,7 +162,6 @@ public class WebServer implements HttpHandler {
                     builder.append('/');
                 }
                 builder.append("</a></li>\n");
-
             }
         } catch (IOException | DirectoryIteratorException e) {
             return notFound(uri);
@@ -394,7 +393,7 @@ public class WebServer implements HttpHandler {
     private static String getVersion() {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
                 WebServer.class.getResourceAsStream("version.txt"), StandardCharsets.UTF_8))) {
-            return reader.readLine();
+            return reader.readLine().trim();
         } catch (IOException | NullPointerException e) {
             return "unknown";
         }
