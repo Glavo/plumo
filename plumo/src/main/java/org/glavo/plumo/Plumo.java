@@ -115,7 +115,6 @@ public interface Plumo {
         System.out.println("Listening on port " + plumo.getPort() + " (http://localhost:" + plumo.getPort() + ")");
         plumo.awaitTermination();
 
-
         Plumo.newBuilder()
                 .handler(request -> {
                     HttpResponse.newResponse()
