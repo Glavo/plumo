@@ -98,7 +98,7 @@ public final class HttpHeaderField {
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof HttpHeaderField && Arrays.equals(this.bytes, ((HttpHeaderField) obj).bytes);
+        return this == obj || obj instanceof HttpHeaderField && Arrays.equals(this.bytes, ((HttpHeaderField) obj).bytes);
     }
 
     @Override
