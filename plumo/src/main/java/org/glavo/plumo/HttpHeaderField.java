@@ -68,21 +68,13 @@ public final class HttpHeaderField {
             }
         }
 
-        HttpHeaderField field = new HttpHeaderField(bytes);
-        if (qualified) {
-            field.string = value;
-        }
-        return field;
+        return new HttpHeaderField(bytes, qualified ? value : null);
     }
 
     private final byte[] bytes;
     private final int hashCode;
 
     private String string;
-
-    private HttpHeaderField(byte[] bytes) {
-        this(bytes, null);
-    }
 
     private HttpHeaderField(byte[] bytes, String string) {
         this.bytes = bytes;
