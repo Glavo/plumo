@@ -26,6 +26,11 @@ import java.util.List;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
+/**
+ * HTTP response.
+ *
+ * @see HttpHandler#handle(HttpRequest)
+ */
 public /*sealed*/ interface HttpResponse {
 
     static HttpResponse newResponse() {
