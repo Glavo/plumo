@@ -51,7 +51,6 @@ public final class SimpleServerTest {
         Plumo server = serverBuilder.start();
         try {
             String urlBase = "http://localhost" + (unixDomainSocket ? "" : ":" + server.getPort());
-
             Action assertValue = response -> {
                 assertEquals(200, response.code());
                 assertArrayEquals(SimpleServer.TEST_DATA, response.body().bytes());
@@ -68,6 +67,7 @@ public final class SimpleServerTest {
                 assertEquals(0, response.body().contentLength());
             });
 
+            assertEquals("http", server.getProtocol());
             assertTrue(server.isRunning());
         } finally {
             server.stopAndWait();
