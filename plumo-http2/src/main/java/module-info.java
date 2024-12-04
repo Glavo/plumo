@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@SuppressWarnings("JavaModuleNaming")
+@SuppressWarnings("module")
 module org.glavo.plumo.http2 {
     requires org.glavo.plumo;
 }
