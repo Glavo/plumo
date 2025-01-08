@@ -23,6 +23,10 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+/**
+ * @author Glavo
+ * @see <a href="https://developer.mozilla.org/docs/Web/HTTP/Headers">HTTP Headers</a>
+ */
 public final class HttpHeaderField {
 
     public static final HttpHeaderField ACCEPT_ENCODING = ofTrusted("accept-encoding");
