@@ -161,6 +161,28 @@ public final class Headers extends AbstractMap<HttpHeaderField, List<String>> {
         }
     }
 
+    public void removeDirect(HttpHeaderField field) {
+        if (size == 0) {
+            return;
+        }
+
+        Headers replacement = new Headers();
+
+        HttpHeaderField[] keys = this.keys;
+        Object[] values = this.values;
+        for (int i = 0; i < keys.length; i++) {
+            HttpHeaderField key = keys[i];
+            if (key != null && !key.equals(field)) {
+                replacement.putDirect(key, values[i]);
+            }
+        }
+
+        this.keys = replacement.keys;
+        this.values = replacement.values;
+        this.size = replacement.size;
+        this.threshold = replacement.threshold;
+    }
+
     public String getFirst(HttpHeaderField field) {
         if (size == 0) {
             return null;

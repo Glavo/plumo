@@ -44,14 +44,13 @@ public class WebServer implements HttpHandler {
     private static final DateTimeFormatter LOG_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm:ss Z", Locale.US);
 
     private static final HttpResponse METHOD_NOT_ALLOWED = HttpResponse.newResponse(HttpResponse.Status.METHOD_NOT_ALLOWED)
-            .addHeader(HttpHeaderField.ALLOW, "HEAD, GET")
-            .freeze();
+            .addHeader(HttpHeaderField.ALLOW, "HEAD, GET");
 
     private static final String OPEN_HTML = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/></head><body>";
     private static final String CLOSE_HTML = "</body></html>";
 
-    private static final HttpResponse FORBIDDEN = HttpResponse.newResponse(HttpResponse.Status.FORBIDDEN).freeze();
-    private static final HttpResponse INTERNAL_ERROR = HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR).freeze();
+    private static final HttpResponse FORBIDDEN = HttpResponse.newResponse(HttpResponse.Status.FORBIDDEN);
+    private static final HttpResponse INTERNAL_ERROR = HttpResponse.newResponse(HttpResponse.Status.INTERNAL_ERROR);
 
     private final Path root;
     private final FileNameMap mimeTable;

@@ -17,21 +17,14 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.*;
 import org.glavo.plumo.internal.util.OutputWrapper;
-import org.glavo.plumo.internal.util.ParameterParser;
-import org.glavo.plumo.internal.util.Utils;
 
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 
 public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
@@ -74,20 +67,19 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
                         return;
                     }
 
-                    HttpResponseImpl r = null;
+                    HttpResponse r = null;
                     try {
                         try {
-                            r = (HttpResponseImpl) handler.handle(request);
+                            r = handler.handle(request);
                             if (r == null) {
                                 return;
                             }
                         } catch (Throwable e) {
-                            r = (HttpResponseImpl) handler.handleRecoverableException(this, request, e);
+                            r = handler.handleRecoverableException(this, request, e);
                         }
 
-                        if (!r.isAvailable()) {
-                            r.close(handler);
-                            throw new IOException("The response has been sent before");
+                        if (r == null) {
+                            return;
                         }
 
                         String connection = request.headers.getFirst(HttpHeaderField.CONNECTION);
@@ -95,12 +87,12 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
 
                         send(request, r, output, keepAlive);
 
-                        if (!keepAlive || "close".equals(r.headers.getFirst(HttpHeaderField.CONNECTION))) {
+                        if (!keepAlive || "close".equals(r.getHeader(HttpHeaderField.CONNECTION))) {
                             return;
                         }
                     } finally {
                         if (r != null) {
-                            r.close(handler);
+                            handler.safeClose(r.getBody());
                         }
                         request.finish();
                     }
@@ -136,66 +128,36 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
     /**
      * Sends given response to the socket.
      */
-    public void send(HttpRequestImpl request, HttpResponseImpl response, OutputWrapper out, boolean keepAlive) throws IOException {
-        if (response.status == null) {
+    public void send(HttpRequestImpl request, HttpResponse response, OutputWrapper out, boolean keepAlive) throws IOException {
+        HttpResponse.Status status = response.getStatus();
+        if (status == null) {
             throw new Error("sendResponse(): Status can't be null.");
         }
 
+        Headers headers = ((HttpResponseImpl) response).internalHeaders();
+        ResponseBody body = response.getBody();
+
         out.write(HTTP_VERSION);
-        out.writeStatus(response.status);
+        out.writeStatus(status);
         out.writeCRLF();
 
-        if (request == null || !request.headers.containsKey(HttpHeaderField.DATE)) {
+        if (!headers.containsKey(HttpHeaderField.DATE)) {
             out.writeHttpHeader(HttpHeaderField.DATE, Constants.HTTP_TIME_FORMATTER.format(Instant.now()));
         }
 
-        response.headers.writeHeadersTo(out);
+        headers.writeHeadersTo(out);
 
-        if (!keepAlive && !response.headers.containsKey(HttpHeaderField.CONNECTION)) {
+        if (!keepAlive && !headers.containsKey(HttpHeaderField.CONNECTION)) {
             out.writeHttpHeader(HttpHeaderField.CONNECTION, "close");
         }
 
-        String contentType = response.headers.getFirst(HttpHeaderField.CONTENT_TYPE);
+        String contentType = headers.getFirst(HttpHeaderField.CONTENT_TYPE);
+        long inputLength = body.getContentLength(contentType);
 
-        long inputLength;
-        Object preprocessedData; // ReadableByteChannel | byte[] | ByteBuffer
-
-        Closeable needToClose = null;
+        ReadableByteChannel input = null;
         try {
-            Object body = response.body;
-            if (body == null) {
-                preprocessedData = null;
-                inputLength = 0L;
-            } else if (body instanceof ReadableByteChannel) {
-                preprocessedData = body;
-                inputLength = response.contentLength;
-            } else if (body instanceof InputStream) {
-                preprocessedData = Channels.newChannel((InputStream) body);
-                inputLength = response.contentLength;
-            } else if (body instanceof ByteBuffer) {
-                ByteBuffer byteBuffer = (ByteBuffer) body;
-                preprocessedData = byteBuffer.duplicate();
-                inputLength = byteBuffer.remaining();
-            } else if (body instanceof String) {
-                byte[] ba = ((String) body).getBytes(ParameterParser.getEncoding(contentType));
-                preprocessedData = ByteBuffer.wrap(ba);
-                inputLength = ba.length;
-            } else if (body instanceof Path) {
-                SeekableByteChannel channel = Files.newByteChannel((Path) body);
-                preprocessedData = needToClose = channel;
-
-                try {
-                    inputLength = channel.size();
-                } catch (Throwable e) {
-                    server.handler.safeClose(channel);
-                    throw e;
-                }
-            } else {
-                throw new InternalError("unexpected type: " + body.getClass());
-            }
-
             boolean autoGZip;
-            if (response.headers.containsKey(HttpHeaderField.CONTENT_ENCODING)) {
+            if (headers.containsKey(HttpHeaderField.CONTENT_ENCODING)) {
                 autoGZip = false;
             } else {
                 String acceptEncoding = request != null ? request.headers.getFirst(HttpHeaderField.ACCEPT_ENCODING) : null;
@@ -214,7 +176,7 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
 
             long outputLength = autoGZip ? -1 : inputLength;
 
-            if (outputLength >= 0 && !response.headers.containsKey(HttpHeaderField.CONTENT_LENGTH)) {
+            if (outputLength >= 0 && !headers.containsKey(HttpHeaderField.CONTENT_LENGTH)) {
                 out.writeHttpHeader(HttpHeaderField.CONTENT_LENGTH, Long.toString(outputLength));
             }
 
@@ -226,26 +188,19 @@ public final class HttpSessionImpl implements HttpSession, Runnable, Closeable {
             }
             out.writeCRLF();
             if (method != HttpRequest.Method.HEAD && outputLength != 0) {
-                if (preprocessedData instanceof ReadableByteChannel) {
-                    ReadableByteChannel input = (ReadableByteChannel) preprocessedData;
+                input = body.openChannel(contentType);
 
-                    if (autoGZip) {
-                        output.transferGZipFrom(input);
-                    } else if (chunkedTransfer) {
-                        output.transferChunkedFrom(input);
-                    } else {
-                        output.transferFrom(input);
-                    }
-                } else if (autoGZip) {
-                    ByteBuffer data = (ByteBuffer) preprocessedData;
-                    output.transferGZipFrom(data);
+                if (autoGZip) {
+                    output.transferGZipFrom(input);
+                } else if (chunkedTransfer) {
+                    output.transferChunkedFrom(input);
                 } else {
-                    Utils.writeFully(out, (ByteBuffer) preprocessedData);
+                    output.transferFrom(input);
                 }
             }
             out.flush();
         } finally {
-            server.handler.safeClose(needToClose);
+            server.handler.safeClose(input);
         }
     }
 

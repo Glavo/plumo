@@ -17,118 +17,315 @@ package org.glavo.plumo;
 
 import org.glavo.plumo.internal.HttpResponseImpl;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
-/**
- * HTTP response.
- *
- * @see HttpHandler#handle(HttpRequest)
- */
-public /*sealed*/ interface HttpResponse {
-
+/// Immutable HTTP response metadata and body.
+///
+/// A response object is immutable after construction. Body reusability is controlled by the attached
+/// [`ResponseBody`][ResponseBody], so stream-backed responses remain one-shot even though the response object itself
+/// is immutable.
+///
+/// @see HttpHandler#handle(HttpRequest)
+@NotNullByDefault
+public sealed interface HttpResponse permits HttpResponseImpl {
+    /// Creates an empty `200 OK` response.
     static HttpResponse newResponse() {
-        return new HttpResponseImpl();
+        return newBuilder().build();
     }
 
+    /// Creates an empty response with the supplied status.
     static HttpResponse newResponse(Status status) {
-        return newResponse().withStatus(status);
+        return newBuilder(status).build();
     }
 
+    /// Creates a reusable plain text `200 OK` response.
     static HttpResponse newTextResponse(String text) {
         return newTextResponse(Status.OK, text, "text/plain");
     }
 
+    /// Creates a reusable text `200 OK` response with a content type.
     static HttpResponse newTextResponse(String text, String contentType) {
         return newTextResponse(Status.OK, text, contentType);
     }
 
+    /// Creates a reusable text response with a status and content type.
     static HttpResponse newTextResponse(Status status, String text, String contentType) {
-        return new HttpResponseImpl(false, status, text, contentType);
+        return newBuilder(status)
+                .withHeader(HttpHeaderField.CONTENT_TYPE, contentType)
+                .withBody(text)
+                .build();
     }
 
-    HttpResponse freeze();
+    /// Creates a new response builder.
+    static Builder newBuilder() {
+        return new HttpResponseImpl.BuilderImpl();
+    }
 
-    HttpResponse withStatus(Status status);
+    /// Creates a new response builder with the supplied status.
+    static Builder newBuilder(Status status) {
+        return new HttpResponseImpl.BuilderImpl().withStatus(status);
+    }
 
+    /// Returns a builder initialized from this response.
+    default Builder toBuilder() {
+        return new HttpResponseImpl.BuilderImpl(this);
+    }
+
+    /// Returns this response because responses are already immutable.
+    default HttpResponse freeze() {
+        return this;
+    }
+
+    /// Returns a copy of this response with a different status.
+    default HttpResponse withStatus(Status status) {
+        return toBuilder().withStatus(status).build();
+    }
+
+    /// Returns a copy of this response with a different status code.
     default HttpResponse withStatus(int statusCode) {
         return withStatus(Status.get(statusCode));
     }
 
+    /// Returns a copy of this response with a custom status.
     default HttpResponse withStatus(int statusCode, String description) {
         return withStatus(new Status(statusCode, description));
     }
 
-    HttpResponse withHeader(HttpHeaderField field, String value);
+    /// Returns a copy of this response with a single header value.
+    default HttpResponse withHeader(HttpHeaderField field, String value) {
+        return toBuilder().withHeader(field, value).build();
+    }
 
+    /// Returns a copy of this response with a single header value.
     default HttpResponse withHeader(String field, String value) {
         return withHeader(HttpHeaderField.of(field), value);
     }
 
-    HttpResponse withHeader(HttpHeaderField field, List<String> values);
+    /// Returns a copy of this response with the supplied header values.
+    default HttpResponse withHeader(HttpHeaderField field, List<String> values) {
+        return toBuilder().withHeader(field, values).build();
+    }
 
+    /// Returns a copy of this response with the supplied header values.
     default HttpResponse withHeader(String field, List<String> values) {
         return withHeader(HttpHeaderField.of(field), values);
     }
 
-    HttpResponse addHeader(HttpHeaderField field, String value);
+    /// Returns a copy of this response with an added header value.
+    default HttpResponse addHeader(HttpHeaderField field, String value) {
+        return toBuilder().addHeader(field, value).build();
+    }
 
+    /// Returns a copy of this response with an added header value.
     default HttpResponse addHeader(String field, String value) {
         return addHeader(HttpHeaderField.of(field), value);
     }
 
-    HttpResponse removeHeader(HttpHeaderField field);
+    /// Returns a copy of this response without a header.
+    default HttpResponse removeHeader(HttpHeaderField field) {
+        return toBuilder().removeHeader(field).build();
+    }
 
+    /// Returns a copy of this response without a header.
     default HttpResponse removeHeader(String field) {
-        HttpHeaderField f;
         try {
-            f = HttpHeaderField.of(field);
+            return removeHeader(HttpHeaderField.of(field));
         } catch (IllegalArgumentException e) {
             return this;
         }
-        return removeHeader(f);
     }
 
+    /// Returns a copy of this response with a byte array body.
     default HttpResponse withBody(byte[] data) {
-        return withBody(ByteBuffer.wrap(data));
+        return withBody(ResponseBody.of(data));
     }
 
+    /// Returns a copy of this response with a byte array range body.
     default HttpResponse withBody(byte[] data, int offset, int length) {
-        return withBody(ByteBuffer.wrap(data, offset, length));
+        return withBody(ResponseBody.of(data, offset, length));
     }
 
-    HttpResponse withBody(ByteBuffer data);
+    /// Returns a copy of this response with a byte buffer body.
+    default HttpResponse withBody(ByteBuffer data) {
+        return withBody(ResponseBody.of(data));
+    }
 
-    HttpResponse withBody(String data);
+    /// Returns a copy of this response with a text body.
+    default HttpResponse withBody(String data) {
+        return withBody(ResponseBody.of(data));
+    }
 
+    /// Returns a copy of this response with a channel body of unknown length.
     default HttpResponse withBody(ReadableByteChannel data) {
         return withBody(data, -1L);
     }
 
-    HttpResponse withBody(ReadableByteChannel data, long contentLength);
+    /// Returns a copy of this response with a channel body.
+    default HttpResponse withBody(ReadableByteChannel data, long contentLength) {
+        return withBody(ResponseBody.of(data, contentLength));
+    }
 
-    default HttpResponse withBody(InputStream data) {
+    /// Returns a copy of this response with a stream body of unknown length.
+    default HttpResponse withBody(java.io.InputStream data) {
         return withBody(data, -1L);
     }
 
-    HttpResponse withBody(InputStream data, long contentLength);
+    /// Returns a copy of this response with a stream body.
+    default HttpResponse withBody(java.io.InputStream data, long contentLength) {
+        return withBody(ResponseBody.of(data, contentLength));
+    }
 
-    HttpResponse withBody(Path file);
+    /// Returns a copy of this response with a file body.
+    default HttpResponse withBody(Path file) {
+        return withBody(ResponseBody.of(file));
+    }
 
+    /// Returns a copy of this response with a file body.
     default HttpResponse withBody(File file) {
         return withBody(file.toPath());
     }
 
-    // Getters
+    /// Returns a copy of this response with a response body.
+    default HttpResponse withBody(ResponseBody body) {
+        return toBuilder().withBody(body).build();
+    }
 
+    /// Returns the response status.
     Status getStatus();
 
+    /// Returns the first value for a response header, or `null` if the header is not present.
+    @Nullable
+    String getHeader(HttpHeaderField field);
+
+    /// Returns immutable response headers.
+    Map<HttpHeaderField, @Unmodifiable List<String>> getHeaders();
+
+    /// Returns the response body.
+    ResponseBody getBody();
+
+    /// Mutable builder for immutable HTTP responses.
+    interface Builder {
+        /// Sets the response status.
+        Builder withStatus(Status status);
+
+        /// Sets the response status code.
+        default Builder withStatus(int statusCode) {
+            return withStatus(Status.get(statusCode));
+        }
+
+        /// Sets a custom response status.
+        default Builder withStatus(int statusCode, String description) {
+            return withStatus(new Status(statusCode, description));
+        }
+
+        /// Replaces all values for a header with one value.
+        Builder withHeader(HttpHeaderField field, String value);
+
+        /// Replaces all values for a header with one value.
+        default Builder withHeader(String field, String value) {
+            return withHeader(HttpHeaderField.of(field), value);
+        }
+
+        /// Replaces all values for a header.
+        Builder withHeader(HttpHeaderField field, List<String> values);
+
+        /// Replaces all values for a header.
+        default Builder withHeader(String field, List<String> values) {
+            return withHeader(HttpHeaderField.of(field), values);
+        }
+
+        /// Adds one value to a header.
+        Builder addHeader(HttpHeaderField field, String value);
+
+        /// Adds one value to a header.
+        default Builder addHeader(String field, String value) {
+            return addHeader(HttpHeaderField.of(field), value);
+        }
+
+        /// Removes a header.
+        Builder removeHeader(HttpHeaderField field);
+
+        /// Removes a header.
+        default Builder removeHeader(String field) {
+            try {
+                return removeHeader(HttpHeaderField.of(field));
+            } catch (IllegalArgumentException e) {
+                return this;
+            }
+        }
+
+        /// Sets a byte array body.
+        default Builder withBody(byte[] data) {
+            return withBody(ResponseBody.of(data));
+        }
+
+        /// Sets a byte array range body.
+        default Builder withBody(byte[] data, int offset, int length) {
+            return withBody(ResponseBody.of(data, offset, length));
+        }
+
+        /// Sets a byte buffer body.
+        default Builder withBody(ByteBuffer data) {
+            return withBody(ResponseBody.of(data));
+        }
+
+        /// Sets a text body.
+        default Builder withBody(String data) {
+            return withBody(ResponseBody.of(data));
+        }
+
+        /// Sets a channel body of unknown length.
+        default Builder withBody(ReadableByteChannel data) {
+            return withBody(data, -1L);
+        }
+
+        /// Sets a channel body.
+        default Builder withBody(ReadableByteChannel data, long contentLength) {
+            return withBody(ResponseBody.of(data, contentLength));
+        }
+
+        /// Sets a stream body of unknown length.
+        default Builder withBody(java.io.InputStream data) {
+            return withBody(data, -1L);
+        }
+
+        /// Sets a stream body.
+        default Builder withBody(java.io.InputStream data, long contentLength) {
+            return withBody(ResponseBody.of(data, contentLength));
+        }
+
+        /// Sets a file body.
+        default Builder withBody(Path file) {
+            return withBody(ResponseBody.of(file));
+        }
+
+        /// Sets a file body.
+        default Builder withBody(File file) {
+            return withBody(file.toPath());
+        }
+
+        /// Sets a response body.
+        Builder withBody(ResponseBody body);
+
+        /// Builds an immutable response.
+        HttpResponse build();
+    }
+
+    /// HTTP response status.
     final class Status implements Serializable {
         private static final long serialVersionUID = 0L;
 
@@ -178,6 +375,7 @@ public /*sealed*/ interface HttpResponse {
             return status;
         }
 
+        /// Returns a registered status for common codes or creates a status with no description.
         public static Status get(int statusCode) {
             if (statusCode >= 100 && statusCode < 600) {
                 Status status = LOOKUP[statusCode - 100];
@@ -190,7 +388,7 @@ public /*sealed*/ interface HttpResponse {
         }
 
         @SuppressWarnings("deprecation")
-        private static byte[] binary(int statusCode, String description) {
+        private static byte[] binary(int statusCode, @Nullable String description) {
             String statusCodeStr = String.valueOf(statusCode);
             if (description == null || description.isEmpty()) {
                 return statusCodeStr.getBytes(ISO_8859_1);
@@ -217,28 +415,33 @@ public /*sealed*/ interface HttpResponse {
         }
 
         private final int statusCode;
-        private final String description;
-        private final byte[] binary;
+        private final @Nullable String description;
+        private final byte @Unmodifiable [] binary;
 
-        public Status(int statusCode, String description) {
+        /// Creates a custom response status.
+        public Status(int statusCode, @Nullable String description) {
             this.statusCode = statusCode;
             this.description = description;
             this.binary = binary(statusCode, description);
         }
 
+        /// Returns the numeric status code.
         public int getStatusCode() {
             return statusCode;
         }
 
-        public String getDescription() {
+        /// Returns the reason phrase, or `null` when absent.
+        public @Nullable String getDescription() {
             return description;
         }
 
+        /// Writes the pre-encoded status line fragment.
         @ApiStatus.Internal
         public void writeTo(OutputStream out) throws IOException {
             out.write(binary);
         }
 
+        /// Returns the status code and reason phrase.
         @Override
         public String toString() {
             return new String(binary, ISO_8859_1);
