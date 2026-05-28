@@ -18,9 +18,17 @@ plugins {
     id("java-library")
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(17)
+}
+
 subprojects {
     group = "org.glavo"
     version = "0.1.0" + "-SNAPSHOT"
+
+    tasks.withType<JavaCompile>().configureEach {
+        options.release.set(17)
+    }
 
     if (!project.name.startsWith("plumo")) {
         return@subprojects
@@ -38,6 +46,7 @@ subprojects {
         compileOnlyApi("org.jetbrains:annotations:26.0.1")
         testImplementation(platform("org.junit:junit-bom:5.11.3"))
         testImplementation("org.junit.jupiter:junit-jupiter")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
         // https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
         testImplementation("org.apache.httpcomponents:httpclient:4.5.14")

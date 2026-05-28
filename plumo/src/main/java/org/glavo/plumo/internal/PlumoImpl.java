@@ -242,6 +242,8 @@ public final class PlumoImpl implements Plumo {
 
                 this.localAddress = serverSocketChannel.getLocalAddress();
             }
+
+            this.status = STATUS_RUNNING;
         } catch (Throwable e) {
             finish();
             throw e;
@@ -264,11 +266,9 @@ public final class PlumoImpl implements Plumo {
     private void run() {
         lock.lock();
         try {
-            if (this.status != STATUS_INIT) {
+            if (this.status != STATUS_RUNNING) {
                 return;
             }
-
-            this.status = STATUS_RUNNING;
         } finally {
             lock.unlock();
         }

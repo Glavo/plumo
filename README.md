@@ -2,7 +2,7 @@
 
 Lightweight and fast HTTP server. It is intended to be a better replacement for NanoHTTPD.
 
-It supports Java 8, but when running on higher versions of Java, it also provides support for Unix Domain Socket and Virtual Thread.
+It requires Java 17 or later. When running on JDKs that support virtual threads, it can also use them for request handling.
 
 TODO: More detailed introduction
 

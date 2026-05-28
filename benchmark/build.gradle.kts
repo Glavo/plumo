@@ -16,10 +16,6 @@ dependencies {
     implementation(project(":plumo"))
 }
 
-tasks.compileJava {
-    options.release.set(17)
-}
-
 tasks.jar {
     manifest {
         attributes(

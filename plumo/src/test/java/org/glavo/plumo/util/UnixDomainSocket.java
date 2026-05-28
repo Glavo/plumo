@@ -183,7 +183,7 @@ public final class UnixDomainSocket extends Socket {
         try {
             return channel.getOption(StandardSocketOptions.SO_KEEPALIVE);
         } catch (IOException e) {
-            throw new SocketException(e);
+            throw toSocketException(e);
         }
     }
 
@@ -192,7 +192,7 @@ public final class UnixDomainSocket extends Socket {
         try {
             return channel.getOption(StandardSocketOptions.SO_RCVBUF);
         } catch (IOException e) {
-            throw new SocketException(e);
+            throw toSocketException(e);
         }
     }
 
@@ -201,7 +201,7 @@ public final class UnixDomainSocket extends Socket {
         try {
             return channel.getOption(StandardSocketOptions.SO_SNDBUF);
         } catch (IOException e) {
-            throw new SocketException(e);
+            throw toSocketException(e);
         }
     }
 
@@ -220,7 +220,7 @@ public final class UnixDomainSocket extends Socket {
         try {
             channel.setOption(StandardSocketOptions.SO_KEEPALIVE, on);
         } catch (IOException e) {
-            throw new SocketException(e);
+            throw toSocketException(e);
         }
     }
 
@@ -229,7 +229,7 @@ public final class UnixDomainSocket extends Socket {
         try {
             channel.setOption(StandardSocketOptions.SO_RCVBUF, size);
         } catch (IOException e) {
-            throw new SocketException(e);
+            throw toSocketException(e);
         }
     }
 
@@ -238,7 +238,7 @@ public final class UnixDomainSocket extends Socket {
         try {
             channel.setOption(StandardSocketOptions.SO_SNDBUF, size);
         } catch (IOException e) {
-            throw new SocketException(e);
+            throw toSocketException(e);
         }
     }
 
@@ -252,6 +252,13 @@ public final class UnixDomainSocket extends Socket {
     }
 
     private void ignore() {
+    }
+
+    /// Creates a socket exception that preserves the original I/O failure as its cause.
+    private static SocketException toSocketException(IOException exception) {
+        SocketException socketException = new SocketException(exception.getMessage());
+        socketException.initCause(exception);
+        return socketException;
     }
 
     /**
