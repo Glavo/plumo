@@ -22,7 +22,7 @@ tasks.compileJava {
 
 val versionFile = layout.buildDirectory.file("version.txt")
 
-tasks.create("generateVersionFile") {
+val generateVersionFile by tasks.registering {
     outputs.file(versionFile)
 
     doLast {
