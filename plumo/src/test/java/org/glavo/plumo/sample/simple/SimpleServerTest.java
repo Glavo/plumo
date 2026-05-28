@@ -107,7 +107,6 @@ public final class SimpleServerTest {
     }
 
     @Test
-    @EnabledIf("org.glavo.plumo.internal.util.UnixDomainSocketUtils#isAvailable")
     public void testOnUnixDomainSocket() throws IOException {
         Path socketFile = Files.createTempFile("simple-", ".socket");
         test(

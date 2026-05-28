@@ -70,7 +70,6 @@ public class EchoServerTest {
     }
 
     @Test
-    @EnabledIf("org.glavo.plumo.internal.util.UnixDomainSocketUtils#isAvailable")
     public void testOnUnixDomainSocket() throws IOException {
         Path socketFile = Files.createTempFile("echo-", ".socket");
         test(

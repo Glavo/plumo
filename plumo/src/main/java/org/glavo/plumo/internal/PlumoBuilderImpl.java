@@ -17,13 +17,13 @@ package org.glavo.plumo.internal;
 
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.Plumo;
-import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
 import org.glavo.plumo.internal.util.VirtualThreadUtils;
 
 import javax.net.ssl.SSLContext;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.UnixDomainSocketAddress;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.Executor;
@@ -55,9 +55,8 @@ public final class PlumoBuilderImpl implements Plumo.Builder {
     @Override
     public Plumo.Builder bind(Path path, boolean deleteIfExists) {
         Objects.requireNonNull(path);
-        UnixDomainSocketUtils.checkAvailable();
 
-        this.address = UnixDomainSocketUtils.createUnixDomainSocketAddress(path);
+        this.address = UnixDomainSocketAddress.of(path);
         this.unixDomainSocketPath = path;
         this.deleteUnixDomainSocketFileIfExists = deleteIfExists;
         return this;

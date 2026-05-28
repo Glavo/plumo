@@ -18,17 +18,13 @@ package org.glavo.plumo.internal;
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.Plumo;
 import org.glavo.plumo.internal.util.OutputWrapper;
-import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
 import org.glavo.plumo.internal.util.Utils;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketAddress;
+import java.net.*;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
@@ -223,7 +219,7 @@ public final class PlumoImpl implements Plumo {
                     if (deleteUnixDomainSocketFileIfExists) {
                         Files.deleteIfExists(unixDomainSocketPath);
                     }
-                    serverSocketChannel = UnixDomainSocketUtils.openUnixDomainServerSocketChannel();
+                    serverSocketChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
                 }
 
                 serverSocketOrChannel = serverSocketChannel;

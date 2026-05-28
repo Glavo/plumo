@@ -15,14 +15,9 @@
  */
 package org.glavo.plumo.util;
 
-import org.glavo.plumo.internal.util.UnixDomainSocketUtils;
-
 import javax.net.SocketFactory;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.ProtocolFamily;
-import java.net.Socket;
-import java.net.StandardProtocolFamily;
+import java.net.*;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 
@@ -38,7 +33,7 @@ public final class UnixDomainSocketFactory extends SocketFactory {
         try {
             socketChannel = (SocketChannel) SocketChannel.class.getMethod("open", ProtocolFamily.class)
                     .invoke(null, StandardProtocolFamily.valueOf("UNIX"));
-            socketChannel.connect(UnixDomainSocketUtils.createUnixDomainSocketAddress(path));
+            socketChannel.connect((SocketAddress) UnixDomainSocketAddress.of(path));
         } catch (Throwable e) {
             throw new IOException(e);
         }
