@@ -15,8 +15,10 @@
  */
 package org.glavo.plumo.sample.simple;
 
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.glavo.plumo.Plumo;
 import org.glavo.plumo.util.UnixDomainSocket;
@@ -36,7 +38,7 @@ public final class SimpleServerTest {
         void accept(Response response) throws IOException;
     }
 
-    private static void test(OkHttpClient client, String url, Action action) throws IOException {
+    private static void testGet(OkHttpClient client, String url, Action action) throws IOException {
         try (Response response = client.newCall(new Request.Builder()
                 .url(url)
                 .get()
@@ -45,29 +47,51 @@ public final class SimpleServerTest {
         }
     }
 
+    private static void testPut(OkHttpClient client, String url, byte[] body, Action action) throws IOException {
+        try (Response response = client.newCall(new Request.Builder()
+                .url(url)
+                .put(RequestBody.create(body, MediaType.parse("text/plain")))
+                .build()).execute()) {
+            action.accept(response);
+        }
+    }
+
+    @SuppressWarnings("DataFlowIssue")
     private static void test(Plumo.Builder serverBuilder, OkHttpClient.Builder clientBuilder, boolean unixDomainSocket) throws IOException {
         OkHttpClient client = clientBuilder.build();
 
         Plumo server = serverBuilder.start();
         try {
             String urlBase = "http://localhost" + (unixDomainSocket ? "" : ":" + server.getPort());
+
+            assertTrue(server.isRunning());
+            assertEquals("http", server.getProtocol());
+
+            // Test Get
             Action assertValue = response -> {
                 assertEquals(200, response.code());
                 assertArrayEquals(SimpleServer.TEST_DATA, response.body().bytes());
             };
 
-            test(client, urlBase + "/ByteArray", assertValue);
-            test(client, urlBase + "/ByteBuffer", assertValue);
-            test(client, urlBase + "/ByteBuffer?direct=true", assertValue);
-            test(client, urlBase + "/InputStream", assertValue);
-            test(client, urlBase + "/InputStream?unknown-length=true", assertValue);
-
-            test(client, urlBase + "/unknown", response -> {
+            testGet(client, urlBase + "/ByteArray", assertValue);
+            testGet(client, urlBase + "/ByteBuffer", assertValue);
+            testGet(client, urlBase + "/ByteBuffer?direct=true", assertValue);
+            testGet(client, urlBase + "/InputStream", assertValue);
+            testGet(client, urlBase + "/InputStream?unknown-length=true", assertValue);
+            testGet(client, urlBase + "/unknown", response -> {
                 assertEquals(404, response.code());
                 assertEquals(0, response.body().contentLength());
             });
 
-            assertEquals("http", server.getProtocol());
+            // Test Put
+            try (Response response = client.newCall(new Request.Builder()
+                    .url(urlBase + "/ByteArray")
+                    .put(RequestBody.create(SimpleServer.TEST_DATA, MediaType.parse("text/plain")))
+                    .build()).execute()) {
+                assertEquals(200, response.code());
+                assertEquals(0, response.body().contentLength());
+            }
+
             assertTrue(server.isRunning());
         } finally {
             server.stopAndWait();

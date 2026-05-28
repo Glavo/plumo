@@ -15,6 +15,7 @@
  */
 package org.glavo.plumo.sample.simple;
 
+import org.glavo.plumo.HttpDataDecoder;
 import org.glavo.plumo.HttpHandler;
 import org.glavo.plumo.HttpRequest;
 import org.glavo.plumo.HttpResponse;
@@ -23,9 +24,10 @@ import org.glavo.plumo.internal.util.ParameterParser;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Random;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 public final class SimpleServer implements HttpHandler {
 
@@ -40,7 +42,6 @@ public final class SimpleServer implements HttpHandler {
         URI uri = request.getURI();
         Map<String, String> query = ParameterParser.parseQuery(uri.getQuery());
         if (request.getMethod() == HttpRequest.Method.GET) {
-
             switch (uri.getPath()) {
                 case "/ByteArray":
                     return HttpResponse.newResponse().withBody(TEST_DATA);
@@ -66,14 +67,20 @@ public final class SimpleServer implements HttpHandler {
 
                     return HttpResponse.newResponse().withBody(new ByteArrayInputStream(TEST_DATA), contentLength);
                 }
-                case "/String": {
-
-                }
-                default:
-                    return HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND);
             }
-        } else {
-            return HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND);
+        } else if (request.getMethod() == HttpRequest.Method.PUT) {
+            switch (uri.getPath()) {
+                case "/ByteArray": {
+                    byte[] bytes = request.getBody(HttpDataDecoder.BYTES);
+                    assertArrayEquals(SimpleServer.TEST_DATA, bytes);
+                    return HttpResponse.newResponse();
+                }
+                case "/ByteBuffer": {
+                    ByteBuffer byteBuffer = request.getBody(HttpDataDecoder.BYTE_BUFFER);
+                }
+            }
         }
+
+        return HttpResponse.newResponse(HttpResponse.Status.NOT_FOUND);
     }
 }

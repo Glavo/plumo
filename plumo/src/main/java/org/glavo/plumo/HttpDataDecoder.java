@@ -16,12 +16,14 @@
 package org.glavo.plumo;
 
 import org.glavo.plumo.internal.HttpDataDecoders;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 
+@ApiStatus.NonExtendable
 public interface HttpDataDecoder<V, A, E extends Throwable> {
     HttpDataDecoder<InputStream, ?, RuntimeException> INPUT_STREAM = HttpDataDecoders.INPUT_STREAM;
     HttpDataDecoder<ReadableByteChannel, Object, RuntimeException> BYTE_CHANNEL = HttpDataDecoders.BYTE_CHANNEL;
